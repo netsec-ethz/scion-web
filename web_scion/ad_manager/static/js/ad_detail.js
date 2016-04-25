@@ -97,7 +97,7 @@ function compareAdTopology() {
         $alertDiv.hide();
         $alertDiv.show(500);
     });
-    showLoadingIndicator($alertDiv);
+    //showLoadingIndicator($alertDiv);
     $alertDiv.show();
 }
 
@@ -151,7 +151,7 @@ function statusControl() {
             updateServerStatus();
         });
         var $statusCell = $form.parent().siblings('.status-text');
-        appendLoadingIndicator($statusCell);
+        //appendLoadingIndicator($statusCell);
         return false;
     });
 }
@@ -161,7 +161,7 @@ function displayLogs() {
 
     function refreshLog(logUrl) {
         var $logOutput = $('#log-output');
-        showLoadingIndicator($logOutput);
+        //showLoadingIndicator($logOutput);
         $.ajax({
             url: logUrl,
             dataType: "json"
