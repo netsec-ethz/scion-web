@@ -24,7 +24,7 @@ from lib.defines import GEN_PATH, PROJECT_ROOT
 from lib.topology import Topology
 
 # Set up the Django environment
-os.environ['DJANGO_SETTINGS_MODULE'] = 'web_scion.settings.private'  # noqa # £££
+#os.environ['DJANGO_SETTINGS_MODULE'] = 'web_scion.settings.private'  # noqa
 sys.path.insert(0, WEB_SCION_DIR)  # noqa
 django.setup()  # noqa
 
