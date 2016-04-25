@@ -23,7 +23,8 @@ from lib.defines import (
     DNS_SERVICE,
     PATH_SERVICE,
 )
-from topology.generator import PORT
+
+PORT = 50000
 
 
 class SelectRelatedModelManager(models.Manager):
@@ -77,8 +78,7 @@ class AD(models.Model):
         """
         Get the corresponding remote topology as a Python dictionary.
         """
-        topology_response = management_client.get_topology(self.md_host,
-                                                           self.isd.id, self.id)
+        topology_response = management_client.get_topology(self.md_host, self.isd.id, self.id)
         if not is_success(topology_response):
             return None
 
@@ -156,12 +156,17 @@ class AD(models.Model):
         try:
             for name, router in routers.items():
                 interface = router["Interface"]
-                neighbor_ad = AD.objects.get(id=interface["NeighborAD"],
-                                             isd=interface["NeighborISD"])
+
+                isd_as_split = interface["ISD_AS"].split('-')
+                isd_str = isd_as_split[0]
+                as_str = isd_as_split[1]
+                neighbor_ad = AD.objects.get(id=as_str,
+                                             isd=isd_str)
+
                 RouterWeb.objects.create(
                     addr=router["Addr"], ad=self,
                     name=name, neighbor_ad=neighbor_ad,
-                    neighbor_type=interface["NeighborType"],
+                    neighbor_type=interface["LinkType"],
                     interface_addr=interface["Addr"],
                     interface_toaddr=interface["ToAddr"],
                     interface_id=interface["IFID"],

@@ -17,15 +17,17 @@ from ad_manager.models import (
     DnsServerWeb,
     AD)
 from ad_manager.util.common import is_private_address
-from lib.defines import GEN_PATH
+from lib.defines import GEN_PATH, PROJECT_ROOT
 from lib.util import read_file, write_file, get_trc_file_path
 from topology.generator import (
     ConfigGenerator,
     DEFAULT_PATH_POLICY_FILE,
     DEFAULT_ZK_CONFIG,
-    IP_ADDRESS_BASE,
-    PORT,
 )
+
+IP_ADDRESS_BASE = '127.0.0.1'
+PORT = 50000
+GEN_PATH = os.path.join(PROJECT_ROOT, 'gen')
 
 
 def find_last_router(topo_dict):
@@ -150,20 +152,22 @@ def link_topologies(first_topo, second_topo, link_type):
     first_router_if['ToAddr'] = second_router_if['Addr']
     first_router_if['NeighborISD'] = second_topo['ISDID']
     first_router_if['NeighborAD'] = second_ad_id
+    first_router_if['ISD_AS'] = str(second_topo['ISDID']) + '-' + str(second_ad_id)
 
     second_router_if['ToAddr'] = first_router_if['Addr']
     second_router_if['NeighborISD'] = first_topo['ISDID']
     second_router_if['NeighborAD'] = first_ad_id
+    second_router_if['ISD_AS'] = str(first_topo['ISDID']) + '-' + str(first_ad_id)
 
     if link_type == 'ROUTING':
-        first_router_if['NeighborType'] = 'ROUTING'
-        second_router_if['NeighborType'] = 'ROUTING'
+        first_router_if['LinkType'] = 'ROUTING'
+        second_router_if['LinkType'] = 'ROUTING'
     elif link_type == 'PEER':
-        first_router_if['NeighborType'] = 'PEER'
-        second_router_if['NeighborType'] = 'PEER'
+        first_router_if['LinkType'] = 'PEER'
+        second_router_if['LinkType'] = 'PEER'
     elif link_type == 'PARENT_CHILD':
-        first_router_if['NeighborType'] = 'CHILD'
-        second_router_if['NeighborType'] = 'PARENT'
+        first_router_if['LinkType'] = 'CHILD'
+        second_router_if['LinkType'] = 'PARENT'
     else:
         raise ValueError('Invalid link type')
 
