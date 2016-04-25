@@ -81,3 +81,19 @@ def get_master_id(s, isd_id, ad_id, server_type):
 def read_log(s, process_name):
     to_read = 4000
     return s.tail_process_log(process_name, 0, to_read)
+
+
+def run_remote_command(process_name, command):
+    server = xmlrpc.client.ServerProxy('http://127.0.0.1:9011')
+    wait_for_result = True
+    succeeded = False
+    if command == 'STOP':
+        succeeded = server.supervisor.stopProcess(process_name, wait_for_result)
+    if command == 'START':
+        succeeded = server.supervisor.startProcess(process_name, wait_for_result)
+    if command == 'STATUS':
+        offset = 0
+        length = 4000
+        succeeded = server.supervisor.tailProcessStdoutLog(process_name, offset, length)
+    print('Remote operation {} completed: {}'.format(command, succeeded))
+    return succeeded
