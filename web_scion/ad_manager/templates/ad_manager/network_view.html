@@ -3,7 +3,7 @@
 
 {% block js %}
   {{ block.super }}
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+  <script src="{% static "js/d3.min.js" %}"></script>
 {% endblock %}
 
 {% block content %}
@@ -70,6 +70,10 @@
       .style("text-decoration", function(d) { return d.pov ? "underline" : "none"; })
       .style("font-size", function(d) { return d.pov ? "15px" : "10px"; })
       .text(function(d) { return d.name; });
+
+    for (var i=0; i< 200 && force.alpha(); i++) {
+        force.tick();
+    } // added to get a fixed initial view, avoid nodes jumping arund
 
     function tick() {
       link
