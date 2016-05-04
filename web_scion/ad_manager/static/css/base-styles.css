@@ -79,3 +79,9 @@ text {
   font: 10px sans-serif;
   pointer-events: none;
 }
+
+/* Node assign */
+/* Hidden placeholder */
+select option[disabled]:first-child {
+	display: none;
+}

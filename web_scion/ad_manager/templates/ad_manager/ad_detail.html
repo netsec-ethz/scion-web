@@ -4,7 +4,7 @@
 
 {% block js %}
   {{ block.super }}
-  <script src="{% static 'js/ad_detail.js' %}"></script>
+    <script src="{% static 'js/ad_detail.js' %}" xmlns="http://www.w3.org/1999/html"></script>
 {% endblock %}
 
 {% block content %}
@@ -30,6 +30,7 @@
       <li role="presentation"><a href="#topology" aria-controls="topology" role="tab" data-toggle="tab">Topology</a></li>
       <li role="presentation"><a href="#updates" aria-controls="updates" role="tab" data-toggle="tab">Software updates</a></li>
       <li role="presentation"><a href="#requests" aria-controls="requests" role="tab" data-toggle="tab">Connection requests</a></li>
+      <li role="presentation"><a href="#nodes" aria-controls="nodes" role="tab" data-toggle="tab">Assign nodes</a></li>
     </ul>
 
     <!-- Tab panes -->
@@ -157,6 +158,238 @@
           {% include 'ad_manager/partials/connection_requests.html' %}
         {% endwith %}
       </div>
+
+      <!-- Requests tab -->
+      <div role="tabpanel" class="tab-pane" id="nodes">
+          <br />
+          <div height="500px">
+              Provision node :
+
+              <select  class="selectpicker" data-show-subtext="true" required>
+                <optgroup label="available nodes">
+                <option value="" class="placeholder" selected disabled style="display:none;">Choose node</option>
+                {% for node in nodes %}
+                  <option data-subtext="{{ node.name }}">{{ node.uuid }}</option>
+                {% endfor %}
+                </optgroup>
+              </select>
+
+              and deploy service :
+              <select   class="selectpicker" multiple required>
+                  <optgroup label="servers">
+                      <option>Edge router</option>
+                      <option>Beacon server</option>
+                      <option>Path server</option>
+                      <option>Certificate server</option>
+                      <option>Sibra server</option>
+                  </optgroup>
+                  <optgroup label="services">
+                      <option>Zookeeper service</option>
+                  </optgroup>
+              </select>
+              <button>Go</button>
+          </div>
+          <br />
+          <div>
+              Define topology file for AS:
+              <br />
+              <br />
+              <form class="form-horizontal">
+                  <div id="misc_fields" class="well">
+                      <b>AS basics:</b>
+                      <div class="control-group">
+                          <br />
+                          <label class="control-label col-sm-2" for="inputIsCore">Is Core: </label>
+                          <div class="controls">
+                              <input id="inputIsCore" type="checkbox" data-toggle='tooltip' data-placement='right' data-original-title="Is core checkbox: True, False (is of importance for Beacon, Certificate, Path server; stored as single entry in topo file)">
+                          </div>
+                      </div>
+                      <br />
+                      <div class="control-group">
+                          <label class="control-label col-sm-2" for="inputDnsDomain">DNS Domain: </label>
+                          <div class="controls">
+                              <input type="text" id="inputDnsDomain" placeholder="asNo-isdNo.scion.">
+                          </div>
+                      </div>
+                      <div class="control-group">
+                          <label class="control-label col-sm-2" for="inputISD_AS">AS name: </label>
+                          <div class="controls">
+                              <input type="text" id="inputISD_AS" placeholder="1-10" disabled>
+                          </div>
+                      </div>
+                      <div class="control-group">
+                          <label class="control-label col-sm-2" for="inputMTU">MTU: </label>
+                          <div class="controls">
+                              <input type="text" id="inputMTU" placeholder="1500">
+                          </div>
+                      </div>
+                  </div>
+
+                  <br />
+                  <div class="control-group well">
+                      <div id ="beaconItem">
+                          <label class="control-label col-sm-2" for="inputBeaconServerAddress">Beacon server: </label>
+                          <div class="controls">
+                              <input type="text" id="inputBeaconServerName" value="bs1-10-1" style="display: none;">
+                              <input type="text" id="inputBeaconServerAddress" placeholder="127.0.0.49/29">
+                              <button class="btn btn-success btn-add pull-right" type="button"
+                                      onclick="toggleInput(this);">
+                                <span class="glyphicon glyphicon-plus"></span>
+                              </button>
+                          </div>
+                      </div>
+                  </div>
+
+                  <br />
+                  <div class="control-group well">
+                      <div id="certificateItem">
+                          <label class="control-label col-sm-2" for="inputCertificateServerAddress">Certificate server: </label>
+                          <div class="controls">
+                              <input type="text" id="inputCertificateServerName" value="cs1-10-1" style="display: none;">
+                              <input type="text" id="inputCertificateServerAddress" placeholder="127.0.0.50/29">
+                              <button class="btn btn-success btn-add pull-right" type="button"
+                                          onclick="toggleInput(this);">
+                                    <span class="glyphicon glyphicon-plus"></span>
+                              </button>
+                          </div>
+                      </div>
+                  </div>
+
+                  <br />
+                  <div class="control-group well">
+                      <div id="domainItem">
+                          <label class="control-label col-sm-2" for="inputDomainServerAddress">Domain server: </label>
+                          <div class="controls">
+                              <input type="text" id="inputDomainServerName" value="ds1-10-1" style="display: none;">
+                              <input type="text" id="inputDomainServerAddress" placeholder="127.0.0.51/29">
+                              <button class="btn btn-success btn-add pull-right" type="button"
+                                          onclick="toggleInput(this);">
+                                    <span class="glyphicon glyphicon-plus"></span>
+                              </button>
+                          </div>
+                      </div>
+                  </div>
+
+                  <br />
+                  <div class="control-group well">
+                      <div id="routerItem">
+                          <label class="control-label col-sm-2" for="inputEdgeRouterAddress">Edge router: </label>
+                          <div class="controls">
+                              <input type="text" id="inputEdgeRouterName" value="changeThis" style="display: none;">
+                              <input type="text" id="inputEdgeRouterAddress" placeholder="127.0.0.52/29">
+                              <button class="btn btn-success btn-add pull-right" type="button"
+                                          onclick="toggleInput(this);">
+                                    <span class="glyphicon glyphicon-plus"></span>
+                              </button>
+                          </div>
+                          <br/>
+                          <div class="control-group">
+                              <b>Interface parameters:</b>
+                              <br/>
+                              <label class="control-label col-sm-2" for="inputInterfaceAddr">Interface address: </label>
+                              <div class="controls">
+                                  <input type="text" id="inputInterfaceAddr" placeholder="127.0.0.4/31">
+                              </div>
+
+                              <label class="control-label col-sm-2" for="inputInterfaceBandwidth">Interface bandwidth: </label>
+                              <div class="controls">
+                                  <input type="text" id="inputInterfaceBandwidth" placeholder="1000">
+                              </div>
+
+                              <label class="control-label col-sm-2" for="inputInterfaceIFID">Address: </label>
+                              <div class="controls">
+                                  <input type="text" id="inputInterfaceIFID" placeholder="1">
+                              </div>
+
+                              <label class="control-label col-sm-2" for="inputInterfaceParentName">Name of parent the link connects: </label>
+                              <div class="controls">
+                                  <input type="text" id="inputInterfaceParentName" placeholder="1-19">
+                              </div>
+                              <br />
+
+                              <label class="control-label col-sm-2" for="inputInterfaceType">Type of the link: </label>
+                              <div class="controls">
+                                  <input type="text" id="inputInterfaceType" placeholder="PARENT">
+                              </div>
+
+                              <label class="control-label col-sm-2" for="inputInterfaceParentAddress">Parent address the link connects: </label>
+                              <div class="controls">
+                                  <input type="text" id="inputInterfaceParentAddress" placeholder="127.0.0.5/31">
+                              </div>
+                              <br />
+
+                              <label class="control-label col-sm-2" for="inputInterfaceParentPort">Parent port the link connects: </label>
+                              <div class="controls">
+                                  <input type="text" id="inputInterfaceParentPort" placeholder="50000">
+                              </div>
+                              <br />
+
+                              <label class="control-label col-sm-2" for="inputInterfaceOwnPort">Edge router port from which the link connects: </label>
+                              <div class="controls">
+                                  <input type="text" id="inputInterfaceOwnPort" placeholder="50000">
+                              </div>
+                              <br />
+                          </div>
+                      </div>
+                  </div>
+
+                  <br />
+                  <div class="control-group well">
+                      <div id="pathItem">
+                          <label class="control-label col-sm-2" for="inputPathServerAddress">Path server: </label>
+                          <div class="controls">
+                              <input type="text" id="inputPathServerName" value="ps1-10-1" style="display: none;">
+                              <input type="text" id="inputPathServerAddress" placeholder="127.0.0.53/29">
+                              <button class="btn btn-success btn-add pull-right" type="button"
+                                          onclick="toggleInput(this);">
+                                    <span class="glyphicon glyphicon-plus"></span>
+                              </button>
+                          </div>
+                      </div>
+                  </div>
+
+                  <br />
+                  <div class="control-group well">
+                      <div id="sibraItem">
+                          <label class="control-label col-sm-2" for="inputSibraServerAddress">Sibra server: </label>
+                          <div class="controls">
+                              <input type="text" id="inputSibraServerName" value="sb1-10-1" style="display: none;">
+                              <input type="text" id="inputSibraServerAddress" placeholder="127.0.0.54/29">
+                              <button class="btn btn-success btn-add pull-right" type="button"
+                                          onclick="toggleInput(this);">
+                                    <span class="glyphicon glyphicon-plus"></span>
+                              </button>
+                          </div>
+                      </div>
+                  </div>
+
+                  <br />
+                  <div class="control-group well">
+                      <div id="zookeeperItem">
+                          <label class="control-label col-sm-2" for="inputZookeeperServerAddress">Zookeeper server: </label>
+                          <div class="controls">
+                              <input type="text" id="inputZookeeperServerName" value="zk1-10-1" style="display: none;">
+                              <input type="text" id="inputZookeeperServerAddress" placeholder="127.0.0.1/32">
+                              <button class="btn btn-success btn-add pull-right" type="button"
+                                          onclick="toggleInput(this);">
+                                    <span class="glyphicon glyphicon-plus"></span>
+                              </button>
+                          </div>
+                          <label class="control-label col-sm-2" for="inputZookeeperServerPort">Zookeeper port: </label>
+                          <div class="controls">
+                              <input type="text" id="inputZookeeperServerPort" placeholder="2181">
+                          </div>
+                      </div>
+                  </div>
+
+                  <br />
+                  <div class="control-group">
+                      <button type="submit" class="btn">Save to topology file</button>
+                  </div>
+              </form>
+
+          </div>
+      </div>
     </div>
   </div>
 
@@ -168,5 +401,35 @@
     var adDetailUrl = '{% url 'ad_status' object.id %}';
     var adCompareUrl = '{% url 'compare_topology' object.id %}';
     var getMasterUrl = '{% url 'get_group_master' object.id %}';
+
+    // display tooltip in form
+    $(function () {
+          $("[data-toggle='tooltip']").tooltip();
+    });
+
+    function toggleInput(elem) {
+        var wellGroup = elem.parentNode.parentNode.parentNode;
+        var clone = elem.parentNode.parentNode.cloneNode(true);
+        var currentClass = $(elem).children(':first').attr('class');
+        if (currentClass === 'glyphicon glyphicon-plus') {
+            wellGroup.appendChild(clone);
+            //var test = $(clone).children(':first').prop('tagName');
+            if ($(clone).children(':first').attr('class') !== 'doc-hr') {
+                $(clone).prepend('<div class="doc-hr"></div>');
+            }
+            $(elem).removeClass('btn-success').addClass('btn-danger');
+            $(elem).children(':first').removeClass('glyphicon glyphicon-plus').addClass('glyphicon glyphicon-minus');
+        } else {
+            $(elem).parent().parent().remove();
+        }
+    }
   </script>
+  <style>
+    .doc-hr {
+        width: 100%;
+        height: 1px;
+        background: #aaaaaa;
+        margin: 15px;
+    }
+  </style>
 {% endblock %}
