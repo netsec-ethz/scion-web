@@ -24,7 +24,7 @@ from lib.defines import GEN_PATH, PROJECT_ROOT
 from lib.topology import Topology
 
 # Set up the Django environment
-#os.environ['DJANGO_SETTINGS_MODULE'] = 'web_scion.settings.private'  # noqa
+os.environ['DJANGO_SETTINGS_MODULE'] = 'web_scion.settings.private'  # noqa
 sys.path.insert(0, WEB_SCION_DIR)  # noqa
 django.setup()  # noqa
 
@@ -73,15 +73,8 @@ def get_topology(file):
         except (yaml.YAMLError, KeyError) as e:
             return []
 
-def reload_data():
 
-    transaction.set_autocommit(False)
-    clear_everything()
-    add_users()
-
-    # Add model instances
-    yaml_path = os.path.join(GEN_PATH, 'ISD*', 'AS*', 'endhost', 'topology.yml')
-    topology_files = glob.glob(yaml_path)
+def reload_data_from_files(topology_files):
     ad_num = len(topology_files)
     print("> {} yaml topology files found".format(ad_num))
 
@@ -134,7 +127,8 @@ def reload_data():
     for i, as_topo in enumerate(as_topos, start=1):
         if i in report_ranges:
             print("{}%".format(report_ranges[i]))
-        AD.objects.create(id=as_topo.isd_as._as, isd=isds[as_topo.isd_as._isd],  # TODO: avoid accessing protected class members
+        AD.objects.create(id=as_topo.isd_as._as, isd=isds[as_topo.isd_as._isd],
+                          # TODO: avoid accessing protected class members
                           is_core_ad=as_topo.is_core_as,
                           dns_domain=as_topo.dns_domain)
     transaction.commit()
@@ -148,6 +142,19 @@ def reload_data():
         print('> AD {} is loaded'.format(ad))
     transaction.commit()
     transaction.set_autocommit(True)
+
+
+def reload_data():
+    transaction.set_autocommit(False)
+    clear_everything()
+    add_users()
+
+    # Add model instances
+    yaml_path = os.path.join(GEN_PATH, 'ISD*', 'AS*', 'endhost', 'topology.yml')
+    topology_files = glob.glob(yaml_path)
+
+    reload_data_from_files(topology_files)  # same same, allows method reuse
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == 'users':
