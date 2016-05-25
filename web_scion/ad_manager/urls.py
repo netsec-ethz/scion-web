@@ -4,6 +4,28 @@ from django.conf.urls import patterns, url
 # SCION
 from ad_manager import views
 
+api_patterns_internal = patterns(
+    '',
+    url(r'^api/v1/internal/register_node$',
+        views.register_node, name='register_node'),
+    url(r'^api/v1/internal/.*$',
+        views.wrong_api_call, name='wrong_api_call'),
+)
+
+api_patterns_external = patterns(
+    '',
+    url(r'^api/v1/services_status$',
+        views.register_node, name='services_status'),
+    url(r'^api/v1/open_policy$',
+        views.register_node, name='open_policy'),
+    url(r'^api/v1/receive_notification$',
+        views.register_node, name='receive_notification'),
+    url(r'^api/v1/peering_request$',
+        views.register_node, name='peering_request'),
+    url(r'^api/v1/.*$',
+        views.wrong_api_call, name='wrong_api_call'),
+)
+
 isd_patterns = patterns(
     '',
     url(r'^isds/$',
@@ -40,6 +62,12 @@ ad_patterns = patterns(
         views.NewLinkView.as_view(), name='new_link'),
     url(r'^ads/(?P<pk>\d+)/group_master/$',
         views.get_group_master, name='get_group_master'),
+    url(r'^ads/generate_topology$',
+        views.generate_topology, name='generate_topology'),
+    url(r'^ads/deploy_config',
+        views.deploy_config, name='deploy_config'),
+    url(r'^ads/register_node',
+        views.register_node, name='register_node'),
 )
 
 connection_request_patterns = patterns(
@@ -62,4 +90,4 @@ misc = patterns(
         views.network_view_neighbors, name='network_view_ad'),
 )
 
-urlpatterns = isd_patterns + ad_patterns + connection_request_patterns + misc
+urlpatterns = api_patterns_internal + isd_patterns + ad_patterns + connection_request_patterns + misc
