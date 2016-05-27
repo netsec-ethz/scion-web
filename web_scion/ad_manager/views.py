@@ -880,6 +880,26 @@ def deploy_config(request):
     current_page = request.META.get('HTTP_REFERER')
     return redirect(current_page)
 
+
+def run_remote_command(ip, process_name, command):
+    server = xmlrpc.client.ServerProxy('http://{}:9011'.format(ip))
+    wait_for_result = True
+    succeeded = False
+    if command == 'retrieve_tar':
+        succeeded = server.supervisor.startProcess(process_name, wait_for_result)
+
+    if command == 'STOP':
+        succeeded = server.supervisor.stopProcess(process_name, wait_for_result)
+    if command == 'START':
+        succeeded = server.supervisor.startProcess(process_name, wait_for_result)
+    if command == 'STATUS':
+        offset = 0
+        length = 4000
+        succeeded = server.supervisor.tailProcessStdoutLog(process_name, offset, length)
+    print('Remote operation {} completed: {}'.format(command, succeeded))
+    return
+
+
 def run_rpc_command(ip, uuid, management_interface_ip, command, ISD, AS):
     server = xmlrpc.client.ServerProxy('http://{}:9012'.format(ip))
     result = None
