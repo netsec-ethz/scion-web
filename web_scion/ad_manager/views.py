@@ -687,14 +687,6 @@ def network_view(request):
     return render(request, 'ad_manager/network_view.html', {'data': graph})
 
 
-def get_own_local_ip():
-    result = '127.0.0.1'
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        s.connect(('192.255.255.255', 22))
-        result = s.getsockname()[0]
-    return result
-
-
 def register_node(request):
     node_values = request.POST
     node_name = node_values['inputNodeName']
@@ -720,6 +712,59 @@ def register_node(request):
     current_page = request.META.get('HTTP_REFERER')
     return redirect(current_page)
 
+
+def wrong_api_call(request):
+    print('Wrong API call')
+    return JsonResponse({'data': 'Failure'})
+
+
+yaml_topo_path = os.path.join(PROJECT_ROOT, 'web_scion', 'ad_manager', 'static', 'tmp', 'topology.yml')
+
+
+@require_POST
+def generate_topology(request):
+    topology_params = request.POST.copy()
+    topology_params.pop('csrfmiddlewaretoken', None)  # remove csrf entry, as we don't need it
+    tp = topology_params
+
+    isd_as = tp['inputISD_AS']
+    mockup_dicts = {}
+    mockup_dicts['BeaconServers'] = {'bs{}-1'.format(isd_as): {'Addr': tp['inputBeaconServerAddress']}}
+    mockup_dicts['CertificateServers'] = {'cs{}-1'.format(isd_as): {'Addr': tp['inputCertificateServerAddress']}}
+    mockup_dicts['Core'] = True if (tp['inputIsCore'] == 'on') else False
+    mockup_dicts['DNSServers'] = {'ds{}-1'.format(isd_as): {'Addr': tp['inputDomainServerAddress']}}
+    mockup_dicts['DnsDomain'] = tp['inputDnsDomain']
+    mockup_dicts['EdgeRouters'] = {'er{}er1-19'.format(isd_as): {'Addr': tp['inputEdgeRouterAddress'], 'Interface':
+        {'Addr': tp['inputInterfaceAddr'],
+         'Bandwidth': -1 if tp['inputInterfaceBandwidth'] == '' else int(tp['inputInterfaceBandwidth']),
+         'IFID': -1 if tp['inputInterfaceIFID'] == '' else int(tp['inputInterfaceIFID']),
+         'ISD_AS': tp['inputInterfaceParentName'], 'LinkType': tp['inputInterfaceType'],
+         'ToAddr': tp['inputInterfaceParentAddress'],
+         'ToUdpPort': -1 if tp['inputInterfaceParentPort'] == '' else int(tp['inputInterfaceParentPort']),
+         'UdpPort': -1 if tp['inputInterfaceOwnPort'] == '' else int(tp['inputInterfaceOwnPort'])}}}
+    mockup_dicts['ISD_AS'] = tp['inputISD_AS']
+    mockup_dicts['MTU'] = -1 if tp['inputMTU'] == '' else int(tp['inputMTU'])
+    mockup_dicts['PathServers'] = {'ps{}-1'.format(isd_as): {'Addr': tp['inputPathServerAddress']}}
+    mockup_dicts['SibraServers'] = {'sb{}-1'.format(isd_as): {'Addr': tp['inputSibraServerAddress']}}
+    mockup_dicts['Zookeepers'] = {1: {'Addr': tp['inputZookeeperServerAddress'],
+                                      'Port': -1 if tp['inputZookeeperServerPort'] == '' else int(
+                                          tp['inputZookeeperServerPort'])}}
+
+    with open(yaml_topo_path, 'w') as file:
+        yaml.dump(mockup_dicts, file, default_flow_style=False)
+
+    reload_data_from_files([yaml_topo_path])  # load as usual model (for display in overview)
+
+    current_page = request.META.get('HTTP_REFERER')
+    return redirect(current_page)
+
+
+def get_own_local_ip():
+    result = '127.0.0.1'
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.connect(('192.255.255.255', 22))
+        result = s.getsockname()[0]
+    return result
 
 def run_rpc_command(ip, uuid, management_interface_ip, command, ISD, AS):
     server = xmlrpc.client.ServerProxy('http://{}:9012'.format(ip))
