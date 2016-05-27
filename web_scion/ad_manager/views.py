@@ -766,11 +766,127 @@ def get_own_local_ip():
         result = s.getsockname()[0]
     return result
 
+
+def add_file_to_tar(new_file, name, tar_file_path):
+    with tarfile.open(tar_file_path, 'a') as tar_archive:
+        tar_archive.add(new_file, name)
+    return
+
+
+def create_dir_in_tar(new_dir_name, new_dir_path, tar_file_path):
+    with tarfile.open(tar_file_path, 'a') as tar_archive:
+        new_dir = tarfile.TarInfo(new_dir_name)
+        new_dir.type = tarfile.DIRTYPE
+        tar_archive.add(new_dir, new_dir_path)
+    return
+
+
+def create_tar_with_file(new_file, name, tar_file_path):
+    with tarfile.open(tar_file_path, 'w:') as tar_archive:
+        tar_archive.add(new_file, name)
+    return
+
+
+def create_tar(tar_file_path):
+    tar_archive = tarfile.open(tar_file_path, 'w:')
+    tar_archive.close()
+    return
+
+
+@require_POST
+def deploy_config(request):
+    """
+    Finalize and deploy tar
+    """
+    tar_params = request.POST.copy()
+    node_uuid = tar_params['nodeUUID']
+    node = Node.objects.get(uuid=node_uuid)
+    types = tar_params.getlist('type[]')
+    management_interface_ip = tar_params['managementInterfaceIP']
+
+    # looks up the name of the executable for the service, certificate server -> 'cert_server', ...
+    lookup_dict_executables = {'router': ROUTER_EXECUTABLE,
+                               'beacon_server': BEACON_EXECUTABLE,
+                               'path_server': PATH_EXECUTABLE,
+                               'certificate_server': CERTIFICATE_EXECUTABLE,
+                               'domain_server': DNS_EXECUTABLE,
+                               'sibra_server': SIBRA_EXECUTABLE,
+                               'zookeeper_service': ZOOKEEPER_EXECUTABLE}
+    lkx = lookup_dict_executables
+
+    # looks up the prefix used for naming supervisor processes, beacon server -> 'bs', ...
+    lookup_dict_services_prefixes = {'router': ROUTER_SERVICE,
+                                     'beacon_server': BEACON_SERVICE,
+                                     'path_server': PATH_SERVICE,
+                                     'certificate_server': CERTIFICATE_SERVICE,
+                                     'domain_server': DNS_SERVICE,
+                                     'sibra_server': SIBRA_SERVICE,
+                                     'zookeeper_service': ZOOKEEPER_SERVICE}
+    lkp = lookup_dict_services_prefixes
+
+    tmp_folder_path = os.path.join(PROJECT_ROOT, 'web_scion', 'ad_manager', 'static', 'tmp')
+
+    current_node_file = os.path.join(tmp_folder_path, node_uuid + '.tar')
+    create_tar(current_node_file)
+
+    for service_type in types:
+        config = configparser.ConfigParser()
+        prefix = lkp[service_type]
+        executable_name = lkx[service_type]
+        # Get digits only from ISD and AS names
+        lkp['d'] = lambda x: ''.join(filter(str.isdigit(), x))
+        serv_name = '{}{}-{}-1'.format(prefix, lkp['d'](node.ISD), lkp['d'](node.AS))
+        config['program:' + serv_name] = \
+            {'startsecs': '5',
+             'command': '"bin/{0}" "{1}" "gen/{2}/{3}/{1}"'.format(executable_name, serv_name, node.ISD, node.AS),
+             'startretries': '0',
+             'stdout_logfile': 'logs/' + serv_name + '.OUT',
+             'redirect_stderr': 'true',
+             'autorestart': 'false',
+             'environment': 'PYTHONPATH =.',
+             'autostart': 'false',
+             'stdout_logfile_maxbytes': '0'}
+
+        # replace command entry if zookeeper special case
+        if service_type == 'zookeeper_service':
+            config['program:' + serv_name]['command'] = '"java" "-cp"' \
+                                                        ' "gen/{2}/{3}/{1}:' \
+                                                        '/usr/share/java/jline.jar:' \
+                                                        '/usr/share/java/log4j-1.2.jar:' \
+                                                        '/usr/share/java/xercesImpl.jar:' \
+                                                        '/usr/share/java/xmlParserAPIs.jar:' \
+                                                        '/usr/share/java/netty.jar:' \
+                                                        '/usr/share/java/slf4j-api.jar:' \
+                                                        '/usr/share/java/slf4j-log4j12.jar:' \
+                                                        '/usr/share/java/{0}" ' \
+                                                        '"-Dzookeeper.log.file=logs/{1}.log" ' \
+                                                        '"org.apache.zookeeper.server.quorum.QuorumPeerMain" ' \
+                                                        '"gen/{2}/{3}/{1}/zoo.cfg"'.format(executable_name,
+                                                                                           serv_name,
+                                                                                           node.ISD,
+                                                                                           node.AS)
+
+        conf_file_path = os.path.join(tmp_folder_path, 'supervisord.conf')
+        with open(conf_file_path, 'w') as configfile:
+            config.write(configfile)
+
+        cert_path = os.path.join(tmp_folder_path, 'certs_only')
+        add_file_to_tar(cert_path, serv_name, current_node_file)
+        # add instead data and zoo.cfg for zookeeper config
+        add_file_to_tar(yaml_topo_path, os.path.join('/' + serv_name, 'topology.yml'), current_node_file)
+        add_file_to_tar(conf_file_path, os.path.join('/' + serv_name, 'supervisord.conf'), current_node_file)
+
+    run_rpc_command(node.uuid, management_interface_ip, 'retrieve_tar', node.ISD, node.AS)
+    current_page = request.META.get('HTTP_REFERER')
+    return redirect(current_page)
+
 def run_rpc_command(ip, uuid, management_interface_ip, command, ISD, AS):
     server = xmlrpc.client.ServerProxy('http://{}:9012'.format(ip))
     result = None
     if command == 'register':
         result = server.register(management_interface_ip, ISD, AS)
+    elif command == 'retrieve_tar':
+        result = server.retrieve_configuration(uuid, management_interface_ip, ISD, AS)
     else:
         print('Wrong command')
     print('Remote operation {} completed: {}'.format(command, 'True'))
