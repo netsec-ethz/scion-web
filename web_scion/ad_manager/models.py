@@ -205,7 +205,7 @@ class AD(models.Model):
         if ':' in id_str:
             return id_str
         else:
-            return "ad{}-{}:{}".format(self.isd.id, self.id, id_str)
+            return "as{}-{}:{}".format(self.isd.id, self.id, id_str) # changed for rpc log retrieval, to match new supervisord names
 
     def __str__(self):
         return '{}-{}'.format(self.isd.id, self.id)
@@ -222,8 +222,9 @@ class SCIONWebElement(models.Model):
 
     def id_str(self):
         # FIXME How to identify multiple servers of the same type?
-        return "{}{}-{}-{}".format(self.prefix, self.ad.isd_id,
-                                   self.ad_id, self.name)
+        #return "{}{}-{}-{}".format(self.prefix, self.ad.isd_id,
+        #                           self.ad_id, self.name)
+        return self.name
 
     def get_dict(self):
         return {'AddrType': 'IPV4', 'Addr': self.addr}
@@ -376,3 +377,17 @@ class ConnectionRequest(models.Model):
 
     def is_approved(self):
         return self.status == 'APPROVED'
+
+
+class Node(models.Model):
+    uuid = models.CharField(primary_key=True, max_length=100, null=False, blank=False)
+    name = models.CharField(max_length=50, null=False, blank=False)
+    last_seen = models.DateTimeField(null=False)
+    IP = models.IPAddressField(default='127.0.0.1')
+    ISD = models.CharField(max_length=10, null=False, blank=False)
+    AS = models.CharField(max_length=10, null=False, blank=False)
+    #is_core_ad = models.BooleanField(default=False)
+    #dns_domain = models.CharField(max_length=100, null=True, blank=True)
+
+    def __str__(self):
+        return 'UUID: ' + str(self.id) + ', last seen: ' + str(self.last_seen)

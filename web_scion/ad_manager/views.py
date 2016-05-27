@@ -1,7 +1,6 @@
 # Stdlib
 import copy
 import json
-import os
 import tempfile
 import time
 from collections import deque
@@ -25,6 +24,13 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView, DetailView, FormView
 
+from datetime import datetime
+import yaml
+import tarfile
+import configparser
+import xmlrpc.client
+import socket
+
 # SCION
 from guardian.shortcuts import assign_perm
 from ad_management.common import PACKAGE_DIR_PATH
@@ -40,7 +46,7 @@ from ad_manager.forms import (
     NewLinkForm,
     PackageVersionSelectForm,
 )
-from ad_manager.models import AD, ISD, PackageVersion, ConnectionRequest
+from ad_manager.models import AD, ISD, PackageVersion, ConnectionRequest, Node
 from ad_manager.util import management_client
 from ad_manager.util.ad_connect import (
     create_new_ad_files,
@@ -48,9 +54,15 @@ from ad_manager.util.ad_connect import (
     link_ads,
 )
 from ad_manager.util.errors import HttpResponseUnavailable
-from lib.defines import BEACON_SERVICE, DNS_SERVICE
 from lib.util import write_file
 from topology.generator import ConfigGenerator
+
+from scripts.reload_data import reload_data_from_files
+
+from lib.defines import *
+from lib.defines import GEN_PATH, PROJECT_ROOT
+
+GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
 
 
 class ISDListView(ListView):
@@ -96,6 +108,9 @@ class ADDetailView(DetailView):
         context['beacon_servers'] = ad.beaconserverweb_set.all()
         context['dns_servers'] = ad.dnsserverweb_set.all()
 
+        context['nodes'] = Node.objects.all()
+        context['management_interface_ip'] = get_own_local_ip()
+
         # Sort by name numerically
         lists_to_sort = ['routers', 'path_servers',
                          'certificate_servers', 'beacon_servers',
@@ -103,7 +118,7 @@ class ADDetailView(DetailView):
         for list_name in lists_to_sort:
             context[list_name] = sorted(
                 context[list_name],
-                key=lambda el: int(el.name) if el.name is not None else -1
+                key=lambda el: el.name if el.name is not None else -1
             )
 
         # Update tab
@@ -370,8 +385,10 @@ def read_log(request, pk, proc_id):
     response = management_client.read_log(ad.md_host, proc_id)
     if is_success(response):
         log_data = get_success_data(response)[0]
-        if '\n' in log_data:
+        if '\n' in log_data:  # Don't show first line of output, why?
             log_data = log_data[log_data.index('\n') + 1:]
+        if log_data == '':
+            log_data = 'No log output to display, OUT file is empty.'
         return JsonResponse({'data': log_data})
     else:
         return HttpResponseUnavailable(get_failure_errors(response))
@@ -473,7 +490,6 @@ def download_approved_package(request, req_id):
 
 
 def approve_request(ad, ad_request):
-
     # Create the new AD
     new_id = AD.objects.latest('id').id + 1
     new_ad = AD.objects.create(id=new_id, isd=ad.isd,
@@ -669,3 +685,48 @@ def network_view(request):
                     'value': 1,
                 })
     return render(request, 'ad_manager/network_view.html', {'data': graph})
+
+
+def get_own_local_ip():
+    result = '127.0.0.1'
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.connect(('192.255.255.255', 22))
+        result = s.getsockname()[0]
+    return result
+
+
+def register_node(request):
+    node_values = request.POST
+    node_name = node_values['inputNodeName']
+    last_seen = datetime.now()
+    node_ip = node_values['inputNodeIP']
+    node_isd = node_values['inputNodeISD']
+    node_as = node_values['inputNodeAS']
+
+    management_interface_ip = node_values['inputManagementInterfaceIP']
+
+    result = run_rpc_command(node_ip, None, management_interface_ip, 'register', node_isd, node_as)
+    uuid = result['uuid']
+
+    new_node, created = Node.objects.get_or_create(uuid=uuid, defaults={'name': node_name,
+                                                                        'last_seen': last_seen,
+                                                                        'IP': node_ip,
+                                                                        'ISD': node_isd,
+                                                                        'AS': node_as})
+    if not created:
+        new_node.last_seen = datetime.now
+        new_node.save()
+
+    current_page = request.META.get('HTTP_REFERER')
+    return redirect(current_page)
+
+
+def run_rpc_command(ip, uuid, management_interface_ip, command, ISD, AS):
+    server = xmlrpc.client.ServerProxy('http://{}:9012'.format(ip))
+    result = None
+    if command == 'register':
+        result = server.register(management_interface_ip, ISD, AS)
+    else:
+        print('Wrong command')
+    print('Remote operation {} completed: {}'.format(command, 'True'))
+    return result
