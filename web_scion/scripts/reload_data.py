@@ -150,10 +150,11 @@ def reload_data():
     add_users()
 
     # Add model instances
+    # get any topology.yml for the AS, as all are identical and there is no authoritative one
     yaml_path = os.path.join(GEN_PATH, 'ISD*', 'AS*', 'endhost', 'topology.yml')
     topology_files = glob.glob(yaml_path)
 
-    reload_data_from_files(topology_files)  # same same, allows method reuse
+    reload_data_from_files(topology_files)
 
 
 if __name__ == "__main__":

@@ -123,8 +123,10 @@ class VerifyCertSafeTransport(SafeTransport):
         self._ssl_context.verify_mode = ssl.CERT_REQUIRED
 
     def make_connection(self, host):
-        s = super().make_connection((host, {'context': self._ssl_context,
-                                            'check_hostname': False}))
+        self.context = self._ssl_context
+        s = super().make_connection((host, {'check_hostname': False}))
+        # removed 'context': self._ssl_context from dict, as it is already added by parent constructor,
+        # gives double key error else
         return s
 
 

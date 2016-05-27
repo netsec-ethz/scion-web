@@ -20,6 +20,7 @@
 import base64
 import hashlib
 import json
+import yaml
 import logging
 import os
 import sys
@@ -171,7 +172,9 @@ class ManagementDaemon(object):
         return response_success('Topology file is successfully updated')
 
     def _read_topology(self, isd_id, ad_id):
-        topo_path = self.get_topo_path(isd_id, ad_id)
+
+        GEN_PATH = os.path.join(PROJECT_ROOT, 'gen')
+        topo_path = os.path.join(GEN_PATH, 'ISD' + isd_id, 'AS' + ad_id, 'endhost', 'topology.yml')
         try:
             return open(topo_path, 'r').read()
         except OSError as e:
@@ -391,33 +394,35 @@ class ManagementDaemon(object):
 
         topology_str = self._read_topology(isd_id, ad_id)
         try:
-            topology = json.loads(topology_str)
+            topology = yaml.load(topology_str)
         except (ValueError, KeyError, TypeError):
             return response_failure('Cannot parse topology file')
 
         # Read zookeeper config
         zookeeper_dict = topology["Zookeepers"]
-        zookeper_hosts = ["{}:{}".format(zk_host["Addr"], zk_host["ClientPort"])
+        zookeper_hosts = ["{}:{}".format(zk_host["Addr"], zk_host["Port"])
                           for zk_host in zookeeper_dict.values()]
 
         kc = KazooClient(hosts=','.join(zookeper_hosts))
-        lock_path = '/ISD{}-AD{}/{}/lock'.format(isd_id, ad_id, server_type)
-        try:
-            kc.start()
-            contenders = kc.get_children(lock_path)
-            if not contenders:
-                return response_failure('No lock contenders found')
+        lock_path = '/ISD{}-AS{}/{}/lock'.format(isd_id, ad_id, server_type)
 
-            lock_holder_file = sorted(contenders, key=self._get_id)[0]
-            lock_holder_path = os.path.join(lock_path, lock_holder_file)
-            lock_contents = kc.get(lock_holder_path)
-            server_id, _, _ = lock_contents[0].split(b"\x00")
-            server_id = str(server_id, 'utf-8')
-            return response_success(server_id)
-        except NoNodeError:
-            return response_failure('No lock data found')
-        finally:
-            kc.stop()
+        # don't care about zookeeper and kazoo for the moment
+        # try:
+        #     kc.start()
+        #     contenders = kc.get_children(lock_path)
+        #     if not contenders:
+        #         return response_failure('No lock contenders found')
+        #
+        #     lock_holder_file = sorted(contenders, key=self._get_id)[0]
+        #     lock_holder_path = os.path.join(lock_path, lock_holder_file)
+        #     lock_contents = kc.get(lock_holder_path)
+        #     server_id, _, _ = lock_contents[0].split(b"\x00")
+        #     server_id = str(server_id, 'utf-8')
+        #     return response_success(server_id)
+        # except NoNodeError:
+        #     return response_failure('No lock data found')
+        # finally:
+        #     kc.stop()
 
     def _get_id(self, name):
         return name.split('__')[-1]
