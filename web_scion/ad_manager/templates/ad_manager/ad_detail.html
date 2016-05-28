@@ -163,6 +163,37 @@
       <div role="tabpanel" class="tab-pane" id="nodes">
           <br />
           <div>
+              Register machines:
+              <form class="form-inline" method="POST" action="{% url 'register_node' %}">
+                  {% csrf_token %}
+                  <div id="node_registration" class="well">
+                      <div class="form-group">
+                          <label class="control-label" for="inputManagementInterfaceIP">Interface IP: </label>
+                          <input type="text" id="inputManagementInterfaceIP" name="inputManagementInterfaceIP" value="{{ management_interface_ip }}" alt="Could be put as: readonly">
+                      </div>
+                      <br />
+                      <div class="form-group">
+                          <label class="control-label" for="inputNodeIP">Node IP: </label>
+                          <input type="text" id="inputNodeIP" name="inputNodeIP" placeholder="192.168.0.15" value="">
+                      </div>
+                      <div class="form-group">
+                          <label class="control-label" for="inputNodeName">Node name: </label>
+                          <input type="text" id="inputNodeName" name="inputNodeName" placeholder="furious-linx" value="">
+                      </div>
+                      <div class="form-group">
+                          <label class="control-label" for="inputNodeISD">Node ISD: </label>
+                          <input type="text" id="inputNodeISD" name="inputNodeISD" placeholder="ISD1" value="">
+                      </div>
+                      <div class="form-group">
+                          <label class="control-label" for="inputNodeAS">Node AS: </label>
+                          <input type="text" id="inputNodeAS" name="inputNodeAS" placeholder="AS10" value="">
+                      </div>
+                      <button type="submit" class="btn btn-primary">Register node</button>
+                  </div>
+              </form>
+          </div>
+          <br />
+          <div>
               <h1>AS TOPOLOGY</h1>
               Define topology file for AS:
               You only define the logical topology of the AS, i.e. you only need to specify the links for the edge routers. Endhosts are not specified.
