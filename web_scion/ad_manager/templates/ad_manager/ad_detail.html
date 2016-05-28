@@ -169,7 +169,8 @@
               <br/>(Abstraction: naming and prefixing is provided, default values suggested: ip to 127.0.0.--/29 subnets, bandwidth, ports)
               <br />
               <br />
-              <form class="form-horizontal">
+              <form class="form-horizontal" method="POST" action="/ad_manager/ads/generate_topology">
+                  {% csrf_token %}
                   {% with as_id="10" isd_id="1" %}
                   <div id="misc_fields" class="well">
                       <b>AS mandatory fields:</b>
@@ -177,26 +178,27 @@
                           <br />
                           <label class="control-label col-sm-2" for="inputIsCore">Is Core: </label>
                           <div class="controls">
-                              <input id="inputIsCore" type="checkbox" data-toggle='tooltip' data-placement='right' data-original-title="Is core checkbox: True, False (is of importance for Beacon, Certificate, Path server; stored as single entry in topo file)">
+                              <input id="inputIsCore" name="inputIsCore" type="hidden" value="false" style="display: none;" alt="get a value even for false checkbox"/>
+                              <input id="inputIsCore" name="inputIsCore" type="checkbox" data-toggle='tooltip' data-placement='right' data-original-title="Is core checkbox: True, False (is of importance for Beacon, Certificate, Path server; stored as single entry in topo file)">
                           </div>
                       </div>
                       <br />
                       <div class="control-group">
                           <label class="control-label col-sm-2" for="inputDnsDomain">DNS Domain: </label>
                           <div class="controls">
-                              <input type="text" id="inputDnsDomain" placeholder="as{{ as_id }}-isd{{ isd_id }}.scion.">
+                              <input type="text" id="inputDnsDomain" name="inputDnsDomain" placeholder="as{{ as_id }}-isd{{ isd_id }}.scion.">
                           </div>
                       </div>
                       <div class="control-group">
                           <label class="control-label col-sm-2" for="inputISD_AS">AS name: </label>
                           <div class="controls">
-                              <input type="text" id="inputISD_AS" placeholder="{{ isd_id|add:'-'|add:as_id }}" value="{{ isd_id|add:'-'|add:as_id }}" disabled>
+                              <input type="text" id="inputISD_AS" name="inputISD_AS" placeholder="{{ isd_id|add:'-'|add:as_id }}" value="{{ isd_id|add:'-'|add:as_id }}" alt="readonly">
                           </div>
                       </div>
                       <div class="control-group">
                           <label class="control-label col-sm-2" for="inputMTU">MTU: </label>
                           <div class="controls">
-                              <input type="text" id="inputMTU" placeholder="1500">
+                              <input type="text" id="inputMTU" name="inputMTU" placeholder="1500">
                           </div>
                       </div>
                       {% endwith %}
@@ -211,10 +213,16 @@
                                   <div id="{{ type|lower }}Accordion" class ="collapse {% if forloop.counter0 == 0%}in{% endif %}" aria-expanded="true">
                                   <br/>
                                   <div class ="{{ type }}Item">
+
+                                      <input type="text" id="input{{ type }}ServerType" name="input{{ type }}ServerType" value="{{ type|lower }}_server" style="display: none;">
+                                      <label class="control-label col-sm-2" for="input{{ type }}ServerName">Server name: </label>
+                                      <div class="controls">
+                                          <input type="text" id="input{{ type }}ServerName" name="input{{ type }}ServerName" value="{{ type|lower|slice:":1" }}s1-10-1">
+                                      </div>
+
                                       <label class="control-label col-sm-2" for="input{{ type }}ServerAddress">Address & subnet: </label>
                                       <div class="controls">
-                                          <input type="text" id="input{{ type }}ServerName" value="{{ type|lower|slice:":1" }}s1-10-1" style="display: none;">
-                                          <input type="text" id="input{{ type }}ServerAddress" placeholder="127.0.0.{{ forloop.counter0|add:49 }}/29">
+                                          <input type="text" id="input{{ type }}ServerAddress" name="input{{ type }}ServerAddress" placeholder="127.0.0.{{ forloop.counter0|add:49 }}/29" value="">
                                           <button class="btn btn-success btn-add pull-right" type="button"
                                                   onclick="toggleInput(this);">
                                             <span class="glyphicon glyphicon-plus"></span>
@@ -230,10 +238,13 @@
                       <div class="chevron" data-toggle="collapse" href="#routerAccordion"><span class="sectionTitle">Edge routers: </span></div>
                       <div id="routerAccordion" class ="collapse in" aria-expanded="true">
                           <div class="routerItem">
+                              <label class="control-label col-sm-2" for="inputEdgeRouterName">Server name: </label>
+                              <div class="controls">
+                                  <input type="text" id="inputEdgeRouterName" name="inputEdgeRouterName" value="er1-10er1-19">
+                              </div>
                               <label class="control-label col-sm-2" for="inputEdgeRouterAddress">Edge router: </label>
                               <div class="controls">
-                                  <input type="text" id="inputEdgeRouterName" value="changeThis" style="display: none;">
-                                  <input type="text" id="inputEdgeRouterAddress" placeholder="127.0.0.52/29">
+                                  <input type="text" id="inputEdgeRouterAddress" name="inputEdgeRouterAddress" placeholder="127.0.0.52/29">
                                   <button class="btn btn-success btn-add pull-right" type="button"
                                               onclick="toggleInput(this);">
                                         <span class="glyphicon glyphicon-plus"></span>
@@ -245,45 +256,50 @@
                                   <br/><br/>
                                   <label class="control-label col-sm-2" for="inputInterfaceAddr">Interface address: </label>
                                   <div class="controls">
-                                      <input type="text" id="inputInterfaceAddr" placeholder="127.0.0.4/31">
+                                      <input type="text" id="inputInterfaceAddr" name="inputInterfaceAddr" placeholder="127.0.0.4/31">
                                   </div>
 
                                   <label class="control-label col-sm-2" for="inputInterfaceBandwidth">Interface bandwidth: </label>
                                   <div class="controls">
-                                      <input type="text" id="inputInterfaceBandwidth" placeholder="1000">
+                                      <input type="text" id="inputInterfaceBandwidth" name="inputInterfaceBandwidth" placeholder="1000">
                                   </div>
 
                                   <label class="control-label col-sm-2" for="inputInterfaceIFID">Address: </label>
                                   <div class="controls">
-                                      <input type="text" id="inputInterfaceIFID" placeholder="1">
+                                      <input type="text" id="inputInterfaceIFID" name="inputInterfaceIFID" placeholder="1">
                                   </div>
 
                                   <label class="control-label col-sm-2" for="inputInterfaceParentName">Name of parent the link connects: </label>
                                   <div class="controls">
-                                      <input type="text" id="inputInterfaceParentName" placeholder="1-19">
+                                      <input type="text" id="inputInterfaceParentName" name="inputInterfaceParentName" placeholder="1-19">
                                   </div>
                                   <br />
 
                                   <label class="control-label col-sm-2" for="inputInterfaceType">Type of the link: </label>
                                   <div class="controls">
-                                      <input type="text" id="inputInterfaceType" placeholder="PARENT">
+                                      <select id="inputInterfaceType" name="inputInterfaceType" required>
+                                        <option value="PARENT" selected>PARENT</option>
+                                        <option value="ROUTING">ROUTING</option>
+                                        <option value="PEER">PEER</option>
+                                        <option value="CHILD">CHILD</option>
+                                      </select>
                                   </div>
 
                                   <label class="control-label col-sm-2" for="inputInterfaceParentAddress">Parent address the link connects: </label>
                                   <div class="controls">
-                                      <input type="text" id="inputInterfaceParentAddress" placeholder="127.0.0.5/31">
+                                      <input type="text" id="inputInterfaceParentAddress" name="inputInterfaceParentAddress" placeholder="127.0.0.5/31">
                                   </div>
                                   <br />
 
                                   <label class="control-label col-sm-2" for="inputInterfaceParentPort">Parent port the link connects: </label>
                                   <div class="controls">
-                                      <input type="text" id="inputInterfaceParentPort" placeholder="50000">
+                                      <input type="text" id="inputInterfaceParentPort" name="inputInterfaceParentPort" placeholder="50000">
                                   </div>
                                   <br />
 
                                   <label class="control-label col-sm-2" for="inputInterfaceOwnPort">Edge router port from which the link connects: </label>
                                   <div class="controls">
-                                      <input type="text" id="inputInterfaceOwnPort" placeholder="50000">
+                                      <input type="text" id="inputInterfaceOwnPort" name="inputInterfaceOwnPort" placeholder="50000">
                                   </div>
                                   <br />
                               </div>
@@ -296,10 +312,16 @@
                       <div id="sibraAccordion" class ="collapse" aria-expanded="true">
                           <br/>
                           <div class="sibraItem">
+
+                              <input type="text" id="inputSibraServerType" name="inputSibraServerType" value="sibra_server" style="display: none;">
+                              <label class="control-label col-sm-2" for="inputSibraServerName">Server name: </label>
+                              <div class="controls">
+                                  <input type="text" id="inputSibraServerName" name="inputSibraServerName" value="sb1-10-1">
+                              </div>
+
                               <label class="control-label col-sm-2" for="inputSibraServerAddress">Address & subnet: </label>
                               <div class="controls">
-                                  <input type="text" id="inputSibraServerName" value="sb1-10-1" style="display: none;">
-                                  <input type="text" id="inputSibraServerAddress" placeholder="127.0.0.54/29">
+                                  <input type="text" id="inputSibraServerAddress" name="inputSibraServerAddress" placeholder="127.0.0.54/29">
                                   <button class="btn btn-success btn-add pull-right" type="button"
                                               onclick="toggleInput(this);">
                                         <span class="glyphicon glyphicon-plus"></span>
@@ -314,10 +336,16 @@
                       <div id="zookeeperAccordion" class ="collapse" aria-expanded="true">
                           <br/>
                           <div class="zookeeperItem">
+
+                              <input type="text" id="inputZookeeperServerType" name="inputZookeeperServerType" value="zookeeper_server" style="display: none;">
+                              <label class="control-label col-sm-2" for="inputZookeeperServerName">Server name: </label>
+                              <div class="controls">
+                                  <input type="text" id="inputZookeeperServerName" name="inputZookeeperServerName" value="zk1-10-1">
+                              </div>
+
                               <label class="control-label col-sm-2" for="inputZookeeperServerAddress">Address & subnet: </label>
                               <div class="controls">
-                                  <input type="text" id="inputZookeeperServerName" value="zk1-10-1" style="display: none;">
-                                  <input type="text" id="inputZookeeperServerAddress" placeholder="127.0.0.1/32">
+                                  <input type="text" id="inputZookeeperServerAddress" name="inputZookeeperServerAddress" placeholder="127.0.0.1/32">
                                   <button class="btn btn-success btn-add pull-right" type="button"
                                               onclick="toggleInput(this);">
                                         <span class="glyphicon glyphicon-plus"></span>
@@ -325,7 +353,7 @@
                               </div>
                               <label class="control-label col-sm-2" for="inputZookeeperServerPort">Zookeeper port: </label>
                               <div class="controls">
-                                  <input type="text" id="inputZookeeperServerPort" placeholder="2181">
+                                  <input type="text" id="inputZookeeperServerPort" name="inputZookeeperServerPort" placeholder="2181">
                               </div>
                           </div>
                       </div>
@@ -346,7 +374,10 @@
           <div height="500px">
               Provision node :
 
-              <select  class="selectpicker" data-show-subtext="true" required>
+          <form method="POST" action="/ad_manager/ads/deploy_config">
+              {% csrf_token %}
+              <input type="text" id="inputManagementInterfaceIPretrieving" name="managementInterfaceIP" value="{{ management_interface_ip }}" style="display: none;">
+              <select  name="nodeUUID" class="selectpicker" data-show-subtext="true" required>
                 <optgroup label="available nodes">
                 <option value="" class="placeholder" selected disabled style="display:none;">Choose node</option>
                 {% for node in nodes %}
@@ -356,19 +387,21 @@
               </select>
 
               and deploy service :
-              <select   class="selectpicker" multiple required>
+              <select name="type[]" class="selectpicker" multiple required>
                   <optgroup label="servers">
-                      <option>Edge router</option>
-                      <option>Beacon server</option>
-                      <option>Path server</option>
-                      <option>Certificate server</option>
-                      <option>Sibra server</option>
+                      <option value="router">Edge router</option>
+                      <option value="beacon_server">Beacon server</option>
+                      <option value="path_server">Path server</option>
+                      <option value="certificate_server">Certificate server</option>
+                      <option value="sibra_server">Sibra server</option>
+                      <option value="domain_server">Domain server</option>
                   </optgroup>
                   <optgroup label="services">
-                      <option>Zookeeper service</option>
+                      <option value="zookeeper_service">Zookeeper service</option>
                   </optgroup>
               </select>
-              <button>Go</button>
+              <button type="submit" class="btn">Go</button>
+          </form>
           </div>
       </div>
     </div>
@@ -421,6 +454,11 @@
             $(elem).parent().parent().remove();
         }
     }
+
+    // Update the deploy form when management interface ip gets manually set
+    $('#inputManagementInterfaceIP').bind('keypress keyup blur', function() {
+        $('#inputManagementInterfaceIPretrieving').val($(this).val());
+    });
   </script>
   <style>
     .doc-hr {
@@ -447,5 +485,9 @@
         font-weight: bold;
         margin-left: 10px;
     }
+
+  #node_registration input {
+      width: 9em;
+  }
   </style>
 {% endblock %}
