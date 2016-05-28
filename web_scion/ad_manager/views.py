@@ -729,10 +729,13 @@ def generate_topology(request):
 
     isd_as = tp['inputISD_AS']
     mockup_dicts = {}
-    mockup_dicts['BeaconServers'] = {'bs{}-1'.format(isd_as): {'Addr': tp['inputBeaconServerAddress']}}
-    mockup_dicts['CertificateServers'] = {'cs{}-1'.format(isd_as): {'Addr': tp['inputCertificateServerAddress']}}
+    mockup_dicts['BeaconServers'] = {'bs{}-1'.format(isd_as): {'Addr': tp['inputBeaconServerAddress'],
+                                                               'Port': int(tp['inputBeaconServerPort'])}}
+    mockup_dicts['CertificateServers'] = {'cs{}-1'.format(isd_as): {'Addr': tp['inputCertificateServerAddress'],
+                                                                    'Port': int(tp['inputBeaconServerPort'])}}
     mockup_dicts['Core'] = True if (tp['inputIsCore'] == 'on') else False
-    mockup_dicts['DNSServers'] = {'ds{}-1'.format(isd_as): {'Addr': tp['inputDomainServerAddress']}}
+    mockup_dicts['DNSServers'] = {'ds{}-1'.format(isd_as): {'Addr': tp['inputDomainServerAddress'],
+                                                            'Port': int(tp['inputDomainServerPort'])}}
     mockup_dicts['DnsDomain'] = tp['inputDnsDomain']
     mockup_dicts['EdgeRouters'] = {'er{}er1-19'.format(isd_as): {'Addr': tp['inputEdgeRouterAddress'], 'Interface':
         {'Addr': tp['inputInterfaceAddr'],
@@ -744,8 +747,10 @@ def generate_topology(request):
          'UdpPort': -1 if tp['inputInterfaceOwnPort'] == '' else int(tp['inputInterfaceOwnPort'])}}}
     mockup_dicts['ISD_AS'] = tp['inputISD_AS']
     mockup_dicts['MTU'] = -1 if tp['inputMTU'] == '' else int(tp['inputMTU'])
-    mockup_dicts['PathServers'] = {'ps{}-1'.format(isd_as): {'Addr': tp['inputPathServerAddress']}}
-    mockup_dicts['SibraServers'] = {'sb{}-1'.format(isd_as): {'Addr': tp['inputSibraServerAddress']}}
+    mockup_dicts['PathServers'] = {'ps{}-1'.format(isd_as): {'Addr': tp['inputPathServerAddress'],
+                                                             'Port': int(tp['inputPathServerPort'])}}
+    mockup_dicts['SibraServers'] = {'sb{}-1'.format(isd_as): {'Addr': tp['inputSibraServerAddress',
+                                                              'Port': int(tp['inputSibraServerPort'])]}}
     mockup_dicts['Zookeepers'] = {1: {'Addr': tp['inputZookeeperServerAddress'],
                                       'Port': -1 if tp['inputZookeeperServerPort'] == '' else int(
                                           tp['inputZookeeperServerPort'])}}

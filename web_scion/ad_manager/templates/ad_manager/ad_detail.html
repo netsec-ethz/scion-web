@@ -251,9 +251,10 @@
                                           <input type="text" id="input{{ type }}ServerName" name="input{{ type }}ServerName" value="{{ type|lower|slice:":1" }}s1-10-1">
                                       </div>
 
-                                      <label class="control-label col-sm-2" for="input{{ type }}ServerAddress">Address & subnet: </label>
+                                      <label class="control-label col-sm-2" for="input{{ type }}ServerAddress">Address & port: </label>
                                       <div class="controls">
-                                          <input type="text" id="input{{ type }}ServerAddress" name="input{{ type }}ServerAddress" placeholder="127.0.0.{{ forloop.counter0|add:49 }}/29" value="">
+                                          <input type="text" id="input{{ type }}ServerAddress" name="input{{ type }}ServerAddress" placeholder="127.0.0.{{ forloop.counter0|add:49 }}" value=""> :
+                                          <input id="input{{ type }}ServerPort" name="input{{ type }}ServerPort" class="inputPort" placeholder="{{ forloop.counter0|add:1025 }}" type="text">
                                           <button class="btn btn-success btn-add pull-right" type="button"
                                                   onclick="toggleInput(this);">
                                             <span class="glyphicon glyphicon-plus"></span>
@@ -350,9 +351,10 @@
                                   <input type="text" id="inputSibraServerName" name="inputSibraServerName" value="sb1-10-1">
                               </div>
 
-                              <label class="control-label col-sm-2" for="inputSibraServerAddress">Address & subnet: </label>
+                              <label class="control-label col-sm-2" for="inputSibraServerAddress">Address & port: </label>
                               <div class="controls">
-                                  <input type="text" id="inputSibraServerAddress" name="inputSibraServerAddress" placeholder="127.0.0.54/29">
+                                  <input type="text" id="inputSibraServerAddress" name="inputSibraServerAddress" placeholder="127.0.0.54"> :
+                                  <input id="inputSibraServerPort" name="inputSibraServerPort" class="inputPort" placeholder="2048" type="text">
                                   <button class="btn btn-success btn-add pull-right" type="button"
                                               onclick="toggleInput(this);">
                                         <span class="glyphicon glyphicon-plus"></span>
@@ -374,9 +376,9 @@
                                   <input type="text" id="inputZookeeperServerName" name="inputZookeeperServerName" value="zk1-10-1">
                               </div>
 
-                              <label class="control-label col-sm-2" for="inputZookeeperServerAddress">Address & subnet: </label>
+                              <label class="control-label col-sm-2" for="inputZookeeperServerAddress">Address: </label>
                               <div class="controls">
-                                  <input type="text" id="inputZookeeperServerAddress" name="inputZookeeperServerAddress" placeholder="127.0.0.1/32">
+                                  <input type="text" id="inputZookeeperServerAddress" name="inputZookeeperServerAddress" placeholder="127.0.0.1">
                                   <button class="btn btn-success btn-add pull-right" type="button"
                                               onclick="toggleInput(this);">
                                         <span class="glyphicon glyphicon-plus"></span>
@@ -519,6 +521,10 @@
 
   #node_registration input {
       width: 9em;
+  }
+
+  .inputPort {
+      width: 4em;
   }
   </style>
 {% endblock %}
