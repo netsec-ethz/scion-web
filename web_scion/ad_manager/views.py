@@ -733,7 +733,6 @@ def generate_topology(request):
                                                                'Port': int(tp['inputBeaconServerPort'])}}
     mockup_dicts['CertificateServers'] = {'cs{}-1'.format(isd_as): {'Addr': tp['inputCertificateServerAddress'],
                                                                     'Port': int(tp['inputBeaconServerPort'])}}
-    mockup_dicts['Core'] = True if (tp['inputIsCore'] == 'on') else False
     mockup_dicts['DNSServers'] = {'ds{}-1'.format(isd_as): {'Addr': tp['inputDomainServerAddress'],
                                                             'Port': int(tp['inputDomainServerPort'])}}
     mockup_dicts['DnsDomain'] = tp['inputDnsDomain']
@@ -754,6 +753,13 @@ def generate_topology(request):
     mockup_dicts['Zookeepers'] = {1: {'Addr': tp['inputZookeeperServerAddress'],
                                       'Port': -1 if tp['inputZookeeperServerPort'] == '' else int(
                                           tp['inputZookeeperServerPort'])}}
+
+    all_IP_port_pairs = []
+    for r in ['BeaconServers', 'CertificateServers', 'DNSServers', 'PathServers', 'SibraServers', 'Zookeepers']:
+        curr_pair = mockup_dicts['r']['Addr'] + ':' + str(mockup_dicts['r']['Port'])
+        if (curr_pair in all_IP_port_pairs):
+            return JsonResponse({'data': 'IP:port combinations not unique within AS'})
+        all_IP_port_pairs.append(curr_pair)
 
     with open(yaml_topo_path, 'w') as file:
         yaml.dump(mockup_dicts, file, default_flow_style=False)
