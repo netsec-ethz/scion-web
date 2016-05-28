@@ -11,12 +11,12 @@
   {% include 'ad_manager/partials/object_path.html' %}
 
   <h4 id="core-label" class="ad-label">
-    Core AD:
+    Core AS:
     {{ object.is_core_ad|yesno:"Yes,No,???" }}
     <span class="glyphicon glyphicon-{{ object.is_core_ad|yesno:"ok,remove," }}"></span>
   </h4>
   <h4 id="open-label" class="ad-label">
-    Open AD:
+    Open AS:
     {{ object.is_open|yesno:"Yes,No,???" }}
     <span class="glyphicon glyphicon-{{ object.is_open|yesno:"ok,remove," }}"></span>
   </h4>
@@ -77,7 +77,7 @@
         {% endfor %}
 
         {% if request.user.is_staff %}
-          <p>Create a new link by connecting two existing ADs</p>
+          <p>Create a new link by connecting two existing ASes</p>
           <a href="{% url 'new_link' object.id %}" class="btn btn-default">Add link</a>
           <hr />
         {% endif %}
@@ -393,9 +393,20 @@
         var clone = elem.parentNode.parentNode.cloneNode(true);
         var currentClass = $(elem).children(':first').attr('class');
         if (currentClass === 'glyphicon glyphicon-plus') {
+
+            // increment current name for next field
+            currentName = $(clone).children('.controls').find( 'input' ).attr('value')
+            nameParts = currentName.split('-')
+            nameParts[2]++
+            newName = nameParts.join('-')
+            $(clone).children('.controls:eq(0)').find( 'input' ).attr('value', newName)
+            // reset IP
+            $(clone).children('.controls:eq(1)').find( 'input' ).val('')
+            // append the cloned and cleaned item
             wellGroup.appendChild(clone);
             //var test = $(clone).children(':first').prop('tagName');
             if ($(clone).children(':first').attr('class') !== 'doc-hr') {
+                // add separator
                 $(clone).prepend('<div class="doc-hr"></div>');
             }
             $(elem).removeClass('btn-success').addClass('btn-danger');
