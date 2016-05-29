@@ -17,13 +17,11 @@
 
   <form method="POST" action="/ad_manager/isds/add_isd">
     {% csrf_token %}
-    <div class="control-group">
+    <div class="form-group">
         <br/>
-        <label class="control-label col-sm-2" for="inputISDname">new ISD name:</label>
-        <div class="controls">
-            <input id="inputISDname" name="inputISDname" type="text">
-            <button type="submit" class="btn">Create ISD</button>
-        </div>
+        <label class="control-label" style="vertical-align: sub;" for="inputISDname">new ISD name:</label>
+        <input id="inputISDname" name="inputISDname" type="text">
+        <button type="submit" class="btn">Create ISD</button>
     </div>
   </form>
 

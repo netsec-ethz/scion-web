@@ -26,8 +26,8 @@
     {% csrf_token %}
     <div class="control-group">
         <br/>
-        <label class="control-label col-sm-2" for="inputASname">new AS name:</label>
-        <div class="controls">
+        <div class="form-group">
+            <label class="control-label" style="vertical-align: sub;" for="inputASname">new AS name:</label>
             <input id="inputISDname" name="inputISDname" type="text" value="{{ object.id }}" hidden>
             <input id="inputASname" name="inputASname" type="text">
             <button type="submit" class="btn">Create AS</button>
