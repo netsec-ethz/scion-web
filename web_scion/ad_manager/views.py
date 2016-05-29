@@ -70,6 +70,15 @@ class ISDListView(ListView):
     paginate_by = 8
 
 
+@require_POST
+def add_isd(request):
+    new_isd_id = request.POST['inputISDname']
+    isd = ISD(id=new_isd_id)
+    isd.save()
+    current_page = request.META.get('HTTP_REFERER')
+    return redirect(current_page)
+
+
 class ISDDetailView(ListView):
     model = AD
     template_name = 'ad_manager/isd_detail.html'
@@ -773,9 +782,9 @@ def generate_topology(request):
 
 def get_own_local_ip():
     result = '127.0.0.1'
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        s.connect(('192.255.255.255', 22))
-        result = s.getsockname()[0]
+    # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+    #     s.connect(('192.255.255.255', 22))
+    #     result = s.getsockname()[0]
     return result
 
 
