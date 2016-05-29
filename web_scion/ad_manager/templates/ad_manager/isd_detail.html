@@ -22,6 +22,19 @@
     {% endfor %}
   </ul>
 
+  <form method="POST" action="/ad_manager/ads/add_as">
+    {% csrf_token %}
+    <div class="control-group">
+        <br/>
+        <label class="control-label col-sm-2" for="inputASname">new AS name:</label>
+        <div class="controls">
+            <input id="inputISDname" name="inputISDname" type="text" value="{{ object.id }}" hidden>
+            <input id="inputASname" name="inputASname" type="text">
+            <button type="submit" class="btn">Create AS</button>
+        </div>
+    </div>
+  </form>
+
   {% include 'ad_manager/partials/pagination_footer.html' %}
 
 {% endblock %}

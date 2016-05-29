@@ -38,6 +38,8 @@ isd_patterns = patterns(
 
 ad_patterns = patterns(
     '',
+    url(r'^ads/add_as$',
+        views.add_as, name='add_as'),
     url(r'^ads/(?P<pk>\d+)/$',
         views.ADDetailView.as_view(), name='ad_detail'),
     url(r'^ads/(?P<pk>\d+)/#!topology$',

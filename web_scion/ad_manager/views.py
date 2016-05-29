@@ -100,6 +100,19 @@ class ISDDetailView(ListView):
         return context
 
 
+@require_POST
+def add_as(request):
+    new_as_id = request.POST['inputASname']
+    current_isd = request.POST['inputISDname']
+    isd = get_object_or_404(ISD, id=int(current_isd))
+    AS = AD.objects.create(id=new_as_id, isd=isd,
+                           is_core_ad=0,
+                           dns_domain='')
+    AS.save()
+    ad_page = reverse('ad_detail', args=[new_as_id])
+    return redirect(ad_page + '#!nodes')
+
+
 class ADDetailView(DetailView):
     model = AD
 
@@ -759,7 +772,7 @@ def generate_topology(request):
     mockup_dicts['PathServers'] = {'ps{}-1'.format(isd_as): {'Addr': tp['inputPathServerAddress'],
                                                              'Port': int(tp['inputPathServerPort'])}}
     mockup_dicts['SibraServers'] = {'sb{}-1'.format(isd_as): {'Addr': tp['inputSibraServerAddress',
-                                                              'Port': int(tp['inputSibraServerPort'])]}}
+                                                                      'Port': int(tp['inputSibraServerPort'])]}}
     mockup_dicts['Zookeepers'] = {1: {'Addr': tp['inputZookeeperServerAddress'],
                                       'Port': -1 if tp['inputZookeeperServerPort'] == '' else int(
                                           tp['inputZookeeperServerPort'])}}
