@@ -733,6 +733,7 @@ def generate_topology(request):
                                                                'Port': int(tp['inputBeaconServerPort'])}}
     mockup_dicts['CertificateServers'] = {'cs{}-1'.format(isd_as): {'Addr': tp['inputCertificateServerAddress'],
                                                                     'Port': int(tp['inputBeaconServerPort'])}}
+    mockup_dicts['Core'] = True if (tp['inputIsCore'] == 'on') else False
     mockup_dicts['DNSServers'] = {'ds{}-1'.format(isd_as): {'Addr': tp['inputDomainServerAddress'],
                                                             'Port': int(tp['inputDomainServerPort'])}}
     mockup_dicts['DnsDomain'] = tp['inputDnsDomain']
