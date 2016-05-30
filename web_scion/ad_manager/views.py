@@ -133,6 +133,9 @@ class ADDetailView(DetailView):
 
         context['nodes'] = Node.objects.all()
         context['management_interface_ip'] = get_own_local_ip()
+        context['reloaded_topology'] = ad.original_topology
+        context['as_id'] = ad.id
+        context['isd_id'] = ad.isd_id
 
         # Sort by name numerically
         lists_to_sort = ['routers', 'path_servers',

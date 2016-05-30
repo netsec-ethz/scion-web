@@ -9,7 +9,6 @@
     <br/>
     <form class="form-horizontal" method="POST" action="/ad_manager/ads/generate_topology">
         {% csrf_token %}
-        {% with as_id="10" isd_id="1" %}
             <div id="misc_fields" class="well">
             <b>AS mandatory fields:</b>
             <div class="control-group">
@@ -35,7 +34,7 @@
                 <label class="control-label col-sm-2" for="inputISD_AS">AS name: </label>
                 <div class="controls">
                     <input type="text" id="inputISD_AS" name="inputISD_AS" placeholder="{{ isd_id|add:'-'|add:as_id }}"
-                           value="{{ isd_id|add:'-'|add:as_id }}" alt="readonly">
+                           value="{{ isd_id }}-{{as_id }}" alt="readonly">
                 </div>
             </div>
             <div class="control-group">
@@ -44,7 +43,6 @@
                     <input type="text" id="inputMTU" name="inputMTU" placeholder="1500">
                 </div>
             </div>
-        {% endwith %}
         </div>
 
         <br/>
@@ -64,7 +62,7 @@
                             <label class="control-label col-sm-2" for="input{{ type }}ServerName">Server name: </label>
                             <div class="controls">
                                 <input type="text" id="input{{ type }}ServerName" name="input{{ type }}ServerName"
-                                       value="{{ type|lower|slice:":1" }}s1-10-1">
+                                       value="{{ type|lower|slice:":1" }}s{{ isd_id }}-{{ as_id }}-1">
                             </div>
 
                             <label class="control-label col-sm-2" for="input{{ type }}ServerAddress">Address &
@@ -92,7 +90,7 @@
                 <div class="routerItem">
                     <label class="control-label col-sm-2" for="inputEdgeRouterName">Server name: </label>
                     <div class="controls">
-                        <input type="text" id="inputEdgeRouterName" name="inputEdgeRouterName" value="er1-10er1-19">
+                        <input type="text" id="inputEdgeRouterName" name="inputEdgeRouterName" value="er{{ isd_id }}-{{ as_id }}er1-19">
                     </div>
                     <label class="control-label col-sm-2" for="inputEdgeRouterAddress">Edge router: </label>
                     <div class="controls">
@@ -182,7 +180,7 @@
                            style="display: none;">
                     <label class="control-label col-sm-2" for="inputSibraServerName">Server name: </label>
                     <div class="controls">
-                        <input type="text" id="inputSibraServerName" name="inputSibraServerName" value="sb1-10-1">
+                        <input type="text" id="inputSibraServerName" name="inputSibraServerName" value="sb{{ isd_id }}-{{ as_id }}-1">
                     </div>
 
                     <label class="control-label col-sm-2" for="inputSibraServerAddress">Address & port: </label>
@@ -212,7 +210,7 @@
                     <label class="control-label col-sm-2" for="inputZookeeperServerName">Server name: </label>
                     <div class="controls">
                         <input type="text" id="inputZookeeperServerName" name="inputZookeeperServerName"
-                               value="zk1-10-1">
+                               value="zk{{ isd_id }}-{{ as_id }}-1">
                     </div>
 
                     <label class="control-label col-sm-2" for="inputZookeeperServerAddress">Address: </label>

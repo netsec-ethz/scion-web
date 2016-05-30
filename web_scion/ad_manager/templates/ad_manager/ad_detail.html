@@ -177,11 +177,11 @@
                       </div>
                       <div class="form-group">
                           <label class="control-label" for="inputNodeISD">Node ISD: </label>
-                          <input type="text" id="inputNodeISD" name="inputNodeISD" placeholder="ISD1" value="">
+                          <input type="text" id="inputNodeISD" name="inputNodeISD" placeholder="ISD{{ isd_id }}" value="">
                       </div>
                       <div class="form-group">
                           <label class="control-label" for="inputNodeAS">Node AS: </label>
-                          <input type="text" id="inputNodeAS" name="inputNodeAS" placeholder="AS10" value="">
+                          <input type="text" id="inputNodeAS" name="inputNodeAS" placeholder="AS{{ as_id }}" value="">
                       </div>
                       <button type="submit" class="btn btn-primary">Register node</button>
                   </div>
@@ -250,13 +250,13 @@
         if (currentClass === 'glyphicon glyphicon-plus') {
 
             // increment current name for next field
-            currentName = $(clone).children('.controls').find( 'input' ).attr('value')
-            nameParts = currentName.split('-')
-            nameParts[2]++
-            newName = nameParts.join('-')
-            $(clone).children('.controls:eq(0)').find( 'input' ).attr('value', newName)
+            currentName = $(clone).children('.controls').find( 'input' ).attr('value');
+            nameParts = currentName.split('-');
+            nameParts[2]++;
+            newName = nameParts.join('-');
+            $(clone).children('.controls:eq(0)').find( 'input' ).attr('value', newName);
             // reset IP
-            $(clone).children('.controls:eq(1)').find( 'input' ).val('')
+            $(clone).children('.controls:eq(1)').find( 'input' ).val('');
             // append the cloned and cleaned item
             wellGroup.appendChild(clone);
             //var test = $(clone).children(':first').prop('tagName');
