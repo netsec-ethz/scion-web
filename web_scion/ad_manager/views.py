@@ -418,13 +418,17 @@ def read_log(request, pk, proc_id):
 
 
 class ConnectionRequestView(FormView):
-    form_class = ConnectionRequestForm
+    #form_class = ConnectionRequestForm
     template_name = 'ad_manager/new_connection_request.html'
     success_url = ''
 
     @method_decorator(login_required)
     def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
+        current_as_id = kwargs['pk']
+
+        form = ConnectionRequestForm(pk=current_as_id)
+        context = self.get_context_data(form=form)
+        return self.render_to_response(context)
 
     def _get_ad(self):
         return get_object_or_404(AD, id=self.kwargs['pk'])

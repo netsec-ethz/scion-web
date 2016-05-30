@@ -5,6 +5,8 @@ from django.forms import ModelChoiceField
 # SCION
 from ad_manager.models import PackageVersion, ConnectionRequest, AD
 
+from django.shortcuts import get_object_or_404
+
 
 class VersionChoiceField(ModelChoiceField):
 
@@ -26,6 +28,28 @@ class PackageVersionSelectForm(forms.Form):
 
 
 class ConnectionRequestForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        current_as_id = kwargs.pop('pk')
+        super(ConnectionRequestForm, self).__init__(*args, **kwargs)
+
+        ad = get_object_or_404(AD, id=current_as_id)
+        remote_ip_choices = []
+        local_ip_choices = []
+
+        if 'EdgeRouters' in ad.original_topology.keys():
+            for edge_router in ad.original_topology['EdgeRouters'].values():
+                val = edge_router['Interface']['ToAddr']
+                remote_ip_choices.append((val, val))
+                val2 = edge_router['Interface']['Addr']
+                local_ip_choices.append((val2, val2))
+
+        self.fields['router_bound_ip'] = forms.ChoiceField(
+            choices=remote_ip_choices
+        )
+
+        self.fields['router_public_ip'] = forms.ChoiceField(
+            choices=local_ip_choices
+        )
 
     class Meta:
         model = ConnectionRequest
