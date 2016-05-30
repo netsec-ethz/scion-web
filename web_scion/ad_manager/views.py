@@ -107,7 +107,8 @@ def add_as(request):
     isd = get_object_or_404(ISD, id=int(current_isd))
     AS = AD.objects.create(id=new_as_id, isd=isd,
                            is_core_ad=0,
-                           dns_domain='')
+                           dns_domain='',
+                           is_open=False)
     AS.save()
     ad_page = reverse('ad_detail', args=[new_as_id])
     return redirect(ad_page + '#!nodes')
