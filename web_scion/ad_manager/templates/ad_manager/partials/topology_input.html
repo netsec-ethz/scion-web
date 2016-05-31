@@ -239,3 +239,16 @@
 
 </div>
 
+<script>
+    reloaded_topology = '{{ reloaded_topology }}';
+    reloaded_topology = reloaded_topology.replace(/&#39;/g, '"');
+    reloaded_topology = reloaded_topology.replace(/True/g, '"True"');
+    reloaded_topology = reloaded_topology.replace(/False/g, '"False"');
+    reloaded_topology = reloaded_topology.replace(/: (\d*?),/g, ': "$1",');
+    reloaded_topology = JSON.parse(reloaded_topology);
+    $('#inputIsCore').attr('value', reloaded_topology['Core']);
+    $('#inputIsCore').prop('checked', reloaded_topology['Core']);
+    $('#inputDnsDomain').attr('value', reloaded_topology['DnsDomain']);
+    $('#inputMTU').attr('value', reloaded_topology['MTU']);
+</script>
+
