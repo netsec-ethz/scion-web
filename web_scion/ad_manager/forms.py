@@ -40,26 +40,24 @@ class ConnectionRequestForm(forms.ModelForm):
             for edge_router in ad.original_topology['EdgeRouters'].values():
                 val = edge_router['Interface']['ToAddr']
                 remote_ip_choices.append((val, val))
-                val2 = edge_router['Interface']['Addr']
-                local_ip_choices.append((val2, val2))
+                # val2 = edge_router['Interface']['Addr']
+                # local_ip_choices.append((val2, val2))
 
-        self.fields['router_bound_ip'] = forms.ChoiceField(
-            choices=remote_ip_choices
-        )
+        # self.fields['router_bound_ip'] = forms.ChoiceField(
+        #     choices=local_ip_choices
+        # )
 
         self.fields['router_public_ip'] = forms.ChoiceField(
-            choices=local_ip_choices
+            choices=remote_ip_choices
         )
 
     class Meta:
         model = ConnectionRequest
-        fields = ('info', 'router_bound_ip', 'router_bound_port',
-                  'router_public_ip', 'router_public_port')
-        labels = {'router_bound_ip': 'Router bound IP',
-                  'router_public_ip': 'Router external IP (leave blank if '
+        fields = ('info', 'router_public_ip', 'router_public_port')  # 'router_bound_ip', 'router_bound_port',
+        labels = {'router_public_ip': 'Router external IP (leave blank if '
                                       'it is the same as the bound IP)',
                   'router_public_port': 'Router external port (leave blank if '
-                                        'default or if not used)'}
+                                        'default or if not used)'}  # 'router_bound_ip': 'Router bound IP',
 
 
 class NewLinkForm(forms.Form):
