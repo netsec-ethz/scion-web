@@ -23,14 +23,14 @@
                 </div>
             </div>
             <br/>
-            <div class="control-group">
+            <div class="form-group">
                 <label class="control-label col-sm-2" for="inputDnsDomain">DNS Domain: </label>
                 <div class="controls">
                     <input type="text" id="inputDnsDomain" name="inputDnsDomain"
                            placeholder="as{{ as_id }}-isd{{ isd_id }}.scion.">
                 </div>
             </div>
-            <div class="control-group">
+            <div class="form-group">
                 <label class="control-label col-sm-2" for="inputISD_AS">AS name: </label>
                 <div class="controls">
                     <input type="text" id="inputISD_AS" name="inputISD_AS" placeholder="{{ isd_id|add:'-'|add:as_id }}"
@@ -38,6 +38,14 @@
                 </div>
             </div>
             <div class="control-group">
+                <label class="control-label col-sm-2" for="inputOverlay">Overlay: </label>
+                <div class="controls">
+                    <select id="inputOverlay" name="inputOverlay" required>
+                        <option value="IP" selected>IP</option>
+                        <option value="UDP/IP">UDP/IP</option>
+                        <option value="LS">Label switching</option>
+                    </select>
+                </div>
                 <label class="control-label col-sm-2" for="inputMTU">MTU: </label>
                 <div class="controls">
                     <input type="text" id="inputMTU" name="inputMTU" placeholder="1472">
@@ -59,10 +67,12 @@
 
                             <input type="text" id="input{{ type }}ServerType" name="input{{ type }}ServerType"
                                    value="{{ type|lower }}_server" style="display: none;">
-                            <label class="control-label col-sm-2" for="input{{ type }}ServerName">Server name: </label>
-                            <div class="controls">
-                                <input type="text" id="input{{ type }}ServerName" name="input{{ type }}ServerName"
-                                       value="{{ type|lower|slice:":1" }}s{{ isd_id }}-{{ as_id }}-1">
+                            <div class="form-group">
+                                <label class="control-label col-sm-2" for="input{{ type }}ServerName">Server name: </label>
+                                <div class="controls">
+                                    <input type="text" id="input{{ type }}ServerName" name="input{{ type }}ServerName"
+                                           value="{{ type|lower|slice:":1" }}s{{ isd_id }}-{{ as_id }}-1">
+                                </div>
                             </div>
 
                             <label class="control-label col-sm-2" for="input{{ type }}ServerAddress">Address &
@@ -88,81 +98,101 @@
                     class="sectionTitle">Edge routers: </span></div>
             <div id="routerAccordion" class="collapse in" aria-expanded="true">
                 <div class="routerItem">
-                    <label class="control-label col-sm-2" for="inputEdgeRouterName">Server name: </label>
-                    <div class="controls">
-                        <input type="text" id="inputEdgeRouterName" name="inputEdgeRouterName" value="er{{ isd_id }}-{{ as_id }}er1-19">
+                    <div class="form-group">
+                        <label class="control-label col-sm-2" for="inputEdgeRouterName">Server name: </label>
+                        <div class="controls">
+                            <input type="text" id="inputEdgeRouterName" name="inputEdgeRouterName" value="er{{ isd_id }}-{{ as_id }}er1-19">
+                        </div>
                     </div>
-                    <label class="control-label col-sm-2" for="inputEdgeRouterAddress">Edge router: </label>
-                    <div class="controls">
-                        <input type="text" id="inputEdgeRouterAddress" name="inputEdgeRouterAddress"
-                               placeholder="127.0.0.52/29">
-                        <button class="btn btn-success btn-add pull-right" type="button"
-                                onclick="toggleInput(this);">
-                            <span class="glyphicon glyphicon-plus"></span>
-                        </button>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2" for="inputEdgeRouterAddress">Edge router: </label>
+                        <div class="controls">
+                            <input type="text" id="inputEdgeRouterAddress" name="inputEdgeRouterAddress"
+                                   placeholder="127.0.0.52/29">
+                            <button class="btn btn-success btn-add pull-right" type="button"
+                                    onclick="toggleInput(this);">
+                                <span class="glyphicon glyphicon-plus"></span>
+                            </button>
+                        </div>
                     </div>
                     <br/>
                     <div class="control-group">
                         <b>Interface parameters:</b>
                         <br/><br/>
-                        <label class="control-label col-sm-2" for="inputInterfaceAddr">Interface address: </label>
-                        <div class="controls">
-                            <input type="text" id="inputInterfaceAddr" name="inputInterfaceAddr"
-                                   placeholder="127.0.0.4/31">
+                        <div class="form-group">
+                            <label class="control-label col-sm-2" for="inputInterfaceAddr">Interface address: </label>
+                            <div class="controls">
+                                <input type="text" id="inputInterfaceAddr" name="inputInterfaceAddr"
+                                       placeholder="127.0.0.4/31">
+                            </div>
                         </div>
 
-                        <label class="control-label col-sm-2" for="inputInterfaceBandwidth">Interface
-                            bandwidth: </label>
-                        <div class="controls">
-                            <input type="text" id="inputInterfaceBandwidth" name="inputInterfaceBandwidth"
-                                   placeholder="1000">
+                        <div class="form-group">
+                            <label class="control-label col-sm-2" for="inputInterfaceBandwidth">Interface
+                                bandwidth: </label>
+                            <div class="controls">
+                                <input type="text" id="inputInterfaceBandwidth" name="inputInterfaceBandwidth"
+                                       placeholder="1000">
+                            </div>
                         </div>
 
-                        <label class="control-label col-sm-2" for="inputInterfaceIFID">Address: </label>
-                        <div class="controls">
-                            <input type="text" id="inputInterfaceIFID" name="inputInterfaceIFID" placeholder="1">
+                        <div class="form-group">
+                            <label class="control-label col-sm-2" for="inputInterfaceIFID">Address: </label>
+                            <div class="controls">
+                                <input type="text" id="inputInterfaceIFID" name="inputInterfaceIFID" placeholder="1">
+                            </div>
                         </div>
 
-                        <label class="control-label col-sm-2" for="inputInterfaceRemoteName">Name of the remote the link
-                            connects: </label>
-                        <div class="controls">
-                            <input type="text" id="inputInterfaceRemoteName" name="inputInterfaceRemoteName"
-                                   placeholder="1-19">
-                        </div>
-                        <br/>
-
-                        <label class="control-label col-sm-2" for="inputInterfaceType">Type of the link: </label>
-                        <div class="controls">
-                            <select id="inputInterfaceType" name="inputInterfaceType" required>
-                                <option value="PARENT" selected>PARENT</option>
-                                <!--option value="ROUTING">ROUTING</option-->
-                                <!-- ROUTING option gets added by javascript, only if the AS is core-->
-                                <option value="PEER">PEER</option>
-                                <option value="CHILD">CHILD</option>
-                            </select>
-                        </div>
-
-                        <label class="control-label col-sm-2" for="inputInterfaceRemoteAddress">Remote address the link
-                            connects to: </label>
-                        <div class="controls">
-                            <input type="text" id="inputInterfaceRemoteAddress" name="inputInterfaceRemoteAddress"
-                                   placeholder="127.0.0.5/31">
+                        <div class="form-group">
+                            <label class="control-label col-sm-2" for="inputInterfaceRemoteName">Name of the remote the link
+                                connects: </label>
+                            <div class="controls">
+                                <input type="text" id="inputInterfaceRemoteName" name="inputInterfaceRemoteName"
+                                       placeholder="1-19">
+                            </div>
                         </div>
                         <br/>
 
-                        <label class="control-label col-sm-2" for="inputInterfaceRemotePort">Remote port the link
-                            connects: </label>
-                        <div class="controls">
-                            <input type="text" id="inputInterfaceRemotePort" name="inputInterfaceRemotePort"
-                                   class="inputPort" placeholder="50000">
+                        <div class="form-group">
+                            <label class="control-label col-sm-2" for="inputInterfaceType">Type of the link: </label>
+                            <div class="controls">
+                                <select id="inputInterfaceType" name="inputInterfaceType" required>
+                                    <option value="PARENT" selected>PARENT</option>
+                                    <!--option value="ROUTING">ROUTING</option-->
+                                    <!-- ROUTING option gets added by javascript, only if the AS is core-->
+                                    <option value="PEER">PEER</option>
+                                    <option value="CHILD">CHILD</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="control-label col-sm-2" for="inputInterfaceRemoteAddress">Remote address the link
+                                connects to: </label>
+                            <div class="controls">
+                                <input type="text" id="inputInterfaceRemoteAddress" name="inputInterfaceRemoteAddress"
+                                       placeholder="127.0.0.5/31">
+                            </div>
                         </div>
                         <br/>
 
-                        <label class="control-label col-sm-2" for="inputInterfaceOwnPort">Edge router port from which
-                            the link connects: </label>
-                        <div class="controls">
-                            <input type="text" id="inputInterfaceOwnPort" name="inputInterfaceOwnPort"
-                                   class="inputPort" placeholder="50000">
+                        <div class="form-group">
+                            <label class="control-label col-sm-2" for="inputInterfaceRemotePort">Remote port the link
+                                connects: </label>
+                            <div class="controls">
+                                <input type="text" id="inputInterfaceRemotePort" name="inputInterfaceRemotePort"
+                                       class="inputPort" placeholder="50000">
+                            </div>
+                        </div>
+                        <br/>
+
+                        <div class="form-group">
+                            <label class="control-label col-sm-2" for="inputInterfaceOwnPort">Edge router port from which
+                                the link connects: </label>
+                            <div class="controls">
+                                <input type="text" id="inputInterfaceOwnPort" name="inputInterfaceOwnPort"
+                                       class="inputPort" placeholder="50000">
+                            </div>
                         </div>
                         <br/>
                     </div>
