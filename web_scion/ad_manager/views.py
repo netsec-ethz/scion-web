@@ -803,9 +803,12 @@ def generate_topology(request):
 
 def get_own_local_ip():
     result = '127.0.0.1'
-    # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-    #     s.connect(('192.255.255.255', 22))
-    #     result = s.getsockname()[0]
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(('192.255.255.255', 22))
+            result = s.getsockname()[0]
+    except OSError:
+        print('Network is unreachable')
     return result
 
 
