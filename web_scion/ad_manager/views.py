@@ -771,9 +771,9 @@ def generate_topology(request):
         {'Addr': tp['inputInterfaceAddr'],
          'Bandwidth': -1 if tp['inputInterfaceBandwidth'] == '' else int(tp['inputInterfaceBandwidth']),
          'IFID': -1 if tp['inputInterfaceIFID'] == '' else int(tp['inputInterfaceIFID']),
-         'ISD_AS': tp['inputInterfaceParentName'], 'LinkType': tp['inputInterfaceType'],
-         'ToAddr': tp['inputInterfaceParentAddress'],
-         'ToUdpPort': -1 if tp['inputInterfaceParentPort'] == '' else int(tp['inputInterfaceParentPort']),
+         'ISD_AS': tp['inputInterfaceRemoteName'], 'LinkType': tp['inputInterfaceType'],
+         'ToAddr': tp['inputInterfaceRemoteAddress'],
+         'ToUdpPort': -1 if tp['inputInterfaceRemotePort'] == '' else int(tp['inputInterfaceRemotePort']),
          'UdpPort': -1 if tp['inputInterfaceOwnPort'] == '' else int(tp['inputInterfaceOwnPort'])}}}
     mockup_dicts['ISD_AS'] = tp['inputISD_AS']
     mockup_dicts['MTU'] = -1 if tp['inputMTU'] == '' else int(tp['inputMTU'])
