@@ -281,6 +281,23 @@
     $('#inputManagementInterfaceIP').bind('keypress keyup blur', function() {
         $('#inputManagementInterfaceIPretrieving').val($(this).val());
     });
+
+    // Run the core check when the value changes
+    $('#inputIsCore.shownCheckbox').change(function(e) {
+        checkShowCoreOption();
+    });
+    // Hide the link type ROUTING when current AS is not Core (isCore is not selected)
+    function checkShowCoreOption() {
+        var isChecked = $('#inputIsCore.shownCheckbox').is(':checked');
+        if (isChecked) {
+            $('#inputInterfaceType').append('<option value="ROUTING">ROUTING</option>');
+        } else {
+            $('#inputInterfaceType option[value="ROUTING"]').remove();
+        }
+    }
+    // Run it always when the page is loaded (for initial value unchecked)
+    checkShowCoreOption();
+
   </script>
   <style>
     .doc-hr {
