@@ -40,7 +40,7 @@
             <div class="control-group">
                 <label class="control-label col-sm-2" for="inputMTU">MTU: </label>
                 <div class="controls">
-                    <input type="text" id="inputMTU" name="inputMTU" placeholder="1500">
+                    <input type="text" id="inputMTU" name="inputMTU" placeholder="1472">
                 </div>
             </div>
         </div>
@@ -123,10 +123,10 @@
                             <input type="text" id="inputInterfaceIFID" name="inputInterfaceIFID" placeholder="1">
                         </div>
 
-                        <label class="control-label col-sm-2" for="inputInterfaceParentName">Name of parent the link
+                        <label class="control-label col-sm-2" for="inputInterfaceRemoteName">Name of the remote the link
                             connects: </label>
                         <div class="controls">
-                            <input type="text" id="inputInterfaceParentName" name="inputInterfaceParentName"
+                            <input type="text" id="inputInterfaceRemoteName" name="inputInterfaceRemoteName"
                                    placeholder="1-19">
                         </div>
                         <br/>
@@ -142,19 +142,19 @@
                             </select>
                         </div>
 
-                        <label class="control-label col-sm-2" for="inputInterfaceParentAddress">Parent address the link
-                            connects: </label>
+                        <label class="control-label col-sm-2" for="inputInterfaceRemoteAddress">Remote address the link
+                            connects to: </label>
                         <div class="controls">
-                            <input type="text" id="inputInterfaceParentAddress" name="inputInterfaceParentAddress"
+                            <input type="text" id="inputInterfaceRemoteAddress" name="inputInterfaceRemoteAddress"
                                    placeholder="127.0.0.5/31">
                         </div>
                         <br/>
 
-                        <label class="control-label col-sm-2" for="inputInterfaceParentPort">Parent port the link
+                        <label class="control-label col-sm-2" for="inputInterfaceRemotePort">Remote port the link
                             connects: </label>
                         <div class="controls">
-                            <input type="text" id="inputInterfaceParentPort" name="inputInterfaceParentPort"
-                                   placeholder="50000">
+                            <input type="text" id="inputInterfaceRemotePort" name="inputInterfaceRemotePort"
+                                   class="inputPort" placeholder="50000">
                         </div>
                         <br/>
 
@@ -162,7 +162,7 @@
                             the link connects: </label>
                         <div class="controls">
                             <input type="text" id="inputInterfaceOwnPort" name="inputInterfaceOwnPort"
-                                   placeholder="50000">
+                                   class="inputPort" placeholder="50000">
                         </div>
                         <br/>
                     </div>
@@ -226,7 +226,7 @@
                     <label class="control-label col-sm-2" for="inputZookeeperServerPort">Zookeeper port: </label>
                     <div class="controls">
                         <input type="text" id="inputZookeeperServerPort" name="inputZookeeperServerPort"
-                               placeholder="2181">
+                               class="inputPort" placeholder="2181">
                     </div>
                 </div>
             </div>
@@ -290,6 +290,7 @@
         for (var edgeRouterKey in reloadedTopology['EdgeRouters']) {
             var edgeRouter = reloadedTopology['EdgeRouters'][edgeRouterKey];
             var name = edgeRouterKey;
+            $('#inputEdgeRouterName').attr('value', name);
             var address = edgeRouter['Addr'];
             $('#inputEdgeRouterAddress').attr('value', address);
 
@@ -298,16 +299,16 @@
                 var value = interface[interfaceKey];
                 switch(interfaceKey) {
                     case 'ISD_AS':
-                        $('#inputInterfaceParentName').attr('value', value);
+                        $('#inputInterfaceRemoteName').attr('value', value);
                         break;
                     case 'LinkType':
                         $('#inputInterfaceType').attr('value', value);
                         break;
                     case 'ToAddr':
-                        $('#inputInterfaceParentAddress').attr('value', value);
+                        $('#inputInterfaceRemoteAddress').attr('value', value);
                         break;
                     case 'ToUdpPort':
-                        $('#inputInterfaceParentPort').attr('value', value);
+                        $('#inputInterfaceRemotePort').attr('value', value);
                         break;
                     case 'UdpPort':
                         $('#inputInterfaceOwnPort').attr('value', value);

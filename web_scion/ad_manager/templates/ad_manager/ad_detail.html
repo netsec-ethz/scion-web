@@ -298,6 +298,18 @@
     // Run it always when the page is loaded (for initial value unchecked)
     checkShowCoreOption();
 
+
+    // Input check the port to be in range 0 to 65535
+    $('.inputPort').bind('keypress keyup blur', function(e) {
+        var port = this.value;
+        if (port < 0 || port >65535) {
+            var errorColor = 'pink';
+            $(this).attr('style', 'background: '+errorColor+';');
+        } else {
+            $(this).attr('style', '');
+        }
+    });
+
   </script>
   <style>
     .doc-hr {
