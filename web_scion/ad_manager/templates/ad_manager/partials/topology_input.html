@@ -41,9 +41,9 @@
                 <label class="control-label col-sm-2" for="inputOverlay">Overlay: </label>
                 <div class="controls">
                     <select id="inputOverlay" name="inputOverlay" required>
-                        <option value="IP" selected>IP</option>
-                        <option value="UDP/IP">UDP/IP</option>
-                        <option value="LS">Label switching</option>
+                        <option value="IP" onclick="$('#inputMTU').attr('placeholder', '1480');" selected>IP</option>
+                        <option value="UDP/IP" onclick="$('#inputMTU').attr('placeholder', '1472');">UDP/IP</option>
+                        <option value="LS" onclick="$('#inputMTU').attr('placeholder', '1492');">Label switching</option>
                     </select>
                 </div>
                 <label class="control-label col-sm-2" for="inputMTU">MTU: </label>
