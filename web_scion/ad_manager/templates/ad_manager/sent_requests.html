@@ -26,7 +26,6 @@
           {% endcomment %}
           <div class="collapse" id="info-{{ request.id }}">
             <div class="well">
-              <b>Bound socket</b> {{ request.router_bound_ip }} : {{ request.router_bound_port }} <br />
               <b>Public socket</b> {{ request.router_public_ip }} : {{ request.router_public_port }} <br />
               {% if request.new_ad %}
                 New AS: <a href="{{ request.new_ad.get_absolute_url }}">{{ request.new_ad }}</a>
@@ -34,7 +33,6 @@
             </div>
           </div>
         </td>
-        <td>{{ request.router_bound_ip }} : {{ request.router_bound_port }}</td>
         <td>
           <a role="button" data-toggle="collapse" href="#info-{{ request.id }}" aria-expanded="false" aria-controls="collapseExample">
             {{ request.status}}

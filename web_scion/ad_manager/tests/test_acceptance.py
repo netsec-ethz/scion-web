@@ -93,7 +93,7 @@ class TestListAds(BasicWebTest):
 
         ad_list = self.app.get(reverse('isd_detail', args=[isd.id]))
         self.assertContains(ad_list, ad.id)
-        li_tag = ad_list.html.find('a', text='AD 2-3').parent
+        li_tag = ad_list.html.find('a', text='AS 2-3').parent
         self.assertIn('core', li_tag.text)
 
 
@@ -146,15 +146,6 @@ class TestAdDetail(BasicWebTest):
             self.assertIn(page_value, core_container.text,
                           'Invalid label: core')
 
-        # Test open label
-        for is_open_value, page_value in value_map.items():
-            ad.is_open = is_open_value
-            ad.save()
-            ad_detail = self._get_ad_detail(ad)
-            open_container = ad_detail.html.find(id='open-label')
-            self.assertIn(page_value, open_container.text,
-                          'Invalid label: open')
-
 
 class TestUsersAndPermissions(BasicWebTestUsers):
 
@@ -168,7 +159,7 @@ class TestUsersAndPermissions(BasicWebTestUsers):
         login_form['username'] = 'admin'
         login_form['password'] = 'admin'
         res = login_form.submit().follow()
-        self.assertContains(res, 'AD 1')
+        self.assertContains(res, 'AS 1')
         self.assertContains(res, 'Logged in as:')
         self.assertContains(res, 'admin')
 
@@ -306,8 +297,8 @@ class TestConnectionRequests(BasicWebTestUsers):
         # Fill and submit the form
         ad_requests = self.app.get(requests_page, user=self.admin_user)
         request_form = ad_requests.click('New request').maybe_follow().form
-        request_form['router_bound_ip'] = '123.234.123.234'
-        request_form['router_bound_port'] = 12345
+        request_form['router_public_ip'] = '127.0.0.20'
+        request_form['router_public_port'] = 12345
         request_form['info'] = 'test info'
         request_form.submit()
         self.assertEqual(len(ConnectionRequest.objects.all()), 1)
@@ -318,7 +309,7 @@ class TestConnectionRequests(BasicWebTestUsers):
         sent_requests = self.app.get(sent_requests_page, user=self.admin_user)
         self.assertIn('submitted by admin', sent_requests.html.text)
         sent_table = sent_requests.html.find(id="sent-requests-tbl")
-        for s in [ad, '123.234.123.234', 12345, 'test info', 'SENT']:
+        for s in [ad, '127.0.0.20', 12345, 'test info', 'SENT']:
             self.assertIn(str(s), str(sent_table))
 
         # Check that the request is listed in the 'received' table
@@ -328,7 +319,7 @@ class TestConnectionRequests(BasicWebTestUsers):
         ad_requests_user = self.app.get(requests_page, user=self.user)
         for response in [ad_requests_admin, ad_requests_user]:
             received_table = response.html.find(id="received-requests-tbl")
-            for s in ['123.234.123.234', 'test info', 'SENT', 'admin']:
+            for s in ['127.0.0.20', 'test info', 'SENT', 'admin']:
                 self.assertIn(str(s), str(received_table))
 
     def test_decline_request(self):
@@ -338,7 +329,7 @@ class TestConnectionRequests(BasicWebTestUsers):
 
         request = ConnectionRequest(created_by=self.user, connect_to=ad,
                                     info='test info', status='SENT',
-                                    router_bound_ip='123.123.123.123')
+                                    router_public_ip='123.123.123.123')
         request.save()
 
         ad_requests = self.app.get(ad_requests_page, user=self.admin_user)
