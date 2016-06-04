@@ -5,6 +5,7 @@
 {% block js %}
   {{ block.super }}
     <script src="{% static 'js/ad_detail.js' %}" xmlns="http://www.w3.org/1999/html"></script>
+    <script src="{% static 'js/topology_input.js' %}" xmlns="http://www.w3.org/1999/html"></script>
 {% endblock %}
 
 {% block content %}
@@ -198,10 +199,11 @@
 
           <form method="POST" action="/ad_manager/ads/deploy_config">
               {% csrf_token %}
-              <input type="text" id="inputManagementInterfaceIPretrieving" name="managementInterfaceIP" value="{{ management_interface_ip }}" style="display: none;">
+              <input class="hidden" type="text" id="inputManagementInterfaceIPretrieving" name="managementInterfaceIP"
+                     value="{{ management_interface_ip }}">
               <select  name="nodeUUID" class="selectpicker" data-show-subtext="true" required>
                 <optgroup label="available nodes">
-                <option value="" class="placeholder" selected disabled style="display:none;">Choose node</option>
+                <option value="" class="placeholder hidden" selected disabled>Choose node</option>
                 {% for node in nodes %}
                   <option data-subtext="{{ node.name }}">{{ node.uuid }}</option>
                 {% endfor %}
@@ -230,6 +232,13 @@
   </div>
 
   {% include 'ad_manager/partials/log_modal.html' %}
+
+  <!-- set data reloaded from DB -->
+  <script>
+    reloadedTopology = '{{ reloaded_topology }}';
+    reloadedTopology = parseTopology(reloadedTopology);
+    setLoadedTopology(reloadedTopology);
+  </script>
 
   <!-- JS variables passed from the view to JavaScript files -->
   <script>
