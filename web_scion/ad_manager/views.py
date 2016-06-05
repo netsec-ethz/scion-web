@@ -64,6 +64,10 @@ from lib.defines import GEN_PATH, PROJECT_ROOT
 
 GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
 
+import subprocess
+# Ansible
+from ansible.executor.playbook_executor import PlaybookExecutor
+
 
 class ISDListView(ListView):
     model = ISD
@@ -927,22 +931,29 @@ def deploy_config(request):
 
 
 def run_remote_command(ip, process_name, command):
-    server = xmlrpc.client.ServerProxy('http://{}:9011'.format(ip))
-    wait_for_result = True
-    succeeded = False
-    if command == 'retrieve_tar':
-        succeeded = server.supervisor.startProcess(process_name, wait_for_result)
+    use_ansible = True
 
-    if command == 'STOP':
-        succeeded = server.supervisor.stopProcess(process_name, wait_for_result)
-    if command == 'START':
-        succeeded = server.supervisor.startProcess(process_name, wait_for_result)
-    if command == 'STATUS':
-        offset = 0
-        length = 4000
-        succeeded = server.supervisor.tailProcessStdoutLog(process_name, offset, length)
-    print('Remote operation {} completed: {}'.format(command, succeeded))
-    return
+    if (not use_ansible):
+        server = xmlrpc.client.ServerProxy('http://{}:9011'.format(ip))
+        wait_for_result = True
+        succeeded = False
+        if command == 'retrieve_tar':
+            succeeded = server.supervisor.startProcess(process_name, wait_for_result)
+
+        if command == 'STOP':
+            succeeded = server.supervisor.stopProcess(process_name, wait_for_result)
+        if command == 'START':
+            succeeded = server.supervisor.startProcess(process_name, wait_for_result)
+        if command == 'STATUS':
+            offset = 0
+            length = 4000
+            succeeded = server.supervisor.tailProcessStdoutLog(process_name, offset, length)
+        print('Remote operation {} completed: {}'.format(command, succeeded))
+    else:
+        # using the ansibleCLI instead of duplicating code to use the PlaybookExecutor
+        result = subprocess.check_call(['ansible-playbook', os.path.join(PROJECT_ROOT, 'ansible', 'deploy-ethz.yml'),
+                                     '-f', '32'], cwd=PROJECT_ROOT)
+    return 0
 
 
 def run_rpc_command(ip, uuid, management_interface_ip, command, ISD, AS):
