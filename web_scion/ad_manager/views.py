@@ -791,10 +791,10 @@ def generate_topology(request):
 
     all_IP_port_pairs = []
     for r in ['BeaconServers', 'CertificateServers', 'DNSServers', 'PathServers', 'SibraServers', 'Zookeepers']:
-        curr_pair = mockup_dicts['r']['Addr'] + ':' + str(mockup_dicts['r']['Port'])
-        if (curr_pair in all_IP_port_pairs):
-            return JsonResponse({'data': 'IP:port combinations not unique within AS'})
+        curr_pair = mockup_dicts[r]['Addr'] + ':' + str(mockup_dicts[r]['Port'])
         all_IP_port_pairs.append(curr_pair)
+    if len(all_IP_port_pairs) != len(set(all_IP_port_pairs)):
+        return JsonResponse({'data': 'IP:port combinations not unique within AS'})
 
     with open(yaml_topo_path, 'w') as file:
         yaml.dump(mockup_dicts, file, default_flow_style=False)
