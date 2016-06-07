@@ -70,7 +70,7 @@ class AD(models.Model):
 
     def query_ad_status(self):
         """
-        Return AD status information, which includes servers/routers statuses
+        Return AS status information, which includes servers/routers statuses
         """
         return management_client.get_ad_info(self.md_host, self.isd_id, self.id)
 
@@ -91,7 +91,7 @@ class AD(models.Model):
 
     def generate_topology_dict(self):
         """
-        Create a Python dictionary with the stored AD topology.
+        Create a Python dictionary with the stored AS topology.
         """
         assert isinstance(self.original_topology, dict)
         out_dict = copy.deepcopy(self.original_topology)

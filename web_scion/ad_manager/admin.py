@@ -51,7 +51,7 @@ class PrivilegedChangeAdmin(GuardedModelAdmin):
         codename = get_permission_codename('change', opts)
 
         # If there is an 'ad' attribute then it's a foreign key, so extend
-        # user permissions for this AD to the current object
+        # user permissions for this AS to the current object
         ad = getattr(obj, 'ad', None)
         if ad and isinstance(ad, AD):
             obj = ad

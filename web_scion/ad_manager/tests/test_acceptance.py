@@ -128,7 +128,7 @@ class TestAdDetail(BasicWebTest):
             assert str(r.neighbor_ad) in row.text
             assert r.neighbor_type in row.text
 
-        # Test that links to other ADs work
+        # Test that links to other ASes work
         ad_2_detail = ad_detail.click(str(self.ads[2]))
         self.assertEqual(ad_2_detail.status_int, 200)
         self.assertContains(ad_2_detail, str(self.ads[2]))

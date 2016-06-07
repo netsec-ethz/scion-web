@@ -99,8 +99,8 @@ def reload_data_from_files(topology_files):
 
     if same_as_ids:
         id_map = {}
-        print("> Several ADs with identical IDs are found. Currently, this "
-              "case is not supported. Renumerating ADs...")
+        print("> Several ASes with identical IDs are found. Currently, this "
+              "case is not supported. Renumerating ASes...")
         ad_id = 1
         for topo in as_topos:
             id_map[(topo.ad_id, topo.isd_id)] = ad_id
@@ -122,7 +122,7 @@ def reload_data_from_files(topology_files):
         isd.save()
         isds[isd_id] = isd
 
-    # First, save all add ADs to avoid IntegrityError
+    # First, save all add ASes to avoid IntegrityError
     report_ranges = {int(ad_num / 10.0 * x): x * 10 for x in range(1, 11)}
     for i, as_topo in enumerate(as_topos, start=1):
         if i in report_ranges:
@@ -132,14 +132,14 @@ def reload_data_from_files(topology_files):
                           is_core_ad=as_topo.is_core_as,
                           dns_domain=as_topo.dns_domain)
     transaction.commit()
-    print("> ADs instances were added")
+    print("> ASes instances were added")
 
     # Second, add routers, servers, etc.
     for as_topo in as_topos:
-        ad = AD.objects.get(id=as_topo.isd_as._as, isd=isds[as_topo.isd_as._isd])
+        ad = AD.objects.get(id=as_topo.isd_as._as, isd=isds[as_topo.isd_as._isd]) # getitem : index 0 = self._isd, index 1 = self._as
         topo_dict = as_topo_dicts[ad.id]
         ad.fill_from_topology(topo_dict)
-        print('> AD {} is loaded'.format(ad))
+        print('> AS {} is loaded'.format(ad))
     transaction.commit()
     transaction.set_autocommit(True)
 

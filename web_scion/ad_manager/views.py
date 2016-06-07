@@ -66,7 +66,7 @@ GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
 
 import subprocess
 # Ansible
-from ansible.executor.playbook_executor import PlaybookExecutor
+# from ansible.executor.playbook_executor import PlaybookExecutor
 
 
 class ISDListView(ListView):
@@ -165,7 +165,7 @@ class ADDetailView(DetailView):
 def get_ad_status(request, pk):
     """
     Send a query to the corresponding management daemon, asking for the status
-    of AD servers.
+    of AS servers.
     """
     ad = get_object_or_404(AD, id=pk)
     ad_info_list_response = ad.query_ad_status()
@@ -378,7 +378,7 @@ def _check_user_permissions(request, ad):
 @require_POST
 def control_process(request, pk, proc_id):
     """
-    Send a control command to an AD element instance.
+    Send a control command to an AS element instance.
     """
     ad = get_object_or_404(AD, id=pk)
     _check_user_permissions(request, ad)
@@ -691,7 +691,7 @@ def network_view(request):
     """
     all_ads = AD.objects.all().prefetch_related('routerweb_set__neighbor_ad')
     ad_graph_tmp = []
-    # Direct and reverse index <-> AD mappings
+    # Direct and reverse index <-> AS mappings
     ad_index = {}
     ad_index_rev = {}
     for i, ad in enumerate(all_ads):
