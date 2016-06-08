@@ -164,7 +164,7 @@
                   {% csrf_token %}
                   <div id="node_registration" class="well">
                       <div class="form-group">
-                          <label class="control-label" for="inputManagementInterfaceIP">Interface IP: </label>
+                          <label class="control-label" for="inputManagementInterfaceIP">Management Interface IP: </label>
                           <input type="text" id="inputManagementInterfaceIP" name="inputManagementInterfaceIP" value="{{ management_interface_ip }}" alt="Could be put as: readonly">
                       </div>
                       <br />
@@ -194,7 +194,7 @@
           <br />
           <br />
           <br />
-          <div height="500px">
+          <!--div height="500px">
               Provision node :
 
           <form method="POST" action="/ad_manager/ads/deploy_config">
@@ -226,7 +226,7 @@
               </select>
               <button type="submit" class="btn">Go</button>
           </form>
-          </div>
+          </div-->
       </div>
     </div>
   </div>
@@ -236,6 +236,7 @@
   <!-- set data reloaded from DB -->
   <script>
     reloadedTopology = '{{ reloaded_topology }}';
+    test_django_dict = "{{ reloaded_topology.MTU }}";
     reloadedTopology = parseTopology(reloadedTopology);
     setLoadedTopology(reloadedTopology);
   </script>
@@ -253,13 +254,13 @@
     });
 
     function toggleInput(elem) {
-        var wellGroup = elem.parentNode.parentNode.parentNode;
+        var accordion = elem.parentNode.parentNode.parentNode;
         var clone = elem.parentNode.parentNode.cloneNode(true);
-        var currentClass = $(elem).children(':first').attr('class');
+        var currentClass = $(elem).children(':first').attr('class'); // either glyphicon glyphicon-{plus|minus}
         if (currentClass === 'glyphicon glyphicon-plus') {
 
             // increment current name for next field
-            currentName = $(clone).children('.controls').find( 'input' ).attr('value');
+            currentName = $(clone).children('.controls').find( 'input:eq(0)' ).attr('value');
             nameParts = currentName.split('-');
             nameParts[2]++;
             newName = nameParts.join('-');
@@ -267,7 +268,7 @@
             // reset IP
             $(clone).children('.controls:eq(1)').find( 'input' ).val('');
             // append the cloned and cleaned item
-            wellGroup.appendChild(clone);
+            accordion.appendChild(clone);
             //var test = $(clone).children(':first').prop('tagName');
             if ($(clone).children(':first').attr('class') !== 'doc-hr') {
                 // add separator

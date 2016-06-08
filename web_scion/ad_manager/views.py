@@ -783,8 +783,8 @@ def generate_topology(request):
     mockup_dicts['MTU'] = -1 if tp['inputMTU'] == '' else int(tp['inputMTU'])
     mockup_dicts['PathServers'] = {'ps{}-1'.format(isd_as): {'Addr': tp['inputPathServerAddress'],
                                                              'Port': int(tp['inputPathServerPort'])}}
-    mockup_dicts['SibraServers'] = {'sb{}-1'.format(isd_as): {'Addr': tp['inputSibraServerAddress',
-                                                                      'Port': int(tp['inputSibraServerPort'])]}}
+    mockup_dicts['SibraServers'] = {'sb{}-1'.format(isd_as): {'Addr': tp['inputSibraServerAddress'],
+                                                              'Port': int(tp['inputSibraServerPort'])}}
     mockup_dicts['Zookeepers'] = {1: {'Addr': tp['inputZookeeperServerAddress'],
                                       'Port': -1 if tp['inputZookeeperServerPort'] == '' else int(
                                           tp['inputZookeeperServerPort'])}}
@@ -952,7 +952,7 @@ def run_remote_command(ip, process_name, command):
     else:
         # using the ansibleCLI instead of duplicating code to use the PlaybookExecutor
         result = subprocess.check_call(['ansible-playbook', os.path.join(PROJECT_ROOT, 'ansible', 'deploy-ethz.yml'),
-                                     '-f', '32'], cwd=PROJECT_ROOT)
+                                        '-f', '32'], cwd=PROJECT_ROOT)
     return 0
 
 

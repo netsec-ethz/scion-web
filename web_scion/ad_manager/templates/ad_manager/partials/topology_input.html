@@ -62,6 +62,10 @@
                     <div class="chevron {% if forloop.counter0 > 0 %}collapsed{% endif %}" data-toggle="collapse"
                          href="#{{ type|lower }}Accordion"><span class="sectionTitle">{{ type }} servers</span></div>
                     <div id="{{ type|lower }}Accordion" class="collapse {% if forloop.counter0 == 0 %}in{% endif %}"
+                         {% comment%}
+                          comment:  'if forloop.counter0 == 0 -> in' expands the first accordion, to show user how to
+                          interact with input, that these accordions can be expanded
+                         {%  endcomment %}
                          aria-expanded="true">
                         <br/>
                         <div class="{{ type }}Item">
