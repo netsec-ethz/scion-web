@@ -791,10 +791,36 @@ def generate_topology(request):
 
     all_IP_port_pairs = []
     for r in ['BeaconServers', 'CertificateServers', 'DNSServers', 'PathServers', 'SibraServers', 'Zookeepers']:
-        curr_pair = mockup_dicts[r]['Addr'] + ':' + str(mockup_dicts[r]['Port'])
-        all_IP_port_pairs.append(curr_pair)
+        servers_of_type_r = mockup_dicts[r]
+        for server in servers_of_type_r:
+            curr_pair = servers_of_type_r[server]['Addr'] + ':' + str(servers_of_type_r[server]['Port'])
+            all_IP_port_pairs.append(curr_pair)
     if len(all_IP_port_pairs) != len(set(all_IP_port_pairs)):
         return JsonResponse({'data': 'IP:port combinations not unique within AS'})
+
+    config = configparser.ConfigParser()
+    ansible_path = os.path.join(PROJECT_ROOT, 'ansible')
+    conf_file_path = os.path.join(ansible_path, 'GenAnsible.yml')
+
+    isd_id, as_id = isd_as.split('-')
+    # looks up the prefix used for naming supervisor processes, beacon server -> 'bs', ...
+    lkp = lookup_dict_services_prefixes()
+
+    for key, section in [('BeaconServer', 'beacon_server'), ('CertificateServer', 'certificate_server'),
+                         ('DomainServer', 'domain_server') , ('EdgeRouter', 'router'),
+                         ('PathServer', 'path_server'), ('SibraServer', 'sibra_server')]:
+        val = [tp['input' + key + 'Address']]
+        hostname = tp['input' + key + 'Name']
+        server_index = 0
+        for entry in val:
+            server_index += 1
+            config[section + 's'] = \
+                {entry + ' isd = ' + str(isd_id) + ' as = ' + str(as_id) + ' ' + lkp[section]:
+                 str(server_index) + ' #' + hostname}
+
+    with open(conf_file_path, 'w') as configfile:
+        config.write(configfile)
+
 
     with open(yaml_topo_path, 'w') as file:
         yaml.dump(mockup_dicts, file, default_flow_style=False)
@@ -842,6 +868,16 @@ def create_tar(tar_file_path):
     return
 
 
+def lookup_dict_services_prefixes():
+    # looks up the prefix used for naming supervisor processes, beacon server -> 'bs', ... TODO: move to util
+    return  {'router': ROUTER_SERVICE,
+             'beacon_server': BEACON_SERVICE,
+             'path_server': PATH_SERVICE,
+             'certificate_server': CERTIFICATE_SERVICE,
+             'domain_server': DNS_SERVICE,
+             'sibra_server': SIBRA_SERVICE,
+             'zookeeper_service': ZOOKEEPER_SERVICE}
+
 @require_POST
 def deploy_config(request):
     """
@@ -864,14 +900,7 @@ def deploy_config(request):
     lkx = lookup_dict_executables
 
     # looks up the prefix used for naming supervisor processes, beacon server -> 'bs', ...
-    lookup_dict_services_prefixes = {'router': ROUTER_SERVICE,
-                                     'beacon_server': BEACON_SERVICE,
-                                     'path_server': PATH_SERVICE,
-                                     'certificate_server': CERTIFICATE_SERVICE,
-                                     'domain_server': DNS_SERVICE,
-                                     'sibra_server': SIBRA_SERVICE,
-                                     'zookeeper_service': ZOOKEEPER_SERVICE}
-    lkp = lookup_dict_services_prefixes
+    lkp = lookup_dict_services_prefixes()
 
     tmp_folder_path = os.path.join(PROJECT_ROOT, 'web_scion', 'ad_manager', 'static', 'tmp')
 
