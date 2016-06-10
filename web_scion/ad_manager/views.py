@@ -798,7 +798,7 @@ def generate_topology(request):
     if len(all_IP_port_pairs) != len(set(all_IP_port_pairs)):
         return JsonResponse({'data': 'IP:port combinations not unique within AS'})
 
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(allow_no_value=True)
     ansible_path = os.path.join(PROJECT_ROOT, 'ansible')
     conf_file_path = os.path.join(ansible_path, 'GenAnsible.yml')
 
@@ -806,6 +806,7 @@ def generate_topology(request):
     # looks up the prefix used for naming supervisor processes, beacon server -> 'bs', ...
     lkp = lookup_dict_services_prefixes()
 
+    scion_nodes = []
     for key, section in [('BeaconServer', 'beacon_server'), ('CertificateServer', 'certificate_server'),
                          ('DomainServer', 'domain_server') , ('EdgeRouter', 'router'),
                          ('PathServer', 'path_server'), ('SibraServer', 'sibra_server')]:
@@ -817,10 +818,13 @@ def generate_topology(request):
             config[section + 's'] = \
                 {entry + ' isd = ' + str(isd_id) + ' as = ' + str(as_id) + ' ' + lkp[section]:
                  str(server_index) + ' #' + hostname}
+        scion_nodes.append(section)
 
     with open(conf_file_path, 'w') as configfile:
         config.write(configfile)
-
+        configfile.write('[scion_nodes:children]')
+        for role in scion_nodes:
+            configfile.write('\n' + str(role))
 
     with open(yaml_topo_path, 'w') as file:
         yaml.dump(mockup_dicts, file, default_flow_style=False)
