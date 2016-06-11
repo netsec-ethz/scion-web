@@ -798,7 +798,8 @@ def generate_topology(request):
     if len(all_IP_port_pairs) != len(set(all_IP_port_pairs)):
         return JsonResponse({'data': 'IP:port combinations not unique within AS'})
 
-    config = configparser.ConfigParser(allow_no_value=True)
+    # Write Ansible hostfile
+    config = configparser.ConfigParser(allow_no_value=True, delimiters=' ', inline_comment_prefixes='#')
     ansible_path = os.path.join(PROJECT_ROOT, 'ansible')
     conf_file_path = os.path.join(ansible_path, 'GenAnsible.yml')
 
@@ -806,9 +807,9 @@ def generate_topology(request):
     # looks up the prefix used for naming supervisor processes, beacon server -> 'bs', ...
     lkp = lookup_dict_services_prefixes()
 
-    scion_nodes = []
+    scion_nodes = [] # entries for the scion_node section
     for key, section in [('BeaconServer', 'beacon_server'), ('CertificateServer', 'certificate_server'),
-                         ('DomainServer', 'domain_server') , ('EdgeRouter', 'router'),
+                         ('DomainServer', 'domain_server'), ('EdgeRouter', 'router'),
                          ('PathServer', 'path_server'), ('SibraServer', 'sibra_server')]:
         val = [tp['input' + key + 'Address']]
         hostname = tp['input' + key + 'Name']
@@ -816,15 +817,16 @@ def generate_topology(request):
         for entry in val:
             server_index += 1
             config[section + 's'] = \
-                {entry + ' isd = ' + str(isd_id) + ' as = ' + str(as_id) + ' ' + lkp[section]:
-                 str(server_index) + ' #' + hostname}
+                {entry:
+                 'isd={} as={} {}={} # {}'.format(isd_id, as_id, lkp[section], server_index, hostname)}
         scion_nodes.append(section)
+
+    config['scion_nodes:children'] = {}
+    for role in scion_nodes:
+        config.set('scion_nodes:children', role)
 
     with open(conf_file_path, 'w') as configfile:
         config.write(configfile)
-        configfile.write('[scion_nodes:children]')
-        for role in scion_nodes:
-            configfile.write('\n' + str(role))
 
     with open(yaml_topo_path, 'w') as file:
         yaml.dump(mockup_dicts, file, default_flow_style=False)
