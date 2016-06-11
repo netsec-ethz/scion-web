@@ -62,6 +62,8 @@ from scripts.reload_data import reload_data_from_files
 from lib.defines import *
 from lib.defines import GEN_PATH, PROJECT_ROOT
 
+from ad_manager.util.hostfile_generator import generate_ansible_hostfile
+
 GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
 
 import subprocess
@@ -759,10 +761,10 @@ yaml_topo_path = os.path.join(PROJECT_ROOT, 'web_scion', 'ad_manager', 'static',
 def generate_topology(request):
     topology_params = request.POST.copy()
     topology_params.pop('csrfmiddlewaretoken', None)  # remove csrf entry, as we don't need it
-    tp = topology_params
 
-    isd_as = tp['inputISD_AS']
     mockup_dicts = {}
+    tp = topology_params
+    isd_as = tp['inputISD_AS']
     mockup_dicts['BeaconServers'] = {'bs{}-1'.format(isd_as): {'Addr': tp['inputBeaconServerAddress'],
                                                                'Port': int(tp['inputBeaconServerPort'])}}
     mockup_dicts['CertificateServers'] = {'cs{}-1'.format(isd_as): {'Addr': tp['inputCertificateServerAddress'],
@@ -798,35 +800,7 @@ def generate_topology(request):
     if len(all_IP_port_pairs) != len(set(all_IP_port_pairs)):
         return JsonResponse({'data': 'IP:port combinations not unique within AS'})
 
-    # Write Ansible hostfile
-    config = configparser.ConfigParser(allow_no_value=True, delimiters=' ', inline_comment_prefixes='#')
-    ansible_path = os.path.join(PROJECT_ROOT, 'ansible')
-    conf_file_path = os.path.join(ansible_path, 'GenAnsible.yml')
-
-    isd_id, as_id = isd_as.split('-')
-    # looks up the prefix used for naming supervisor processes, beacon server -> 'bs', ...
-    lkp = lookup_dict_services_prefixes()
-
-    scion_nodes = [] # entries for the scion_node section
-    for key, section in [('BeaconServer', 'beacon_server'), ('CertificateServer', 'certificate_server'),
-                         ('DomainServer', 'domain_server'), ('EdgeRouter', 'router'),
-                         ('PathServer', 'path_server'), ('SibraServer', 'sibra_server')]:
-        val = [tp['input' + key + 'Address']]
-        hostname = tp['input' + key + 'Name']
-        server_index = 0
-        for entry in val:
-            server_index += 1
-            config[section + 's'] = \
-                {entry:
-                 'isd={} as={} {}={} # {}'.format(isd_id, as_id, lkp[section], server_index, hostname)}
-        scion_nodes.append(section)
-
-    config['scion_nodes:children'] = {}
-    for role in scion_nodes:
-        config.set('scion_nodes:children', role)
-
-    with open(conf_file_path, 'w') as configfile:
-        config.write(configfile)
+    generate_ansible_hostfile(topology_params, isd_as, lookup_dict_services_prefixes())
 
     with open(yaml_topo_path, 'w') as file:
         yaml.dump(mockup_dicts, file, default_flow_style=False)
@@ -876,13 +850,13 @@ def create_tar(tar_file_path):
 
 def lookup_dict_services_prefixes():
     # looks up the prefix used for naming supervisor processes, beacon server -> 'bs', ... TODO: move to util
-    return  {'router': ROUTER_SERVICE,
-             'beacon_server': BEACON_SERVICE,
-             'path_server': PATH_SERVICE,
-             'certificate_server': CERTIFICATE_SERVICE,
-             'domain_server': DNS_SERVICE,
-             'sibra_server': SIBRA_SERVICE,
-             'zookeeper_service': ZOOKEEPER_SERVICE}
+    return {'router': ROUTER_SERVICE,
+            'beacon_server': BEACON_SERVICE,
+            'path_server': PATH_SERVICE,
+            'certificate_server': CERTIFICATE_SERVICE,
+            'domain_server': DNS_SERVICE,
+            'sibra_server': SIBRA_SERVICE,
+            'zookeeper_service': ZOOKEEPER_SERVICE}
 
 @require_POST
 def deploy_config(request):
