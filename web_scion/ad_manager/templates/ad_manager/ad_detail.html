@@ -260,10 +260,10 @@
         if (currentClass === 'glyphicon glyphicon-plus') {
 
             // increment current name for next field
-            currentName = $(clone).children('.controls').find( 'input:eq(0)' ).attr('value');
-            nameParts = currentName.split('-');
+            var currentName = $(clone).children('.controls').find( 'input:eq(0)' ).attr('value');
+            var nameParts = currentName.split('-');
             nameParts[2]++;
-            newName = nameParts.join('-');
+            var newName = nameParts.join('-');
             $(clone).children('.controls:eq(0)').find( 'input' ).attr('value', newName);
             // reset IP
             $(clone).children('.controls:eq(1)').find( 'input' ).val('');
@@ -333,7 +333,6 @@
         /* symbol for "opening" panels */
         font-family: 'Glyphicons Halflings';  /* essential for enabling glyphicon */
         content: "\e114";    /* adjust as needed, taken from bootstrap.css */
-        float: right;        /* adjust as needed */
         color: grey;         /* adjust as needed */
         float: left;
     }

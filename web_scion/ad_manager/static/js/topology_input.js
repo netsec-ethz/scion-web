@@ -32,12 +32,12 @@ function setLoadedTopology(reloadedTopology) {
             if (type == 'DNS') {
                 type = 'Domain';
             }
-            var typeValue = type.toLowerCase() + '_server';
+            //var typeValue = type.toLowerCase() + '_server';
             //$('#input'+type+'ServerType').attr('value', typeValue); // already set
             var name = Object.keys(entry)[0];
             $('#input'+type+'ServerName').attr('value', name);
             var server = entry[name];
-            var address = server['Addr']
+            var address = server['Addr'];
             $('#input'+type+'ServerAddress').attr('value', address);
 
             // remove entry
