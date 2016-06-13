@@ -55,7 +55,7 @@ from ad_manager.util.ad_connect import (
 )
 from ad_manager.util.errors import HttpResponseUnavailable
 from lib.util import write_file
-from topology.generator import ConfigGenerator
+from topology.generator import ConfigGenerator, DEFAULT_PATH_POLICY_FILE, DEFAULT_ZK_CONFIG
 
 from scripts.reload_data import reload_data_from_files
 
@@ -65,7 +65,7 @@ from lib.defines import GEN_PATH, PROJECT_ROOT
 from ad_manager.util.hostfile_generator import generate_ansible_hostfile
 
 import subprocess
-from shutil import copy
+from shutil import copy, copytree
 
 GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
 
@@ -963,6 +963,22 @@ def create_local_gen(isd_as):
     isd_id, as_id = isd_as.split('-')
 
     local_gen_path = os.path.join(PROJECT_ROOT, 'web_scion', 'gen')
+
+    dispatcher_folder_path = os.path.join(local_gen_path, 'dispatcher')
+    if not os.path.exists(dispatcher_folder_path):
+        copytree(os.path.join(PROJECT_ROOT, 'gen', 'dispatcher'), dispatcher_folder_path)
+
+    # TODO: Cert distribution needs integration with scion-coord,
+    # using bruteforce copying over some gen certs and matching keys to get Ansible testing
+    # before integration with scion-coord
+    shared_files_path = os.path.join(local_gen_path, 'shared_files')
+    if not os.path.exists(shared_files_path):
+        copytree(os.path.join(PROJECT_ROOT, 'gen/ISD1/AS10/bs1-10-1/'), shared_files_path)
+        # remove files that are not shared
+        os.remove(os.path.join(shared_files_path, 'supervisord.conf'))
+        os.remove(os.path.join(shared_files_path, 'topology.yml'))
+
+
     types = ['router', 'beacon_server', 'path_server', 'certificate_server',
              'domain_server', 'sibra_server', 'zookeeper_service']
 
@@ -1004,13 +1020,37 @@ def create_local_gen(isd_as):
 
         node_path = 'ISD{}/AS{}/{}'.format(isd_id, as_id, serv_name)
         node_path = os.path.join(local_gen_path, node_path)
-        os.makedirs(node_path, exist_ok=True)
+        #os.makedirs(node_path, exist_ok=True)
+        if not os.path.exists(node_path):
+            copytree(os.path.join(shared_files_path), node_path)
         conf_file_path = os.path.join(node_path, 'supervisord.conf')
         with open(conf_file_path, 'w') as configfile:
             config.write(configfile)
 
         # copy AS topology.yml file into node
         copy(yaml_topo_path, node_path)
+
+
+
+    # Generating only the needed intermediate parts
+    # not used as for now we generator.py all certs and keys resources
+    # (minimaly required are only the certs and keys folders. path_policy.yml can be copied over from PathPolicy.yml,
+    # and as.yml is only a dict dump with a random master key)
+
+    # tmp_cert_gen_path = os.path.join(PROJECT_ROOT, 'web_scion', 'tmp_cert_gen')
+    # os.makedirs(tmp_cert_gen_path, exist_ok=True)
+    # copy(yaml_topo_path, tmp_cert_gen_path)
+    #
+    # topo_config = os.path.join(tmp_cert_gen_path, 'topology.yml')
+    # path_policy = DEFAULT_PATH_POLICY_FILE
+    # mininet = False
+    # network = "127.0.0.0/8"
+    # output_dir = tmp_cert_gen_path
+    # zk_config = os.path.join(PROJECT_ROOT, 'topology/Zookeeper.yml')
+    # confgen = ConfigGenerator(
+    #     output_dir, topo_config, path_policy, zk_config,
+    #     network, mininet)
+    # confgen.generate_all()
 
 
 def run_remote_command(ip, process_name, command):
