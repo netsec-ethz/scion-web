@@ -39,6 +39,8 @@ function setLoadedTopology(reloadedTopology) {
             var server = entry[name];
             var address = server['Addr'];
             $('#input'+type+'ServerAddress').attr('value', address);
+            var port = server['Port'];
+            $('#input'+type+'ServerPort').attr('value', port);
 
             // remove entry
             delete reloadedTopology[entryKey]

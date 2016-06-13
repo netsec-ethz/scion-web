@@ -163,7 +163,7 @@ class AD(models.Model):
                 neighbor_ad = AD.objects.get(id=as_str,
                                              isd=isd_str)
 
-                RouterWeb.objects.create(
+                RouterWeb.objects.update_or_create(
                     addr=router["Addr"], ad=self,
                     name=name, neighbor_ad=neighbor_ad,
                     neighbor_type=interface["LinkType"],
@@ -175,22 +175,22 @@ class AD(models.Model):
                 )
 
             for name, bs in beacon_servers.items():
-                BeaconServerWeb.objects.create(addr=bs["Addr"],
+                BeaconServerWeb.objects.update_or_create(addr=bs["Addr"],
                                                name=name,
                                                ad=self)
 
             for name, cs in certificate_servers.items():
-                CertificateServerWeb.objects.create(addr=cs["Addr"],
+                CertificateServerWeb.objects.update_or_create(addr=cs["Addr"],
                                                     name=name,
                                                     ad=self)
 
             for name, ps in path_servers.items():
-                PathServerWeb.objects.create(addr=ps["Addr"],
+                PathServerWeb.objects.update_or_create(addr=ps["Addr"],
                                              name=name,
                                              ad=self)
 
             for name, ds in dns_servers.items():
-                DnsServerWeb.objects.create(addr=str(ds["Addr"]),
+                DnsServerWeb.objects.update_or_create(addr=str(ds["Addr"]),
                                             name=name,
                                             ad=self)
         except IntegrityError:
