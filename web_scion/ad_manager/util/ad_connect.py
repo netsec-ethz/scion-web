@@ -191,8 +191,7 @@ def link_ads(first_ad, second_ad, link_type):
 
 
 def get_some_trc_path(isd_id):
-    dst_path = get_trc_file_path(isd_id, 0, isd_id, 0,
-                                 isd_dir=GEN_PATH)
+    dst_path = get_trc_file_path(isd_id, 0, isd_dir=GEN_PATH)
     components = os.path.normpath(dst_path).split(os.sep)
 
     components[-2] = 'AD*'

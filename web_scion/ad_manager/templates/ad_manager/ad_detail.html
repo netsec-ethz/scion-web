@@ -236,7 +236,7 @@
   <!-- set data reloaded from DB -->
   <script>
     reloadedTopology = '{{ reloaded_topology }}';
-    test_django_dict = "{{ reloaded_topology.MTU }}";
+    //test_django_dict = "{{ reloaded_topology.MTU }}";
     reloadedTopology = parseTopology(reloadedTopology);
     setLoadedTopology(reloadedTopology);
   </script>
@@ -302,7 +302,7 @@
         if (isChecked) {
             $('#inputInterfaceType').append('<option value="ROUTING">ROUTING</option>');
         } else {
-            $('#inputInterfaceType option[value="ROUTING"]').remove();
+            $('#inputInterfaceType').find('option[value="ROUTING"]').remove();
         }
     }
     // Run it always when the page is loaded (for initial value unchecked)

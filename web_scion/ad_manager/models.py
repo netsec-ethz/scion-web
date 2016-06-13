@@ -205,7 +205,8 @@ class AD(models.Model):
         if ':' in id_str:
             return id_str
         else:
-            return "as{}-{}:{}".format(self.isd.id, self.id, id_str) # changed for rpc log retrieval, to match new supervisord names
+            # changed for rpc log retrieval, to match new supervisord names
+            return "as{}-{}:{}".format(self.isd.id, self.id, id_str)
 
     def __str__(self):
         return '{}-{}'.format(self.isd.id, self.id)

@@ -89,12 +89,12 @@ def reload_data_from_files(topology_files):
         topology = Topology.from_dict(topo_dict)
         isds[topology.isd_as[0]] = None
 
-        if not same_as_ids and topology.isd_as._as in as_topo_dicts:
+        if not same_as_ids and topology.isd_as[1] in as_topo_dicts:
             same_as_ids = True
-        as_topo_dicts[topology.isd_as._as] = topo_dict
+        as_topo_dicts[topology.isd_as[1]] = topo_dict
         as_topos.append(topology)
 
-        as_topos = sorted(as_topos, key=lambda t: t.isd_as._as)
+        as_topos = sorted(as_topos, key=lambda t: t.isd_as[1])
     assert len(as_topos) == ad_num
 
     if same_as_ids:
@@ -127,8 +127,7 @@ def reload_data_from_files(topology_files):
     for i, as_topo in enumerate(as_topos, start=1):
         if i in report_ranges:
             print("{}%".format(report_ranges[i]))
-        AD.objects.create(id=as_topo.isd_as._as, isd=isds[as_topo.isd_as._isd],
-                          # TODO: avoid accessing protected class members
+        AD.objects.create(id=as_topo.isd_as[1], isd=isds[as_topo.isd_as[0]],
                           is_core_ad=as_topo.is_core_as,
                           dns_domain=as_topo.dns_domain)
     transaction.commit()
@@ -136,7 +135,7 @@ def reload_data_from_files(topology_files):
 
     # Second, add routers, servers, etc.
     for as_topo in as_topos:
-        ad = AD.objects.get(id=as_topo.isd_as._as, isd=isds[as_topo.isd_as._isd]) # getitem : index 0 = self._isd, index 1 = self._as
+        ad = AD.objects.get(id=as_topo.isd_as[1], isd=isds[as_topo.isd_as[0]])  # getitem[0] = self._isd, [1] = self._as
         topo_dict = as_topo_dicts[ad.id]
         ad.fill_from_topology(topo_dict)
         print('> AS {} is loaded'.format(ad))
