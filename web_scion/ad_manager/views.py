@@ -64,11 +64,10 @@ from lib.defines import GEN_PATH, PROJECT_ROOT
 
 from ad_manager.util.hostfile_generator import generate_ansible_hostfile
 
-GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
-
 import subprocess
-# Ansible
-# from ansible.executor.playbook_executor import PlaybookExecutor
+from shutil import copy
+
+GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
 
 
 class ISDListView(ListView):
@@ -804,10 +803,11 @@ def generate_topology(request):
     if len(all_IP_port_pairs) != len(set(all_IP_port_pairs)):
         return JsonResponse({'data': 'IP:port combinations not unique within AS'})
 
-    generate_ansible_hostfile(topology_params, isd_as, lookup_dict_services_prefixes())
-
     with open(yaml_topo_path, 'w') as file:
         yaml.dump(mockup_dicts, file, default_flow_style=False)
+
+    create_local_gen(isd_as)
+    generate_ansible_hostfile(topology_params, isd_as)
 
     reload_data_from_files([yaml_topo_path])  # load as usual model (for display in overview)
 
@@ -819,7 +819,7 @@ def get_own_local_ip():
     result = '127.0.0.1'
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.connect(('192.255.255.255', 22))
+            s.connect(('192.168.255.255', 22))
             result = s.getsockname()[0]
     except OSError:
         print('Network is unreachable')
@@ -862,6 +862,17 @@ def lookup_dict_services_prefixes():
             'sibra_server': SIBRA_SERVICE,
             'zookeeper_service': ZOOKEEPER_SERVICE}
 
+
+def lookup_dict_executables():
+    return {'router': ROUTER_EXECUTABLE,
+            'beacon_server': BEACON_EXECUTABLE,
+            'path_server': PATH_EXECUTABLE,
+            'certificate_server': CERTIFICATE_EXECUTABLE,
+            'domain_server': DNS_EXECUTABLE,
+            'sibra_server': SIBRA_EXECUTABLE,
+            'zookeeper_service': ZOOKEEPER_EXECUTABLE}
+
+
 @require_POST
 def deploy_config(request):
     """
@@ -874,14 +885,7 @@ def deploy_config(request):
     management_interface_ip = tar_params['managementInterfaceIP']
 
     # looks up the name of the executable for the service, certificate server -> 'cert_server', ...
-    lookup_dict_executables = {'router': ROUTER_EXECUTABLE,
-                               'beacon_server': BEACON_EXECUTABLE,
-                               'path_server': PATH_EXECUTABLE,
-                               'certificate_server': CERTIFICATE_EXECUTABLE,
-                               'domain_server': DNS_EXECUTABLE,
-                               'sibra_server': SIBRA_EXECUTABLE,
-                               'zookeeper_service': ZOOKEEPER_EXECUTABLE}
-    lkx = lookup_dict_executables
+    lkx = lookup_dict_executables()
 
     # looks up the prefix used for naming supervisor processes, beacon server -> 'bs', ...
     lkp = lookup_dict_services_prefixes()
@@ -938,9 +942,75 @@ def deploy_config(request):
         add_file_to_tar(yaml_topo_path, os.path.join('/' + serv_name, 'topology.yml'), current_node_file)
         add_file_to_tar(conf_file_path, os.path.join('/' + serv_name, 'supervisord.conf'), current_node_file)
 
-    run_rpc_command(node.uuid, management_interface_ip, 'retrieve_tar', node.ISD, node.AS)
+    run_rpc_command(node.IP, node.uuid, management_interface_ip, 'retrieve_tar', node.ISD, node.AS)
     current_page = request.META.get('HTTP_REFERER')
     return redirect(current_page)
+
+
+def create_local_gen(isd_as):
+    """
+    creates the usual gen folder structure for an ISD/AS under web_scion/gen, ready for Ansible deployment
+    Args:
+        isd_as: isd-as string
+
+    """
+    # looks up the name of the executable for the service, certificate server -> 'cert_server', ...
+    lkx = lookup_dict_executables()
+
+    # looks up the prefix used for naming supervisor processes, beacon server -> 'bs', ...
+    lkp = lookup_dict_services_prefixes()
+
+    isd_id, as_id = isd_as.split('-')
+
+    local_gen_path = os.path.join(PROJECT_ROOT, 'web_scion', 'gen')
+    types = ['router', 'beacon_server', 'path_server', 'certificate_server',
+             'domain_server', 'sibra_server', 'zookeeper_service']
+
+    for service_type in types:
+        config = configparser.ConfigParser()
+        prefix = lkp[service_type]
+        executable_name = lkx[service_type]
+        # Get digits only from ISD and AS names
+        serv_name = '{}{}-{}-1'.format(prefix, isd_id, as_id)
+        config['program:' + serv_name] = \
+            {'startsecs': '5',
+             'command': '"bin/{0}" "{1}" "gen/ISD{2}/AS{3}/{1}"'.format(executable_name, serv_name, isd_id, as_id),
+             'startretries': '0',
+             'stdout_logfile': 'logs/' + serv_name + '.OUT',
+             'redirect_stderr': 'true',
+             'autorestart': 'false',
+             'environment': 'PYTHONPATH =.',
+             'autostart': 'false',
+             'stdout_logfile_maxbytes': '0'}
+
+        # replace command entry if zookeeper special case
+        if service_type == 'zookeeper_service':
+            config['program:' + serv_name]['command'] = '"java" "-cp"' \
+                                                        ' "gen/{2}/{3}/{1}:' \
+                                                        '/usr/share/java/jline.jar:' \
+                                                        '/usr/share/java/log4j-1.2.jar:' \
+                                                        '/usr/share/java/xercesImpl.jar:' \
+                                                        '/usr/share/java/xmlParserAPIs.jar:' \
+                                                        '/usr/share/java/netty.jar:' \
+                                                        '/usr/share/java/slf4j-api.jar:' \
+                                                        '/usr/share/java/slf4j-log4j12.jar:' \
+                                                        '/usr/share/java/{0}" ' \
+                                                        '"-Dzookeeper.log.file=logs/{1}.log" ' \
+                                                        '"org.apache.zookeeper.server.quorum.QuorumPeerMain" ' \
+                                                        '"gen/ISD{2}/AS{3}/{1}/zoo.cfg"'.format(executable_name,
+                                                                                                serv_name,
+                                                                                                isd_id,
+                                                                                                as_id)
+
+        node_path = 'ISD{}/AS{}/{}'.format(isd_id, as_id, serv_name)
+        node_path = os.path.join(local_gen_path, node_path)
+        os.makedirs(node_path, exist_ok=True)
+        conf_file_path = os.path.join(node_path, 'supervisord.conf')
+        with open(conf_file_path, 'w') as configfile:
+            config.write(configfile)
+
+        # copy AS topology.yml file into node
+        copy(yaml_topo_path, node_path)
 
 
 def run_remote_command(ip, process_name, command):
