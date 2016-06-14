@@ -769,15 +769,17 @@ def generate_topology(request):
     mockup_dicts = {}
     tp = topology_params
     isd_as = tp['inputISD_AS']
-    mockup_dicts['BeaconServers'] = {'bs{}-1'.format(isd_as): {'Addr': tp['inputBeaconServerAddress'],
-                                                               'Port': st_int(tp['inputBeaconServerPort'])}}
-    mockup_dicts['CertificateServers'] = {'cs{}-1'.format(isd_as): {'Addr': tp['inputCertificateServerAddress'],
-                                                                    'Port': st_int(tp['inputBeaconServerPort'])}}
+    isd_id, as_id = isd_as.split('-')
+    mockup_dicts['BeaconServers'] = {tp['inputBeaconServerName']: {'Addr': tp['inputBeaconServerAddress'],
+                                                                   'Port': st_int(tp['inputBeaconServerPort'])}}
+    mockup_dicts['CertificateServers'] = {
+        tp['inputCertificateServerName']: {'Addr': tp['inputCertificateServerAddress'],
+                                           'Port': st_int(tp['inputBeaconServerPort'])}}
     mockup_dicts['Core'] = True if (tp['inputIsCore'] == 'on') else False
-    mockup_dicts['DNSServers'] = {'ds{}-1'.format(isd_as): {'Addr': tp['inputDomainServerAddress'],
-                                                            'Port': st_int(tp['inputDomainServerPort'])}}
+    mockup_dicts['DNSServers'] = {tp['inputDomainServerName']: {'Addr': tp['inputDomainServerAddress'],
+                                                                'Port': st_int(tp['inputDomainServerPort'])}}
     mockup_dicts['DnsDomain'] = tp['inputDnsDomain']
-    mockup_dicts['EdgeRouters'] = {'er{}er1-19'.format(isd_as): {'Addr': tp['inputEdgeRouterAddress'], 'Interface':
+    mockup_dicts['EdgeRouters'] = {tp['inputEdgeRouterName']: {'Addr': tp['inputEdgeRouterAddress'], 'Interface':
         {'Addr': tp['inputInterfaceAddr'],
          'Bandwidth': st_int(tp['inputInterfaceBandwidth']),
          'IFID': st_int(tp['inputInterfaceIFID']),
@@ -787,12 +789,12 @@ def generate_topology(request):
          'UdpPort': st_int(tp['inputInterfaceOwnPort'])}}}
     mockup_dicts['ISD_AS'] = tp['inputISD_AS']
     mockup_dicts['MTU'] = st_int(tp['inputMTU'])
-    mockup_dicts['PathServers'] = {'ps{}-1'.format(isd_as): {'Addr': tp['inputPathServerAddress'],
-                                                             'Port': st_int(tp['inputPathServerPort'])}}
-    mockup_dicts['SibraServers'] = {'sb{}-1'.format(isd_as): {'Addr': tp['inputSibraServerAddress'],
-                                                              'Port': st_int(tp['inputSibraServerPort'])}}
-    mockup_dicts['Zookeepers'] = {1: {'Addr': tp['inputZookeeperServerAddress'],
-                                      'Port': st_int(tp['inputZookeeperServerPort'])}}
+    mockup_dicts['PathServers'] = {
+        tp['inputPathServerName']: {'Addr': tp['inputPathServerAddress'], 'Port': st_int(tp['inputPathServerPort'])}}
+    mockup_dicts['SibraServers'] = {
+        tp['inputSibraServerName']: {'Addr': tp['inputSibraServerAddress'], 'Port': st_int(tp['inputSibraServerPort'])}}
+    mockup_dicts['Zookeepers'] = {
+        1: {'Addr': tp['inputZookeeperServerAddress'], 'Port': st_int(tp['inputZookeeperServerPort'])}}
 
     all_IP_port_pairs = []
     for r in ['BeaconServers', 'CertificateServers', 'DNSServers', 'PathServers', 'SibraServers', 'Zookeepers']:
@@ -809,7 +811,8 @@ def generate_topology(request):
     create_local_gen(isd_as)
     generate_ansible_hostfile(topology_params, isd_as)
 
-    reload_data_from_files([yaml_topo_path])  # load as usual model (for display in overview)
+    curr_as = get_object_or_404(AD, id=as_id)
+    curr_as.fill_from_topology(mockup_dicts)  # load as usual model (for display in overview)
 
     current_page = request.META.get('HTTP_REFERER')
     return redirect(current_page)
