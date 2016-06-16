@@ -33,9 +33,7 @@ import socket
 
 # SCION
 from guardian.shortcuts import assign_perm
-from ad_management.common import PACKAGE_DIR_PATH
-from ad_management.packaging import prepare_package
-from ad_management.util import (
+from ad_manager.util.response_handling import (
     get_failure_errors,
     get_success_data,
     is_success,
@@ -566,7 +564,8 @@ def approve_request(ad, ad_request):
         gen.write_derivatives(new_topo_dict)
 
         # Resulting package will be stored here
-        package_dir = os.path.join(PACKAGE_DIR_PATH, 'AD' + str(new_ad))
+        package_dir = os.path.join('gen', 'AD' + str(
+            new_ad))  # os.path.join(PACKAGE_DIR_PATH, 'AD' + str(new_ad)) TODO: replace ad_management functionality
         if os.path.exists(package_dir):
             rmtree(package_dir)
         os.makedirs(package_dir)
@@ -574,9 +573,9 @@ def approve_request(ad, ad_request):
         # Prepare package
         package_name = 'scion_package_AD{}-{}'.format(new_ad.isd, new_ad.id)
         config_dirs = [os.path.join(temp_dir, x) for x in os.listdir(temp_dir)]
-        ad_request.package_path = prepare_package(out_dir=package_dir,
-                                                  config_paths=config_dirs,
-                                                  package_name=package_name)
+        # ad_request.package_path = prepare_package(out_dir=package_dir,
+        #                                           config_paths=config_dirs,
+        #                                           package_name=package_name)
         ad_request.new_ad = new_ad
         ad_request.status = 'APPROVED'
         ad_request.save()

@@ -10,7 +10,7 @@ import os
 import sys
 from os.path import dirname as d
 
-sys.path.insert(0, d(d(d(os.path.abspath(__file__)))))  # noqa
+sys.path.insert(0, d(d(d(d(d(os.path.abspath(__file__)))))))  # noqa
 
 # External packages
 import django
@@ -19,12 +19,13 @@ from django.db import transaction
 import yaml
 
 # SCION
-from ad_management.common import WEB_SCION_DIR
 from lib.defines import GEN_PATH, PROJECT_ROOT
 from lib.topology import Topology
 
 # Set up the Django environment
 os.environ['DJANGO_SETTINGS_MODULE'] = 'web_scion.settings.private'  # noqa
+
+WEB_SCION_DIR = os.path.join(PROJECT_ROOT, 'web_scion')
 sys.path.insert(0, WEB_SCION_DIR)  # noqa
 django.setup()  # noqa
 

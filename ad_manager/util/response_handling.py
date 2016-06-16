@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-:mod:`util` --- AD management tool common functions
+:mod:`util` --- common functions for response handling, extracted from former ad_management/util.py
 ===================================================
 """
 
@@ -20,8 +20,11 @@
 import xmlrpc.client
 
 # SCION
-from ad_management.common import SUPERVISORD_PORT, MANAGEMENT_DAEMON_PORT
-from ad_management.secure_rpc import ServerProxyTLS
+# ad_management
+
+# Ports
+MANAGEMENT_DAEMON_PORT = 9010
+SUPERVISORD_PORT = 9011
 
 
 # Response wrappers for management client/server.
@@ -52,7 +55,7 @@ def get_management_server(host='localhost'):
     :rtype:
     """
     url = 'https://{}:{}/'.format(host, MANAGEMENT_DAEMON_PORT)
-    return ServerProxyTLS(url)
+    return ''  # ServerProxyTLS(url)  TODO: replace ad_management functionality
 
 
 def response_success(*data):

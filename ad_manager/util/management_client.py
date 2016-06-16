@@ -5,7 +5,7 @@ import os
 import xmlrpc.client
 
 # SCION
-from ad_management.util import get_management_server, response_failure
+from ad_manager.util.response_handling import response_failure
 
 
 def run_remote(func):
@@ -14,7 +14,7 @@ def run_remote(func):
     """
 
     def wrapper(md_host, *args, **kwargs):
-        s = get_management_server(md_host)
+        s = ''  # get_management_server(md_host)  TODO: replace ad_management functionality
         try:
             return func(s, *args, **kwargs)
         except ConnectionRefusedError as ex:

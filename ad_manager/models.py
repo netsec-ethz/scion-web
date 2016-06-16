@@ -13,8 +13,7 @@ from django.core.urlresolvers import reverse
 from django.db import models, IntegrityError
 
 # SCION
-from ad_management.common import PACKAGE_DIR_PATH
-from ad_management.util import get_success_data, is_success
+from ad_manager.util.response_handling import get_success_data, is_success
 from ad_manager.util import management_client
 from ad_manager.util.common import empty_dict
 from lib.defines import (
@@ -25,6 +24,7 @@ from lib.defines import (
 )
 
 PORT = 50000
+PACKAGE_DIR_PATH  = 'gen'
 
 
 class SelectRelatedModelManager(models.Manager):
@@ -322,7 +322,8 @@ class PackageVersion(models.Model):
         if clear:
             PackageVersion.objects.all().delete()
 
-        glob_string = os.path.join(PACKAGE_DIR_PATH, '*.tar')
+        glob_string = os.path.join('gen', '*.tar')  # os.path.join(PACKAGE_DIR_PATH,
+        #  '*.tar') TODO: replace ad_management functionality
         tar_files = glob.glob(glob_string)
         for filename in tar_files:
             with tarfile.open(filename, 'r') as tar_fh:
