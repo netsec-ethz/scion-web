@@ -17,7 +17,7 @@ from ad_manager.models import (
     DnsServerWeb,
     AD)
 from ad_manager.util.common import is_private_address
-from lib.defines import GEN_PATH, PROJECT_ROOT
+from lib.defines import PROJECT_ROOT
 from lib.util import read_file, write_file, get_trc_file_path
 from topology.generator import (
     ConfigGenerator,

@@ -96,8 +96,10 @@ class PythonRPCInterface(object):
                                           'supervisor.sh')
         res = subprocess.check_call([supervisor_sh_path, 'update'],
                                     cwd=PROJECT_ROOT)
+        print(res)
         res = subprocess.check_call([supervisor_sh_path, 'quickstart all'],
                                     cwd=PROJECT_ROOT)
+        print(res)
         print('done')
         return 'Succeeded'
 

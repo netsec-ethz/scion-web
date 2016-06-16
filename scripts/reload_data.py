@@ -22,6 +22,10 @@ import yaml
 from lib.defines import GEN_PATH, PROJECT_ROOT
 from lib.topology import Topology
 
+# Django app imports
+from ad_manager.models import AD, ISD
+from django.contrib.auth.models import User
+
 # Set up the Django environment
 os.environ['DJANGO_SETTINGS_MODULE'] = 'web_scion.settings.private'  # noqa
 
@@ -30,10 +34,6 @@ sys.path.insert(0, WEB_SCION_DIR)  # noqa
 django.setup()  # noqa
 
 GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
-
-# Django app imports
-from ad_manager.models import AD, ISD
-from django.contrib.auth.models import User
 
 
 def clear_everything():
@@ -71,8 +71,8 @@ def get_topology(file):
         try:
             topo_dict = yaml.load(stream)
             return topo_dict
-        except (yaml.YAMLError, KeyError) as e:
-            return []
+        except (yaml.YAMLError, KeyError):
+            return []  # TODO: give user feedback
 
 
 def reload_data_from_files(topology_files):

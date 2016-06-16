@@ -1,6 +1,15 @@
 # Stdlib
 import configparser
-from lib.defines import *
+import os
+
+from lib.defines import (BEACON_SERVICE,
+                         CERTIFICATE_SERVICE,
+                         DNS_SERVICE,
+                         PATH_SERVICE,
+                         ROUTER_SERVICE,
+                         SIBRA_SERVICE,
+                         PROJECT_ROOT)
+ZOOKEEPER_SERVICE = "zk"  # TODO: make PR to add into lib.defines as it used to
 
 
 def generate_ansible_hostfile(topology_params, isd_as):

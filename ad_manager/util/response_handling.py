@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-:mod:`util` --- common functions for response handling, extracted from former ad_management/util.py
+:mod:`util` --- common functions for response handling,
+extracted from former ad_management/util.py
 ===================================================
 """
 
@@ -54,7 +55,7 @@ def get_management_server(host='localhost'):
     :returns:
     :rtype:
     """
-    url = 'https://{}:{}/'.format(host, MANAGEMENT_DAEMON_PORT)
+    # url = 'https://{}:{}/'.format(host, MANAGEMENT_DAEMON_PORT)
     return ''  # ServerProxyTLS(url)  TODO: replace ad_management functionality
 
 

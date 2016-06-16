@@ -1,8 +1,8 @@
 # Stdlib
-import copy
 import json
 import tempfile
 import time
+import os
 from collections import deque
 from shutil import rmtree
 
@@ -53,12 +53,15 @@ from ad_manager.util.ad_connect import (
 )
 from ad_manager.util.errors import HttpResponseUnavailable
 from lib.util import write_file
-from topology.generator import ConfigGenerator, DEFAULT_PATH_POLICY_FILE, \
-    DEFAULT_ZK_CONFIG
+from topology.generator import ConfigGenerator  # , DEFAULT_PATH_POLICY_FILE,
+# DEFAULT_ZK_CONFIG
 
-from scripts.reload_data import reload_data_from_files
-
-from lib.defines import *
+from lib.defines import (BEACON_SERVICE,
+                         CERTIFICATE_SERVICE,
+                         DNS_SERVICE,
+                         PATH_SERVICE,
+                         ROUTER_SERVICE,
+                         SIBRA_SERVICE)
 from lib.defines import GEN_PATH, PROJECT_ROOT
 
 from ad_manager.util.hostfile_generator import generate_ansible_hostfile
@@ -67,6 +70,32 @@ import subprocess
 from shutil import copy, copytree
 
 GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
+ZOOKEEPER_SERVICE = "zk"  # TODO: make PR to add into lib.defines as it used to
+# Scion beacon server
+BEACON_EXECUTABLE = "beacon_server"
+# Scion certificate server
+CERTIFICATE_EXECUTABLE = "cert_server"
+# Scion path server
+PATH_EXECUTABLE = "path_server"
+# Scion sibra server
+SIBRA_EXECUTABLE = "sibra_server"
+# Scion domain name server
+DNS_EXECUTABLE = "dns_server"
+# Scion edge router
+ROUTER_EXECUTABLE = "router"
+# Zookeeper executable
+ZOOKEEPER_EXECUTABLE = "zookeeper.jar"
+
+#: All the service types executables
+#  TODO: make PR to add into lib.defines as it used to
+SERVICE_EXECUTABLES = (
+    BEACON_EXECUTABLE,
+    CERTIFICATE_EXECUTABLE,
+    DNS_EXECUTABLE,
+    PATH_EXECUTABLE,
+    ROUTER_EXECUTABLE,
+    SIBRA_EXECUTABLE,
+)
 
 
 class ISDListView(ListView):
@@ -573,8 +602,8 @@ def approve_request(ad, ad_request):
         os.makedirs(package_dir)
 
         # Prepare package
-        package_name = 'scion_package_AD{}-{}'.format(new_ad.isd, new_ad.id)
-        config_dirs = [os.path.join(temp_dir, x) for x in os.listdir(temp_dir)]
+        # package_name = 'scion_package_AD{}-{}'.format(new_ad.isd, new_ad.id)
+        # config_dirs = [os.path.join(temp_dir,x) for x in os.listdir(temp_dir)]
         # ad_request.package_path = prepare_package(out_dir=package_dir,
         #                                           config_paths=config_dirs,
         #                                           package_name=package_name)
@@ -1079,9 +1108,6 @@ def create_local_gen(isd_as):
 
         # copy AS topology.yml file into node
         copy(yaml_topo_path, node_path)
-
-
-
         # Generating only the needed intermediate parts
         # not used as for now we generator.py all certs and keys resources
         # (minimaly required are only the certs and keys folders.
@@ -1135,6 +1161,7 @@ def run_remote_command(ip, process_name, command):
                                         os.path.join(PROJECT_ROOT, 'ansible',
                                                      'deploy-ethz.yml'),
                                         '-f', '32'], cwd=PROJECT_ROOT)
+        print(result)
     return 0
 
 
