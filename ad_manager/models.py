@@ -24,7 +24,7 @@ from lib.defines import (
 )
 
 PORT = 50000
-PACKAGE_DIR_PATH  = 'gen'
+PACKAGE_DIR_PATH = 'gen'
 
 
 class SelectRelatedModelManager(models.Manager):
@@ -78,7 +78,8 @@ class AD(models.Model):
         """
         Get the corresponding remote topology as a Python dictionary.
         """
-        topology_response = management_client.get_topology(self.md_host, self.isd.id, self.id)
+        topology_response = management_client.get_topology(self.md_host,
+                                                           self.isd.id, self.id)
         if not is_success(topology_response):
             return None
 
@@ -176,23 +177,23 @@ class AD(models.Model):
 
             for name, bs in beacon_servers.items():
                 BeaconServerWeb.objects.update_or_create(addr=bs["Addr"],
-                                               name=name,
-                                               ad=self)
+                                                         name=name,
+                                                         ad=self)
 
             for name, cs in certificate_servers.items():
                 CertificateServerWeb.objects.update_or_create(addr=cs["Addr"],
-                                                    name=name,
-                                                    ad=self)
+                                                              name=name,
+                                                              ad=self)
 
             for name, ps in path_servers.items():
                 PathServerWeb.objects.update_or_create(addr=ps["Addr"],
-                                             name=name,
-                                             ad=self)
+                                                       name=name,
+                                                       ad=self)
 
             for name, ds in dns_servers.items():
                 DnsServerWeb.objects.update_or_create(addr=str(ds["Addr"]),
-                                            name=name,
-                                            ad=self)
+                                                      name=name,
+                                                      ad=self)
         except IntegrityError:
             logging.warning("Integrity error in AD.fill_from_topology(): "
                             "ignoring")
@@ -223,7 +224,7 @@ class SCIONWebElement(models.Model):
 
     def id_str(self):
         # FIXME How to identify multiple servers of the same type?
-        #return "{}{}-{}-{}".format(self.prefix, self.ad.isd_id,
+        # return "{}{}-{}-{}".format(self.prefix, self.ad.isd_id,
         #                           self.ad_id, self.name)
         return self.name
 
@@ -322,7 +323,8 @@ class PackageVersion(models.Model):
         if clear:
             PackageVersion.objects.all().delete()
 
-        glob_string = os.path.join('gen', '*.tar')  # os.path.join(PACKAGE_DIR_PATH,
+        glob_string = os.path.join('gen',
+                                   '*.tar')  # os.path.join(PACKAGE_DIR_PATH,
         #  '*.tar') TODO: replace ad_management functionality
         tar_files = glob.glob(glob_string)
         for filename in tar_files:
@@ -357,17 +359,17 @@ class PackageVersion(models.Model):
 
 
 class ConnectionRequest(models.Model):
-
     STATUS_OPTIONS = ['NONE', 'SENT', 'APPROVED', 'DECLINED']
 
     created_by = models.ForeignKey(User)
     connect_to = models.ForeignKey(AD, related_name='received_requests')
     new_ad = models.ForeignKey(AD, blank=True, null=True)
     info = models.TextField()
-    #router_bound_ip = models.GenericIPAddressField()
-    #router_bound_port = models.IntegerField(default=int(PORT))
+    # router_bound_ip = models.GenericIPAddressField()
+    # router_bound_port = models.IntegerField(default=int(PORT))
     router_public_ip = models.GenericIPAddressField(blank=True, null=True)
-    router_public_port = models.IntegerField(blank=True, null=True, default=int(PORT))
+    router_public_port = models.IntegerField(blank=True, null=True,
+                                             default=int(PORT))
     status = models.CharField(max_length=20,
                               choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
                               default='NONE')
@@ -382,14 +384,16 @@ class ConnectionRequest(models.Model):
 
 
 class Node(models.Model):
-    uuid = models.CharField(primary_key=True, max_length=100, null=False, blank=False)
+    uuid = models.CharField(primary_key=True, max_length=100, null=False,
+                            blank=False)
     name = models.CharField(max_length=50, null=False, blank=False)
     last_seen = models.DateTimeField(null=False)
     IP = models.IPAddressField(default='127.0.0.1')
     ISD = models.CharField(max_length=10, null=False, blank=False)
     AS = models.CharField(max_length=10, null=False, blank=False)
-    #is_core_ad = models.BooleanField(default=False)
-    #dns_domain = models.CharField(max_length=100, null=True, blank=True)
+
+    # is_core_ad = models.BooleanField(default=False)
+    # dns_domain = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
         return 'UUID: ' + str(self.id) + ', last seen: ' + str(self.last_seen)

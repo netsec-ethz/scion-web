@@ -53,7 +53,8 @@ from ad_manager.util.ad_connect import (
 )
 from ad_manager.util.errors import HttpResponseUnavailable
 from lib.util import write_file
-from topology.generator import ConfigGenerator, DEFAULT_PATH_POLICY_FILE, DEFAULT_ZK_CONFIG
+from topology.generator import ConfigGenerator, DEFAULT_PATH_POLICY_FILE, \
+    DEFAULT_ZK_CONFIG
 
 from scripts.reload_data import reload_data_from_files
 
@@ -424,7 +425,7 @@ def read_log(request, pk, proc_id):
 
 
 class ConnectionRequestView(FormView):
-    #form_class = ConnectionRequestForm
+    # form_class = ConnectionRequestForm
     template_name = 'ad_manager/new_connection_request.html'
     success_url = ''
 
@@ -565,7 +566,8 @@ def approve_request(ad, ad_request):
 
         # Resulting package will be stored here
         package_dir = os.path.join('gen', 'AD' + str(
-            new_ad))  # os.path.join(PACKAGE_DIR_PATH, 'AD' + str(new_ad)) TODO: replace ad_management functionality
+            new_ad))  # os.path.join(PACKAGE_DIR_PATH,
+        # 'AD' + str(new_ad)) TODO: replace ad_management functionality
         if os.path.exists(package_dir):
             rmtree(package_dir)
         os.makedirs(package_dir)
@@ -731,14 +733,17 @@ def register_node(request):
 
     management_interface_ip = node_values['inputManagementInterfaceIP']
 
-    result = run_rpc_command(node_ip, None, management_interface_ip, 'register', node_isd, node_as)
+    result = run_rpc_command(node_ip, None, management_interface_ip, 'register',
+                             node_isd, node_as)
     uuid = result['uuid']
 
-    new_node, created = Node.objects.get_or_create(uuid=uuid, defaults={'name': node_name,
-                                                                        'last_seen': last_seen,
-                                                                        'IP': node_ip,
-                                                                        'ISD': node_isd,
-                                                                        'AS': node_as})
+    new_node, created = Node.objects. \
+        get_or_create(uuid=uuid,
+                      defaults={'name': node_name,
+                                'last_seen': last_seen,
+                                'IP': node_ip,
+                                'ISD': node_isd,
+                                'AS': node_as})
     if not created:
         new_node.last_seen = datetime.now
         new_node.save()
@@ -752,7 +757,8 @@ def wrong_api_call(request):
     return JsonResponse({'data': 'Failure'})
 
 
-yaml_topo_path = os.path.join(PROJECT_ROOT, 'web_scion', 'ad_manager', 'static', 'tmp', 'topology.yml')
+yaml_topo_path = os.path.join(PROJECT_ROOT, 'web_scion', 'ad_manager', 'static',
+                              'tmp', 'topology.yml')
 
 
 def st_int(s):
@@ -763,46 +769,68 @@ def st_int(s):
 @require_POST
 def generate_topology(request):
     topology_params = request.POST.copy()
-    topology_params.pop('csrfmiddlewaretoken', None)  # remove csrf entry, as we don't need it
+    topology_params.pop('csrfmiddlewaretoken',
+                        None)  # remove csrf entry, as we don't need it
 
     mockup_dicts = {}
     tp = topology_params
     isd_as = tp['inputISD_AS']
     isd_id, as_id = isd_as.split('-')
-    mockup_dicts['BeaconServers'] = {tp['inputBeaconServerName']: {'Addr': tp['inputBeaconServerAddress'],
-                                                                   'Port': st_int(tp['inputBeaconServerPort'])}}
+    mockup_dicts['BeaconServers'] = {
+        tp['inputBeaconServerName']: {'Addr': tp['inputBeaconServerAddress'],
+                                      'Port': st_int(
+                                          tp['inputBeaconServerPort'])}}
     mockup_dicts['CertificateServers'] = {
-        tp['inputCertificateServerName']: {'Addr': tp['inputCertificateServerAddress'],
-                                           'Port': st_int(tp['inputBeaconServerPort'])}}
+        tp['inputCertificateServerName']: {
+            'Addr': tp['inputCertificateServerAddress'],
+            'Port': st_int(tp['inputBeaconServerPort'])}}
     mockup_dicts['Core'] = True if (tp['inputIsCore'] == 'on') else False
-    mockup_dicts['DNSServers'] = {tp['inputDomainServerName']: {'Addr': tp['inputDomainServerAddress'],
-                                                                'Port': st_int(tp['inputDomainServerPort'])}}
+    mockup_dicts['DNSServers'] = {
+        tp['inputDomainServerName']: {'Addr': tp['inputDomainServerAddress'],
+                                      'Port': st_int(
+                                          tp['inputDomainServerPort'])}}
     mockup_dicts['DnsDomain'] = tp['inputDnsDomain']
-    mockup_dicts['EdgeRouters'] = {tp['inputEdgeRouterName']: {'Addr': tp['inputEdgeRouterAddress'], 'Interface':
-        {'Addr': tp['inputInterfaceAddr'],
-         'Bandwidth': st_int(tp['inputInterfaceBandwidth']),
-         'IFID': st_int(tp['inputInterfaceIFID']),
-         'ISD_AS': tp['inputInterfaceRemoteName'], 'LinkType': tp['inputInterfaceType'],
-         'ToAddr': tp['inputInterfaceRemoteAddress'],
-         'ToUdpPort': st_int(tp['inputInterfaceRemotePort']),
-         'UdpPort': st_int(tp['inputInterfaceOwnPort'])}}}
+    mockup_dicts['EdgeRouters'] = {
+        tp['inputEdgeRouterName']: {'Addr': tp['inputEdgeRouterAddress'],
+                                    'Interface':
+                                        {'Addr': tp['inputInterfaceAddr'],
+                                         'Bandwidth': st_int(
+                                             tp['inputInterfaceBandwidth']),
+                                         'IFID': st_int(
+                                             tp['inputInterfaceIFID']),
+                                         'ISD_AS': tp[
+                                             'inputInterfaceRemoteName'],
+                                         'LinkType': tp['inputInterfaceType'],
+                                         'ToAddr': tp[
+                                             'inputInterfaceRemoteAddress'],
+                                         'ToUdpPort': st_int(
+                                             tp['inputInterfaceRemotePort']),
+                                         'UdpPort': st_int(
+                                             tp['inputInterfaceOwnPort'])}}}
     mockup_dicts['ISD_AS'] = tp['inputISD_AS']
     mockup_dicts['MTU'] = st_int(tp['inputMTU'])
     mockup_dicts['PathServers'] = {
-        tp['inputPathServerName']: {'Addr': tp['inputPathServerAddress'], 'Port': st_int(tp['inputPathServerPort'])}}
+        tp['inputPathServerName']: {'Addr': tp['inputPathServerAddress'],
+                                    'Port': st_int(tp['inputPathServerPort'])}}
     mockup_dicts['SibraServers'] = {
-        tp['inputSibraServerName']: {'Addr': tp['inputSibraServerAddress'], 'Port': st_int(tp['inputSibraServerPort'])}}
+        tp['inputSibraServerName']: {'Addr': tp['inputSibraServerAddress'],
+                                     'Port': st_int(
+                                         tp['inputSibraServerPort'])}}
     mockup_dicts['Zookeepers'] = {
-        1: {'Addr': tp['inputZookeeperServerAddress'], 'Port': st_int(tp['inputZookeeperServerPort'])}}
+        1: {'Addr': tp['inputZookeeperServerAddress'],
+            'Port': st_int(tp['inputZookeeperServerPort'])}}
 
     all_IP_port_pairs = []
-    for r in ['BeaconServers', 'CertificateServers', 'DNSServers', 'PathServers', 'SibraServers', 'Zookeepers']:
+    for r in ['BeaconServers', 'CertificateServers', 'DNSServers',
+              'PathServers', 'SibraServers', 'Zookeepers']:
         servers_of_type_r = mockup_dicts[r]
         for server in servers_of_type_r:
-            curr_pair = servers_of_type_r[server]['Addr'] + ':' + str(servers_of_type_r[server]['Port'])
+            curr_pair = servers_of_type_r[server]['Addr'] + ':' + str(
+                servers_of_type_r[server]['Port'])
             all_IP_port_pairs.append(curr_pair)
     if len(all_IP_port_pairs) != len(set(all_IP_port_pairs)):
-        return JsonResponse({'data': 'IP:port combinations not unique within AS'})
+        return JsonResponse(
+            {'data': 'IP:port combinations not unique within AS'})
 
     with open(yaml_topo_path, 'w') as file:
         yaml.dump(mockup_dicts, file, default_flow_style=False)
@@ -811,7 +839,8 @@ def generate_topology(request):
     generate_ansible_hostfile(topology_params, isd_as)
 
     curr_as = get_object_or_404(AD, id=as_id)
-    curr_as.fill_from_topology(mockup_dicts)  # load as usual model (for display in overview)
+    curr_as.fill_from_topology(
+        mockup_dicts)  # load as usual model (for display in overview)
 
     current_page = request.META.get('HTTP_REFERER')
     return redirect(current_page)
@@ -855,7 +884,8 @@ def create_tar(tar_file_path):
 
 
 def lookup_dict_services_prefixes():
-    # looks up the prefix used for naming supervisor processes, beacon server -> 'bs', ... TODO: move to util
+    # looks up the prefix used for naming supervisor processes,
+    # beacon server -> 'bs', ... TODO: move to util
     return {'router': ROUTER_SERVICE,
             'beacon_server': BEACON_SERVICE,
             'path_server': PATH_SERVICE,
@@ -886,13 +916,16 @@ def deploy_config(request):
     types = tar_params.getlist('type[]')
     management_interface_ip = tar_params['managementInterfaceIP']
 
-    # looks up the name of the executable for the service, certificate server -> 'cert_server', ...
+    # looks up the name of the executable for the service,
+    # certificate server -> 'cert_server', ...
     lkx = lookup_dict_executables()
 
-    # looks up the prefix used for naming supervisor processes, beacon server -> 'bs', ...
+    # looks up the prefix used for naming supervisor processes,
+    # beacon server -> 'bs', ...
     lkp = lookup_dict_services_prefixes()
 
-    tmp_folder_path = os.path.join(PROJECT_ROOT, 'web_scion', 'ad_manager', 'static', 'tmp')
+    tmp_folder_path = os.path.join(PROJECT_ROOT, 'web_scion', 'ad_manager',
+                                   'static', 'tmp')
 
     current_node_file = os.path.join(tmp_folder_path, node_uuid + '.tar')
     create_tar(current_node_file)
@@ -903,10 +936,12 @@ def deploy_config(request):
         executable_name = lkx[service_type]
         # Get digits only from ISD and AS names
         lkp['d'] = lambda x: ''.join(filter(str.isdigit(), x))
-        serv_name = '{}{}-{}-1'.format(prefix, lkp['d'](node.ISD), lkp['d'](node.AS))
+        serv_name = '{}{}-{}-1'.format(prefix, lkp['d'](node.ISD),
+                                       lkp['d'](node.AS))
         config['program:' + serv_name] = \
             {'startsecs': '5',
-             'command': '"bin/{0}" "{1}" "gen/{2}/{3}/{1}"'.format(executable_name, serv_name, node.ISD, node.AS),
+             'command': '"bin/{0}" "{1}" "gen/{2}/{3}/{1}"'.format(
+                 executable_name, serv_name, node.ISD, node.AS),
              'startretries': '0',
              'stdout_logfile': 'logs/' + serv_name + '.OUT',
              'redirect_stderr': 'true',
@@ -917,22 +952,23 @@ def deploy_config(request):
 
         # replace command entry if zookeeper special case
         if service_type == 'zookeeper_service':
-            config['program:' + serv_name]['command'] = '"java" "-cp"' \
-                                                        ' "gen/{2}/{3}/{1}:' \
-                                                        '/usr/share/java/jline.jar:' \
-                                                        '/usr/share/java/log4j-1.2.jar:' \
-                                                        '/usr/share/java/xercesImpl.jar:' \
-                                                        '/usr/share/java/xmlParserAPIs.jar:' \
-                                                        '/usr/share/java/netty.jar:' \
-                                                        '/usr/share/java/slf4j-api.jar:' \
-                                                        '/usr/share/java/slf4j-log4j12.jar:' \
-                                                        '/usr/share/java/{0}" ' \
-                                                        '"-Dzookeeper.log.file=logs/{1}.log" ' \
-                                                        '"org.apache.zookeeper.server.quorum.QuorumPeerMain" ' \
-                                                        '"gen/{2}/{3}/{1}/zoo.cfg"'.format(executable_name,
-                                                                                           serv_name,
-                                                                                           node.ISD,
-                                                                                           node.AS)
+            config['program:' + serv_name]['command'] = \
+                '"java" "-cp"' \
+                ' "gen/{2}/{3}/{1}:' \
+                '/usr/share/java/jline.jar:' \
+                '/usr/share/java/log4j-1.2.jar:' \
+                '/usr/share/java/xercesImpl.jar:' \
+                '/usr/share/java/xmlParserAPIs.jar:' \
+                '/usr/share/java/netty.jar:' \
+                '/usr/share/java/slf4j-api.jar:' \
+                '/usr/share/java/slf4j-log4j12.jar:' \
+                '/usr/share/java/{0}" ' \
+                '"-Dzookeeper.log.file=logs/{1}.log" ' \
+                '"org.apache.zookeeper.server.quorum.QuorumPeerMain" ' \
+                '"gen/{2}/{3}/{1}/zoo.cfg"'.format(executable_name,
+                                                   serv_name,
+                                                   node.ISD,
+                                                   node.AS)
 
         conf_file_path = os.path.join(tmp_folder_path, 'supervisord.conf')
         with open(conf_file_path, 'w') as configfile:
@@ -941,25 +977,33 @@ def deploy_config(request):
         cert_path = os.path.join(tmp_folder_path, 'certs_only')
         add_file_to_tar(cert_path, serv_name, current_node_file)
         # add instead data and zoo.cfg for zookeeper config
-        add_file_to_tar(yaml_topo_path, os.path.join('/' + serv_name, 'topology.yml'), current_node_file)
-        add_file_to_tar(conf_file_path, os.path.join('/' + serv_name, 'supervisord.conf'), current_node_file)
+        add_file_to_tar(yaml_topo_path,
+                        os.path.join('/' + serv_name, 'topology.yml'),
+                        current_node_file)
+        add_file_to_tar(conf_file_path,
+                        os.path.join('/' + serv_name, 'supervisord.conf'),
+                        current_node_file)
 
-    run_rpc_command(node.IP, node.uuid, management_interface_ip, 'retrieve_tar', node.ISD, node.AS)
+    run_rpc_command(node.IP, node.uuid, management_interface_ip, 'retrieve_tar',
+                    node.ISD, node.AS)
     current_page = request.META.get('HTTP_REFERER')
     return redirect(current_page)
 
 
 def create_local_gen(isd_as):
     """
-    creates the usual gen folder structure for an ISD/AS under web_scion/gen, ready for Ansible deployment
+    creates the usual gen folder structure for an ISD/AS under web_scion/gen,
+    ready for Ansible deployment
     Args:
         isd_as: isd-as string
 
     """
-    # looks up the name of the executable for the service, certificate server -> 'cert_server', ...
+    # looks up the name of the executable for the service,
+    # certificate server -> 'cert_server', ...
     lkx = lookup_dict_executables()
 
-    # looks up the prefix used for naming supervisor processes, beacon server -> 'bs', ...
+    # looks up the prefix used for naming supervisor processes,
+    # beacon server -> 'bs', ...
     lkp = lookup_dict_services_prefixes()
 
     isd_id, as_id = isd_as.split('-')
@@ -968,18 +1012,20 @@ def create_local_gen(isd_as):
 
     dispatcher_folder_path = os.path.join(local_gen_path, 'dispatcher')
     if not os.path.exists(dispatcher_folder_path):
-        copytree(os.path.join(PROJECT_ROOT, 'gen', 'dispatcher'), dispatcher_folder_path)
+        copytree(os.path.join(PROJECT_ROOT, 'gen', 'dispatcher'),
+                 dispatcher_folder_path)
 
     # TODO: Cert distribution needs integration with scion-coord,
-    # using bruteforce copying over some gen certs and matching keys to get Ansible testing
+    # using bruteforce copying over some gen certs and
+    # matching keys to get Ansible testing
     # before integration with scion-coord
     shared_files_path = os.path.join(local_gen_path, 'shared_files')
     if not os.path.exists(shared_files_path):
-        copytree(os.path.join(PROJECT_ROOT, 'gen/ISD1/AS10/bs1-10-1/'), shared_files_path)
+        copytree(os.path.join(PROJECT_ROOT, 'gen/ISD1/AS10/bs1-10-1/'),
+                 shared_files_path)
         # remove files that are not shared
         os.remove(os.path.join(shared_files_path, 'supervisord.conf'))
         os.remove(os.path.join(shared_files_path, 'topology.yml'))
-
 
     types = ['router', 'beacon_server', 'path_server', 'certificate_server',
              'domain_server', 'sibra_server', 'zookeeper_service']
@@ -992,7 +1038,8 @@ def create_local_gen(isd_as):
         serv_name = '{}{}-{}-1'.format(prefix, isd_id, as_id)
         config['program:' + serv_name] = \
             {'startsecs': '5',
-             'command': '"bin/{0}" "{1}" "gen/ISD{2}/AS{3}/{1}"'.format(executable_name, serv_name, isd_id, as_id),
+             'command': '"bin/{0}" "{1}" "gen/ISD{2}/AS{3}/{1}"'.format(
+                 executable_name, serv_name, isd_id, as_id),
              'startretries': '0',
              'stdout_logfile': 'logs/' + serv_name + '.OUT',
              'redirect_stderr': 'true',
@@ -1003,26 +1050,27 @@ def create_local_gen(isd_as):
 
         # replace command entry if zookeeper special case
         if service_type == 'zookeeper_service':
-            config['program:' + serv_name]['command'] = '"java" "-cp"' \
-                                                        ' "gen/{2}/{3}/{1}:' \
-                                                        '/usr/share/java/jline.jar:' \
-                                                        '/usr/share/java/log4j-1.2.jar:' \
-                                                        '/usr/share/java/xercesImpl.jar:' \
-                                                        '/usr/share/java/xmlParserAPIs.jar:' \
-                                                        '/usr/share/java/netty.jar:' \
-                                                        '/usr/share/java/slf4j-api.jar:' \
-                                                        '/usr/share/java/slf4j-log4j12.jar:' \
-                                                        '/usr/share/java/{0}" ' \
-                                                        '"-Dzookeeper.log.file=logs/{1}.log" ' \
-                                                        '"org.apache.zookeeper.server.quorum.QuorumPeerMain" ' \
-                                                        '"gen/ISD{2}/AS{3}/{1}/zoo.cfg"'.format(executable_name,
-                                                                                                serv_name,
-                                                                                                isd_id,
-                                                                                                as_id)
+            config['program:' + serv_name]['command'] = \
+                '"java" "-cp"' \
+                ' "gen/{2}/{3}/{1}:' \
+                '/usr/share/java/jline.jar:' \
+                '/usr/share/java/log4j-1.2.jar:' \
+                '/usr/share/java/xercesImpl.jar:' \
+                '/usr/share/java/xmlParserAPIs.jar:' \
+                '/usr/share/java/netty.jar:' \
+                '/usr/share/java/slf4j-api.jar:' \
+                '/usr/share/java/slf4j-log4j12.jar:' \
+                '/usr/share/java/{0}" ' \
+                '"-Dzookeeper.log.file=logs/{1}.log" ' \
+                '"org.apache.zookeeper.server.quorum.QuorumPeerMain" ' \
+                '"gen/ISD{2}/AS{3}/{1}/zoo.cfg"'.format(executable_name,
+                                                        serv_name,
+                                                        isd_id,
+                                                        as_id)
 
         node_path = 'ISD{}/AS{}/{}'.format(isd_id, as_id, serv_name)
         node_path = os.path.join(local_gen_path, node_path)
-        #os.makedirs(node_path, exist_ok=True)
+        # os.makedirs(node_path, exist_ok=True)
         if not os.path.exists(node_path):
             copytree(os.path.join(shared_files_path), node_path)
         conf_file_path = os.path.join(node_path, 'supervisord.conf')
@@ -1034,25 +1082,27 @@ def create_local_gen(isd_as):
 
 
 
-    # Generating only the needed intermediate parts
-    # not used as for now we generator.py all certs and keys resources
-    # (minimaly required are only the certs and keys folders. path_policy.yml can be copied over from PathPolicy.yml,
-    # and as.yml is only a dict dump with a random master key)
+        # Generating only the needed intermediate parts
+        # not used as for now we generator.py all certs and keys resources
+        # (minimaly required are only the certs and keys folders.
+        # path_policy.yml can be copied over from PathPolicy.yml,
+        # and as.yml is only a dict dump with a random master key)
 
-    # tmp_cert_gen_path = os.path.join(PROJECT_ROOT, 'web_scion', 'tmp_cert_gen')
-    # os.makedirs(tmp_cert_gen_path, exist_ok=True)
-    # copy(yaml_topo_path, tmp_cert_gen_path)
-    #
-    # topo_config = os.path.join(tmp_cert_gen_path, 'topology.yml')
-    # path_policy = DEFAULT_PATH_POLICY_FILE
-    # mininet = False
-    # network = "127.0.0.0/8"
-    # output_dir = tmp_cert_gen_path
-    # zk_config = os.path.join(PROJECT_ROOT, 'topology/Zookeeper.yml')
-    # confgen = ConfigGenerator(
-    #     output_dir, topo_config, path_policy, zk_config,
-    #     network, mininet)
-    # confgen.generate_all()
+        # tmp_cert_gen_path = os.path.join(PROJECT_ROOT, 'web_scion',
+        # 'tmp_cert_gen')
+        # os.makedirs(tmp_cert_gen_path, exist_ok=True)
+        # copy(yaml_topo_path, tmp_cert_gen_path)
+        #
+        # topo_config = os.path.join(tmp_cert_gen_path, 'topology.yml')
+        # path_policy = DEFAULT_PATH_POLICY_FILE
+        # mininet = False
+        # network = "127.0.0.0/8"
+        # output_dir = tmp_cert_gen_path
+        # zk_config = os.path.join(PROJECT_ROOT, 'topology/Zookeeper.yml')
+        # confgen = ConfigGenerator(
+        #     output_dir, topo_config, path_policy, zk_config,
+        #     network, mininet)
+        # confgen.generate_all()
 
 
 def run_remote_command(ip, process_name, command):
@@ -1063,20 +1113,27 @@ def run_remote_command(ip, process_name, command):
         wait_for_result = True
         succeeded = False
         if command == 'retrieve_tar':
-            succeeded = server.supervisor.startProcess(process_name, wait_for_result)
+            succeeded = server.supervisor.startProcess(process_name,
+                                                       wait_for_result)
 
         if command == 'STOP':
-            succeeded = server.supervisor.stopProcess(process_name, wait_for_result)
+            succeeded = server.supervisor.stopProcess(process_name,
+                                                      wait_for_result)
         if command == 'START':
-            succeeded = server.supervisor.startProcess(process_name, wait_for_result)
+            succeeded = server.supervisor.startProcess(process_name,
+                                                       wait_for_result)
         if command == 'STATUS':
             offset = 0
             length = 4000
-            succeeded = server.supervisor.tailProcessStdoutLog(process_name, offset, length)
+            succeeded = server.supervisor.tailProcessStdoutLog(process_name,
+                                                               offset, length)
         print('Remote operation {} completed: {}'.format(command, succeeded))
     else:
-        # using the ansibleCLI instead of duplicating code to use the PlaybookExecutor
-        result = subprocess.check_call(['ansible-playbook', os.path.join(PROJECT_ROOT, 'ansible', 'deploy-ethz.yml'),
+        # using the ansibleCLI instead of
+        # duplicating code to use the PlaybookExecutor
+        result = subprocess.check_call(['ansible-playbook',
+                                        os.path.join(PROJECT_ROOT, 'ansible',
+                                                     'deploy-ethz.yml'),
                                         '-f', '32'], cwd=PROJECT_ROOT)
     return 0
 
@@ -1087,7 +1144,8 @@ def run_rpc_command(ip, uuid, management_interface_ip, command, ISD, AS):
     if command == 'register':
         result = server.register(management_interface_ip, ISD, AS)
     elif command == 'retrieve_tar':
-        result = server.retrieve_configuration(uuid, management_interface_ip, ISD, AS)
+        result = server.retrieve_configuration(uuid, management_interface_ip,
+                                               ISD, AS)
     else:
         print('Wrong command')
     print('Remote operation {} completed: {}'.format(command, 'True'))

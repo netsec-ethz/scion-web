@@ -14,7 +14,8 @@ def run_remote(func):
     """
 
     def wrapper(md_host, *args, **kwargs):
-        s = ''  # get_management_server(md_host)  TODO: replace ad_management functionality
+        s = ''  # get_management_server(md_host)
+        # TODO: replace ad_management functionality
         try:
             return func(s, *args, **kwargs)
         except ConnectionRefusedError as ex:
@@ -90,10 +91,12 @@ def run_remote_command(process_name, command):
     if command == 'STOP':
         succeeded = server.supervisor.stopProcess(process_name, wait_for_result)
     if command == 'START':
-        succeeded = server.supervisor.startProcess(process_name, wait_for_result)
+        succeeded = server.supervisor.startProcess(process_name,
+                                                   wait_for_result)
     if command == 'STATUS':
         offset = 0
         length = 4000
-        succeeded = server.supervisor.tailProcessStdoutLog(process_name, offset, length)
+        succeeded = server.supervisor.tailProcessStdoutLog(process_name, offset,
+                                                           length)
     print('Remote operation {} completed: {}'.format(command, succeeded))
     return succeeded

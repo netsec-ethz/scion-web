@@ -118,7 +118,8 @@ def reload_data_from_files(topology_files):
                 router.interface.neighbor_ad = new_neighbor_id
 
     # Create ISD objects
-    for isd_id in sorted(isds.keys()):  # sorted(isds.keys()):  #  TODO: Does it need sorting?
+    for isd_id in sorted(
+            isds.keys()):  # sorted(isds.keys()):  # TODO: Does it need sorting?
         isd = ISD(id=isd_id)
         isd.save()
         isds[isd_id] = isd
@@ -128,15 +129,17 @@ def reload_data_from_files(topology_files):
     for i, as_topo in enumerate(as_topos, start=1):
         if i in report_ranges:
             print("{}%".format(report_ranges[i]))
-        AD.objects.update_or_create(id=as_topo.isd_as[1], isd=isds[as_topo.isd_as[0]],
-                          is_core_ad=as_topo.is_core_as,
-                          dns_domain=as_topo.dns_domain)
+        AD.objects.update_or_create(id=as_topo.isd_as[1],
+                                    isd=isds[as_topo.isd_as[0]],
+                                    is_core_ad=as_topo.is_core_as,
+                                    dns_domain=as_topo.dns_domain)
     transaction.commit()
     print("> ASes instances were added")
 
     # Second, add routers, servers, etc.
     for as_topo in as_topos:
-        ad = AD.objects.get(id=as_topo.isd_as[1], isd=isds[as_topo.isd_as[0]])  # getitem[0] = self._isd, [1] = self._as
+        ad = AD.objects.get(id=as_topo.isd_as[1], isd=isds[
+            as_topo.isd_as[0]])  # getitem[0] = self._isd, [1] = self._as
         topo_dict = as_topo_dicts[ad.id]
         ad.fill_from_topology(topo_dict)
         print('> AS {} is loaded'.format(ad))
@@ -150,7 +153,8 @@ def reload_data():
     add_users()
 
     # Add model instances
-    # get any topology.yml for the AS, as all are identical and there is no authoritative one
+    # get any topology.yml for the AS, as all are identical and
+    # there is no authoritative one
     yaml_path = os.path.join(GEN_PATH, 'ISD*', 'AS*', 'endhost', 'topology.yml')
     topology_files = glob.glob(yaml_path)
 

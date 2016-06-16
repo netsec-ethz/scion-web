@@ -152,12 +152,14 @@ def link_topologies(first_topo, second_topo, link_type):
     first_router_if['ToAddr'] = second_router_if['Addr']
     first_router_if['NeighborISD'] = second_topo['ISDID']
     first_router_if['NeighborAD'] = second_ad_id
-    first_router_if['ISD_AS'] = str(second_topo['ISDID']) + '-' + str(second_ad_id)
+    first_router_if['ISD_AS'] = '{}-{}'.format(second_topo['ISDID'],
+                                               second_ad_id)
 
     second_router_if['ToAddr'] = first_router_if['Addr']
     second_router_if['NeighborISD'] = first_topo['ISDID']
     second_router_if['NeighborAD'] = first_ad_id
-    second_router_if['ISD_AS'] = str(first_topo['ISDID']) + '-' + str(first_ad_id)
+    second_router_if['ISD_AS'] = '{}-{}'.format(first_topo['ISDID'],
+                                                first_ad_id)
 
     if link_type == 'ROUTING':
         first_router_if['LinkType'] = 'ROUTING'

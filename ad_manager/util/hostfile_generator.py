@@ -9,16 +9,23 @@ def generate_ansible_hostfile(topology_params, isd_as):
     The hostfile is per AS and can have the same IP in multiple roles
     """
     # Write Ansible hostfile
-    config = configparser.ConfigParser(allow_no_value=True, delimiters=' ', inline_comment_prefixes='#')
+    config = configparser.ConfigParser(allow_no_value=True, delimiters=' ',
+                                       inline_comment_prefixes='#')
     isd_id, as_id = isd_as.split('-')
-    host_file_path = os.path.join(PROJECT_ROOT, 'web_scion', 'gen', 'ISD'+str(isd_id), 'AS'+str(as_id), 'hostfile.yml')
-    # looks up the prefix used for naming supervisor processes, beacon server -> 'bs', ...
+    host_file_path = os.path.join(PROJECT_ROOT, 'web_scion', 'gen',
+                                  'ISD' + str(isd_id), 'AS' + str(as_id),
+                                  'hostfile.yml')
+    # looks up the prefix used for naming supervisor processes,
+    # beacon server -> 'bs', ...
     lkp = lookup_dict_services_prefixes()
 
     scion_nodes = []  # entries for the scion_node section
-    for key, service_type in [('BeaconServer', 'beacon_server'), ('CertificateServer', 'cert_server'),
-                         ('DomainServer', 'dns_server'), ('EdgeRouter', 'router'),
-                         ('PathServer', 'path_server'), ('SibraServer', 'sibra_server')]:
+    for key, service_type in [('BeaconServer', 'beacon_server'),
+                              ('CertificateServer', 'cert_server'),
+                              ('DomainServer', 'dns_server'),
+                              ('EdgeRouter', 'router'),
+                              ('PathServer', 'path_server'),
+                              ('SibraServer', 'sibra_server')]:
         val = [topology_params['input' + key + 'Address']]
         hostname = topology_params['input' + key + 'Name']
         server_index = 0
@@ -28,17 +35,22 @@ def generate_ansible_hostfile(topology_params, isd_as):
             if service_type != 'router':
                 section_name = service_type + 's'
                 config[section_name] = \
-                    {entry: 'isd={} as={} {}={} # {}'.format(isd_id, as_id, lkp[service_type], server_index, hostname)}
+                    {entry: 'isd={} as={} {}={} # {}'.format(isd_id, as_id,
+                                                             lkp[service_type],
+                                                             server_index,
+                                                             hostname)}
             else:
-                remote_isd, remote_as = topology_params['inputInterfaceRemoteName'].split('-')
+                remote_isd, remote_as = topology_params[
+                    'inputInterfaceRemoteName'].split('-')
                 config['edge_routers'] = \
-                    {entry: 'isd={} as={} to_isd={} to_as={} {}={} # {}'.format(isd_id,
-                                                                                as_id,
-                                                                                remote_isd,
-                                                                                remote_as,
-                                                                                lkp[service_type],
-                                                                                server_index,
-                                                                                hostname)}
+                    {entry: 'isd={} as={} to_isd={} to_as={} {}={} # {}'.format(
+                        isd_id,
+                        as_id,
+                        remote_isd,
+                        remote_as,
+                        lkp[service_type],
+                        server_index,
+                        hostname)}
         scion_nodes.append(section_name)
 
     config['scion_nodes:children'] = {}
@@ -54,8 +66,10 @@ def generate_ansible_hostfile(topology_params, isd_as):
 
 
 def lookup_dict_services_prefixes():
-    # looks up the prefix used for naming supervisor processes, beacon server -> 'bs', ...
-    # TODO: agree on standard service type naming, unify with lookup_dict_services_prefixes function in views
+    # looks up the prefix used for naming supervisor processes,
+    # beacon server -> 'bs', ...
+    # TODO: agree on standard service type naming,
+    # unify with lookup_dict_services_prefixes function in views
     return {'router': ROUTER_SERVICE,
             'beacon_server': BEACON_SERVICE,
             'path_server': PATH_SERVICE,

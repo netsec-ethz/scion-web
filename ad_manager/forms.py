@@ -9,7 +9,6 @@ from django.shortcuts import get_object_or_404
 
 
 class VersionChoiceField(ModelChoiceField):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.widget.attrs['style'] = 'height: 40px;'
@@ -53,11 +52,13 @@ class ConnectionRequestForm(forms.ModelForm):
 
     class Meta:
         model = ConnectionRequest
-        fields = ('info', 'router_public_ip', 'router_public_port')  # 'router_bound_ip', 'router_bound_port',
+        fields = ('info', 'router_public_ip', 'router_public_port')
+        # 'router_bound_ip','router_bound_port',
         labels = {'router_public_ip': 'Router external IP (leave blank if '
                                       'it is the same as the bound IP)',
                   'router_public_port': 'Router external port (leave blank if '
-                                        'default or if not used)'}  # 'router_bound_ip': 'Router bound IP',
+                                        'default or if not used)'}
+        # 'router_bound_ip': 'Router bound IP',
 
 
 class NewLinkForm(forms.Form):

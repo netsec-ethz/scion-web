@@ -94,4 +94,5 @@ misc = patterns(
         views.network_view_neighbors, name='network_view_ad'),
 )
 
-urlpatterns = api_patterns_internal + isd_patterns + ad_patterns + connection_request_patterns + misc
+urlpatterns = api_patterns_internal + isd_patterns + ad_patterns + \
+              connection_request_patterns + misc
