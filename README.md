@@ -2,7 +2,8 @@
 
 #### Manual installation
 
-1. Go to to this repos top folder (which would be sub/web if you checked it out from the main scion repo), install the dependencies
+1. Go to to this repos top folder (which would be sub/web if you checked it out as a submodule of the main scion repo), install the dependencies
+    If you got this as a submodule from the main repository at https://github.com/netsec-ethz/scion, make sure this is the version you want as the main repo could reference an old version of this.
 
     `pip3 install --user -r requirements.txt`
 
@@ -24,11 +25,7 @@
     Option 2: Populate the database from the topology files
     `python3 ./scripts/reload_data.py` which reloads all the topologies in the main gen folder
 
-4. Generate TLS certificates (WARNING: if you overwrite the existing certificates, you won't be able to connect to ADs that still use them)
-
-    `bash ../ad_management/certs/certs.sh gen`
-
-5. Run the server
+4. Run the server
 
     `./manage.py runserver`
 
@@ -71,11 +68,7 @@ By default an SQLite database is used, and it works fine if the number of ADs is
 
 #### Feature overview
 
-* Topology push/pull
-
-Go to the 'Topology' tab of the AD overview page. You can now click the 'Check topology' button to compare the remote (stored at the AD host) and the local (stored in the web app database) topology. If two topologies are not consistent, you will be given a list of changes between them.  Now you can either push the local topology to the AD host, or pull the remote topology from the AD host and overwrite the local topology.
-
-After the topology is pushed to the AD, the corresponding monitoring daemon is restarted, which might take a few seconds.
+* Creating a topology from the web interface
 
 * Connecting new ADs and connection requests
 
@@ -85,11 +78,7 @@ After the connection request is sent, it is listed in two places: on the 'Submit
 
 AD can also be marked as 'open' (see the `is_open` AD attribute), which means that every sent request is approved automatically.
 
-* Software updates
-
-Software packages are prepared using the `packaging.py` module. Just run it as `python3 ad_management/packaging.py`, and it will create a package and save it in `ad_management/.packages`. The package will also contain some metadata (commit  id, creation date) in a file called META.
-
-After the package is created, you can go to the 'Software updates' tab and click the 'Refresh' button. This will refresh the list of available package versions. Now, you can either install the selected package remotely ('Install the update') or simply download it ('Download the update').
+* Ansible integration
 
 * Two-factor authentication
 
@@ -118,7 +107,8 @@ Don't forget to restart the management daemon(s) after any modifications are don
 
 There are two directories (relative to the SCION sub/web directory) that contain all essential components of the testbed management system:
 
-* `web_scion/` -- contains the web management application (Django web app). All the settings are located in `web_scion/web_scion/settings/`, useful scripts -- under `web_scion/scripts`, the actual web module (views, models) -- under `web_scion/ad_manager`.
+* `web_scion/` -- contains the web management application (Django web app). All the settings are located in `web_scion/web_scion/settings/`, useful scripts -- under `web_scion/scripts`
+* the actual web module (views, models) -- under `web_scion/ad_manager`.
 
 #### Current limitations
 

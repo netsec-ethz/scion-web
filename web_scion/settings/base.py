@@ -19,6 +19,9 @@ WEB_SCION_DIR = dir(dir(dir(os.path.abspath(__file__))))
 SCION_ROOT = dir(WEB_SCION_DIR)
 sys.path.insert(0, SCION_ROOT)
 
+# for users who don't dynamically add content root to their PATHONPATH
+sys.path.insert(1, dir(SCION_ROOT))
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.7/howto/deployment/checklist/
 
