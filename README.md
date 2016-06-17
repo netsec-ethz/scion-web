@@ -2,7 +2,7 @@
 
 #### Manual installation
 
-1. Go to `web_scion/`, install the dependencies
+1. Go to to this repos top folder (which would be sub/web if you checked it out from the main scion repo), install the dependencies
 
     `pip3 install --user -r requirements.txt`
 
@@ -18,9 +18,11 @@
 
     `./manage.py test`
 
-3. Populate the database from the topology files
+3. Get the database ready
+    Option 1: run `python3 ./scripts/reload_data.py users` if you want to start from a clean slate and not import an existing topology
 
-    `python3 ./scripts/reload_data.py`
+    Option 2: Populate the database from the topology files
+    `python3 ./scripts/reload_data.py` which reloads all the topologies in the main gen folder
 
 4. Generate TLS certificates (WARNING: if you overwrite the existing certificates, you won't be able to connect to ADs that still use them)
 
@@ -30,7 +32,9 @@
 
     `./manage.py runserver`
 
-#### Installing with Docker
+
+####OPTIONAL
+##### Installing with Docker
 
 1. Build the full SCION image (from the SCION root directory):
 
@@ -40,7 +44,7 @@
 
     `./web_scion/docker/run_docker.sh`
 
-#### Using PostgreSQL
+##### Using PostgreSQL
 
 By default an SQLite database is used, and it works fine if the number of ADs is relatively small (lower than 100). One can switch to using PostgreSQL for improved performance and flexibility.
 
@@ -112,9 +116,7 @@ Don't forget to restart the management daemon(s) after any modifications are don
 
 #### Code structure
 
-There are two directories (relative to the SCION root directory) that contain all essential components of the testbed management system:
-
-* `ad_management/` -- contains the code of the management daemon (`management_daemon.py`), the updater (`updater.py`) and the packaging (`packaging.py`) modules. Certificates for the web app and the management daemon are also there: check the `certs/` directory.
+There are two directories (relative to the SCION sub/web directory) that contain all essential components of the testbed management system:
 
 * `web_scion/` -- contains the web management application (Django web app). All the settings are located in `web_scion/web_scion/settings/`, useful scripts -- under `web_scion/scripts`, the actual web module (views, models) -- under `web_scion/ad_manager`.
 
