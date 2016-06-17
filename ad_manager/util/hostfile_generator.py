@@ -34,24 +34,26 @@ def generate_ansible_hostfile(topology_params, isd_as):
                               ('DomainServer', 'dns_server'),
                               ('EdgeRouter', 'router'),
                               ('PathServer', 'path_server'),
-                              ('SibraServer', 'sibra_server')]:
+                              ('SibraServer', 'sibra_server'),
+                              ('ZookeeperServer', 'zookeeper_service')]:
         val = [topology_params['input' + key + 'Address']]
         hostname = topology_params['input' + key + 'Name']
         server_index = 0
         for entry in val:
             server_index += 1
             entry = entry.split('/')[0]  # remove subnet size
-            if service_type != 'router':
+            if service_type.endswith('_server'):
                 section_name = service_type + 's'
                 config[section_name] = \
                     {entry: 'isd={} as={} {}={} # {}'.format(isd_id, as_id,
                                                              lkp[service_type],
                                                              server_index,
                                                              hostname)}
-            else:
+            elif service_type == 'router':
                 remote_isd, remote_as = topology_params[
                     'inputInterfaceRemoteName'].split('-')
-                config['edge_routers'] = \
+                section_name = 'edge_routers'
+                config[section_name] = \
                     {entry: 'isd={} as={} to_isd={} to_as={} {}={} # {}'.format(
                         isd_id,
                         as_id,
@@ -60,6 +62,12 @@ def generate_ansible_hostfile(topology_params, isd_as):
                         lkp[service_type],
                         server_index,
                         hostname)}
+            elif service_type == 'zookeeper_service':
+                config['zookeepers'] = \
+                    {entry: 'isd={} as={} {}={} # {}'.format(isd_id, as_id,
+                                                             lkp[service_type],
+                                                             server_index,
+                                                             hostname)}
         scion_nodes.append(section_name)
 
     config['scion_nodes:children'] = {}

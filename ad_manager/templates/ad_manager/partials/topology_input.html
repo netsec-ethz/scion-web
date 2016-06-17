@@ -79,6 +79,12 @@
                                 <div class="controls">
                                     <input type="text" id="input{{ type }}ServerName" name="input{{ type }}ServerName"
                                            value="{{ type|lower|slice:":1" }}s{{ isd_id }}-{{ as_id }}-1">
+                                    <label class="control-label" for="inputCloudEngine">cloud provider: </label>
+                                    <select id="inputCloudEngine">
+                                        <option value="own" selected></option>
+                                        <option value="switchEngine">switchEngine</option>
+                                        <option value="amazonEC2">Amazon ec2</option>
+                                    </select>
                                 </div>
                             </div>
 
@@ -217,8 +223,16 @@
                     <input class="hidden" type="text" id="inputSibraServerType" name="inputSibraServerType"
                            value="sibra_server">
                     <label class="control-label col-sm-2" for="inputSibraServerName">Server name: </label>
-                    <div class="controls">
-                        <input type="text" id="inputSibraServerName" name="inputSibraServerName" value="sb{{ isd_id }}-{{ as_id }}-1">
+                    <div class="form-group">
+                        <div class="controls">
+                            <input type="text" id="inputSibraServerName" name="inputSibraServerName" value="sb{{ isd_id }}-{{ as_id }}-1">
+                            <label class="control-label" for="inputCloudEngine">cloud provider: </label>
+                            <select id="inputCloudEngine">
+                                <option value="own" selected></option>
+                                <option value="switchEngine">switchEngine</option>
+                                <option value="amazonEC2">Amazon ec2</option>
+                            </select>
+                        </div>
                     </div>
 
                     <label class="control-label col-sm-2" for="inputSibraServerAddress">Address & port: </label>
@@ -246,9 +260,17 @@
                     <input class="hidden" type="text" id="inputZookeeperServerType" name="inputZookeeperServerType"
                            value="zookeeper_server">
                     <label class="control-label col-sm-2" for="inputZookeeperServerName">Server name: </label>
-                    <div class="controls">
-                        <input type="text" id="inputZookeeperServerName" name="inputZookeeperServerName"
-                               value="zk{{ isd_id }}-{{ as_id }}-1">
+                    <div class="form-group">
+                        <div class="controls">
+                            <input type="text" id="inputZookeeperServerName" name="inputZookeeperServerName"
+                                   value="zk{{ isd_id }}-{{ as_id }}-1">
+                            <label class="control-label" for="inputCloudEngine">cloud provider: </label>
+                            <select id="inputCloudEngine">
+                                <option value="own" selected></option>
+                                <option value="switchEngine">switchEngine</option>
+                                <option value="amazonEC2">Amazon ec2</option>
+                            </select>
+                        </div>
                     </div>
 
                     <label class="control-label col-sm-2" for="inputZookeeperServerAddress">Address: </label>
