@@ -10,6 +10,7 @@ from lib.defines import (BEACON_SERVICE,
                          SIBRA_SERVICE,
                          PROJECT_ROOT)
 ZOOKEEPER_SERVICE = "zk"  # TODO: make PR to add into lib.defines as it used to
+WEB_ROOT = os.path.join(PROJECT_ROOT, 'sub', 'web')
 
 
 def generate_ansible_hostfile(topology_params, isd_as):
@@ -21,7 +22,7 @@ def generate_ansible_hostfile(topology_params, isd_as):
     config = configparser.ConfigParser(allow_no_value=True, delimiters=' ',
                                        inline_comment_prefixes='#')
     isd_id, as_id = isd_as.split('-')
-    host_file_path = os.path.join(PROJECT_ROOT, 'web_scion', 'gen',
+    host_file_path = os.path.join(WEB_ROOT, 'gen',
                                   'ISD' + str(isd_id), 'AS' + str(as_id),
                                   'hostfile.yml')
     # looks up the prefix used for naming supervisor processes,
@@ -75,7 +76,7 @@ def generate_ansible_hostfile(topology_params, isd_as):
         config.set('scion_nodes:children', role)
 
     config['scion_nodes:vars'] = {}
-    local_gen_path = os.path.join(PROJECT_ROOT, 'web_scion', 'gen')
+    local_gen_path = os.path.join(WEB_ROOT, 'gen')
     config.set('scion_nodes:vars', 'local_gen={}'.format(local_gen_path))
 
     with open(host_file_path, 'w') as configfile:

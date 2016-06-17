@@ -70,6 +70,7 @@ import subprocess
 from shutil import copy, copytree
 
 GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
+WEB_ROOT = os.path.join(PROJECT_ROOT, 'sub', 'web')  # TODO:fix import all paths
 ZOOKEEPER_SERVICE = "zk"  # TODO: make PR to add into lib.defines as it used to
 # Scion beacon server
 BEACON_EXECUTABLE = "beacon_server"
@@ -786,8 +787,8 @@ def wrong_api_call(request):
     return JsonResponse({'data': 'Failure'})
 
 
-yaml_topo_path = os.path.join(PROJECT_ROOT, 'web_scion', 'ad_manager', 'static',
-                              'tmp', 'topology.yml')
+static_tmp_path = os.path.join(WEB_ROOT, 'ad_manager', 'static', 'tmp')
+yaml_topo_path = os.path.join(static_tmp_path, 'topology.yml')
 
 
 def st_int(s):
@@ -830,6 +831,7 @@ def generate_topology(request):
                                          'ISD_AS': tp[
                                              'inputInterfaceRemoteName'],
                                          'LinkType': tp['inputInterfaceType'],
+                                         'MTU': st_int(tp['inputLinkMTU']),
                                          'ToAddr': tp[
                                              'inputInterfaceRemoteAddress'],
                                          'ToUdpPort': st_int(
@@ -861,6 +863,7 @@ def generate_topology(request):
         return JsonResponse(
             {'data': 'IP:port combinations not unique within AS'})
 
+    os.makedirs(static_tmp_path, exist_ok=True)
     with open(yaml_topo_path, 'w') as file:
         yaml.dump(mockup_dicts, file, default_flow_style=False)
 
@@ -953,7 +956,7 @@ def deploy_config(request):
     # beacon server -> 'bs', ...
     lkp = lookup_dict_services_prefixes()
 
-    tmp_folder_path = os.path.join(PROJECT_ROOT, 'web_scion', 'ad_manager',
+    tmp_folder_path = os.path.join(WEB_ROOT, 'ad_manager',
                                    'static', 'tmp')
 
     current_node_file = os.path.join(tmp_folder_path, node_uuid + '.tar')
@@ -1037,7 +1040,7 @@ def create_local_gen(isd_as):
 
     isd_id, as_id = isd_as.split('-')
 
-    local_gen_path = os.path.join(PROJECT_ROOT, 'web_scion', 'gen')
+    local_gen_path = os.path.join(WEB_ROOT, 'gen')
 
     dispatcher_folder_path = os.path.join(local_gen_path, 'dispatcher')
     if not os.path.exists(dispatcher_folder_path):
