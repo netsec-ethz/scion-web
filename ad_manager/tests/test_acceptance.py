@@ -286,7 +286,7 @@ class TestConnectionRequests(BasicWebTestUsers):
         ad_requests = self.app.get(requests_page, user=self.user)
         self.assertContains(ad_requests, 'Received requests')
 
-    def test_send_request(self):
+    def test_send_request(self):  #££
         ad = self.ads[2]
         ad.is_open = False
         ad.save()

@@ -40,7 +40,8 @@ class ConnectionRequestForm(forms.ModelForm):
                 remote_ip_choices.append((val, val))
 
         self.fields['router_public_ip'] = forms.ChoiceField(
-            choices=remote_ip_choices
+            choices=remote_ip_choices,
+            initial={'router_public_ip': ('3', '3')}
         )
 
     class Meta:

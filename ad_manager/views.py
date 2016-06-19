@@ -455,20 +455,26 @@ def read_log(request, pk, proc_id):
 
 
 class ConnectionRequestView(FormView):
-    # form_class = ConnectionRequestForm
+    form_class = ConnectionRequestForm
     template_name = 'ad_manager/new_connection_request.html'
-    success_url = ''
+    success_url = 'ad_manager/'
 
     @method_decorator(login_required)
     def dispatch(self, request, *args, **kwargs):
+        # return super().dispatch(request, *args, **kwargs)
         current_as_id = kwargs['pk']
 
         form = ConnectionRequestForm(pk=current_as_id)
         context = self.get_context_data(form=form)
+        #self.form_valid(form)
         return self.render_to_response(context)
 
     def _get_ad(self):
         return get_object_or_404(AD, id=self.kwargs['pk'])
+
+    def form_invalid(self, form):
+        print('form is invalid')
+        return HttpResponse('Invalid form')
 
     def form_valid(self, form):
         if not self.request.user.is_authenticated():
@@ -477,23 +483,25 @@ class ConnectionRequestView(FormView):
         connect_to = self._get_ad()
         form.instance.connect_to = connect_to
         form.instance.created_by = self.request.user
+        form.cleaned_data = None
         form.save()
 
-        con_request = form.instance
-        con_request.status = 'SENT'
+        # con_request = form.instance
+        # con_request.status = 'SENT'
+        # con_request.cleaned_data = None
 
-        if not con_request.router_public_ip:
-            # Public = Bound
-            con_request.router_public_ip = con_request.router_bound_ip
-            con_request.router_public_port = con_request.router_bound_port
-        con_request.save()
+        # if not con_request.router_public_ip:
+        #     # Public = Bound
+        #     con_request.router_public_ip = con_request.router_bound_ip
+        #     con_request.router_public_port = con_request.router_bound_port
+        # con_request.save()
 
         self.success_url = reverse('sent_requests')
-        if connect_to.is_open:
-            # Create new AD
-            approve_request(connect_to, con_request)
+        # if connect_to.is_open:
+        #     # Create new AD
+        #     approve_request(connect_to, con_request)
 
-        return super().form_valid(form)
+        return self.get_success_url()  # super().form_valid(form)
 
     def get_context_data(self, **kwargs):
         context_data = super().get_context_data(**kwargs)
@@ -529,17 +537,17 @@ class NewLinkView(FormView):
     def form_valid(self, form):
         this_ad = self._get_ad()
         from_ad = this_ad
-        to_ad = form.cleaned_data['end_point']
-        link_type = form.cleaned_data['link_type']
-
-        if link_type == 'PARENT':
-            from_ad, to_ad = to_ad, from_ad
-
-        if link_type in ['CHILD', 'PARENT']:
-            link_type = 'PARENT_CHILD'
-
-        with transaction.atomic():
-            link_ads(from_ad, to_ad, link_type)
+        # to_ad = form.cleaned_data['end_point']
+        # link_type = form.cleaned_data['link_type']
+        #
+        # if link_type == 'PARENT':
+        #     from_ad, to_ad = to_ad, from_ad
+        #
+        # if link_type in ['CHILD', 'PARENT']:
+        #     link_type = 'PARENT_CHILD'
+        #
+        # with transaction.atomic():
+        #     link_ads(from_ad, to_ad, link_type)
 
         self.success_url = reverse('ad_detail', args=[this_ad.id])
         return super().form_valid(form)
@@ -567,15 +575,15 @@ def approve_request(ad, ad_request):
                                                               out_dir=temp_dir)
 
         # Adjust router ips/ports
-        if ad_request.router_public_ip is None:
-            ad_request.router_public_ip = ad_request.router_bound_ip
+        # if ad_request.router_public_ip is None:
+        #     ad_request.router_public_ip = ad_request.router_bound_ip
 
         if ad_request.router_public_port is None:
             ad_request.router_public_port = ad_request.router_bound_port
 
         _, new_topo_router = find_last_router(new_topo_dict)
-        new_topo_router['Interface']['Addr'] = ad_request.router_bound_ip
-        new_topo_router['Interface']['UdpPort'] = ad_request.router_bound_port
+        # new_topo_router['Interface']['Addr'] = ad_request.router_bound_ip
+        # new_topo_router['Interface']['UdpPort'] = ad_request.router_bound_port
 
         _, parent_topo_router = find_last_router(parent_topo_dict)
         parent_router_if = parent_topo_router['Interface']
