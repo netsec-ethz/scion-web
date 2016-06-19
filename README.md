@@ -103,6 +103,10 @@ If something doesn't work (no element status displayed, topology cannot be retri
 
 Don't forget to restart the management daemon(s) after any modifications are done to the source code.
 
+If you have issues with missing tables, check that you have run all the migrations and have the latest models.
+Run manage.py makemigrations
+and manage.py migrate
+
 #### Code structure
 
 There are two directories (relative to the SCION sub/web directory) that contain all essential components of the testbed management system:
