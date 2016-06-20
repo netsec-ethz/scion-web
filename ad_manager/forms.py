@@ -40,18 +40,15 @@ class ConnectionRequestForm(forms.ModelForm):
                 remote_ip_choices.append((val, val))
 
         self.fields['router_public_ip'] = forms.ChoiceField(
-            choices=remote_ip_choices,
-            initial={'router_public_ip': ('3', '3')}
+            choices=remote_ip_choices
         )
 
     class Meta:
         model = ConnectionRequest
         fields = ('info', 'router_public_ip', 'router_public_port')
         # 'router_bound_ip','router_bound_port',
-        labels = {'router_public_ip': 'Router external IP (leave blank if '
-                                      'it is the same as the bound IP)',
-                  'router_public_port': 'Router external port (leave blank if '
-                                        'default or if not used)'}
+        labels = {'router_public_ip': 'Router external IP',
+                  'router_public_port': 'Router external port'}
         # 'router_bound_ip': 'Router bound IP',
 
 

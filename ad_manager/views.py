@@ -457,17 +457,17 @@ def read_log(request, pk, proc_id):
 class ConnectionRequestView(FormView):
     form_class = ConnectionRequestForm
     template_name = 'ad_manager/new_connection_request.html'
-    success_url = 'ad_manager/'
+    success_url = ''
 
     @method_decorator(login_required)
     def dispatch(self, request, *args, **kwargs):
-        # return super().dispatch(request, *args, **kwargs)
         current_as_id = kwargs['pk']
-
         form = ConnectionRequestForm(pk=current_as_id)
         context = self.get_context_data(form=form)
-        #self.form_valid(form)
-        return self.render_to_response(context)
+        if request.method == 'POST':
+            return self.form_valid(form)
+        else:
+            return self.render_to_response(context)
 
     def _get_ad(self):
         return get_object_or_404(AD, id=self.kwargs['pk'])
@@ -481,27 +481,20 @@ class ConnectionRequestView(FormView):
             return HttpResponseForbidden('Authentication required')
 
         connect_to = self._get_ad()
-        form.instance.connect_to = connect_to
-        form.instance.created_by = self.request.user
-        form.cleaned_data = None
-        form.save()
+        con_request = form.instance
+        con_request.connect_to = connect_to
+        con_request.created_by = self.request.user
+        con_request.status = 'SENT'
 
-        # con_request = form.instance
-        # con_request.status = 'SENT'
-        # con_request.cleaned_data = None
+        posted_data = self.request.POST
 
-        # if not con_request.router_public_ip:
-        #     # Public = Bound
-        #     con_request.router_public_ip = con_request.router_bound_ip
-        #     con_request.router_public_port = con_request.router_bound_port
-        # con_request.save()
+        con_request.info = posted_data['info']
+        con_request.router_public_ip = posted_data['router_public_ip']
+        con_request.router_public_port = posted_data['router_public_port']
+        con_request.save()
 
         self.success_url = reverse('sent_requests')
-        # if connect_to.is_open:
-        #     # Create new AD
-        #     approve_request(connect_to, con_request)
-
-        return self.get_success_url()  # super().form_valid(form)
+        return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
         context_data = super().get_context_data(**kwargs)

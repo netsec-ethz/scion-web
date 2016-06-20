@@ -365,11 +365,8 @@ class ConnectionRequest(models.Model):
     connect_to = models.ForeignKey(AD, related_name='received_requests')
     new_ad = models.ForeignKey(AD, blank=True, null=True)
     info = models.TextField()
-    # router_bound_ip = models.GenericIPAddressField()
-    # router_bound_port = models.IntegerField(default=int(PORT))
-    router_public_ip = models.GenericIPAddressField(blank=True, null=True)
-    router_public_port = models.IntegerField(blank=True, null=True,
-                                             default=int(PORT))
+    router_public_ip = models.GenericIPAddressField()
+    router_public_port = models.IntegerField(default=int(PORT))
     status = models.CharField(max_length=20,
                               choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
                               default='NONE')
@@ -392,7 +389,6 @@ class Node(models.Model):
     ISD = models.CharField(max_length=10, null=False, blank=False)
     AS = models.CharField(max_length=10, null=False, blank=False)
 
-    # is_core_ad = models.BooleanField(default=False)
     # dns_domain = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
