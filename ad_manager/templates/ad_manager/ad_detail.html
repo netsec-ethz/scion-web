@@ -254,21 +254,21 @@
     });
 
     function toggleInput(elem) {
-        var accordion = elem.parentNode.parentNode.parentNode;
-        var clone = elem.parentNode.parentNode.cloneNode(true);
+        var accordion = $(elem).parents('.accordion');
+        var clone = $(elem).parents('.item').clone();
         var currentClass = $(elem).children(':first').attr('class'); // either glyphicon glyphicon-{plus|minus}
         if (currentClass === 'glyphicon glyphicon-plus') {
 
             // increment current name for next field
-            var currentName = $(clone).children('.controls').find( 'input:eq(0)' ).attr('value');
+            var currentName = $(clone).find( '.server-name-input' ).attr('value');
             var nameParts = currentName.split('-');
-            nameParts[2]++;
+            nameParts[nameParts.length-1]++;
             var newName = nameParts.join('-');
-            $(clone).children('.controls:eq(0)').find( 'input' ).attr('value', newName);
+            $(clone).find('.server-name-input').attr('value', newName);
             // reset IP
-            $(clone).children('.controls:eq(1)').find( 'input' ).val('');
+            $(clone).find( '.server-address-input' ).val('');
             // append the cloned and cleaned item
-            accordion.appendChild(clone);
+            accordion.append(clone);
             //var test = $(clone).children(':first').prop('tagName');
             if ($(clone).children(':first').attr('class') !== 'doc-hr') {
                 // add separator
@@ -277,13 +277,13 @@
             $(elem).removeClass('btn-success').addClass('btn-danger');
             $(elem).children(':first').removeClass('glyphicon glyphicon-plus').addClass('glyphicon glyphicon-minus');
         } else {
-            var sibling = $(elem).parent().parent().next();
-            var firstItem = $(elem).parent().parent().parent().children(':nth-child(2)');
-            var selfItem = $(elem).parent().parent();
+            var sibling = $(elem).parents('.item').next();
+            var firstItem = $(elem).parents('.accordion').children(':nth-child(2)');
+            var selfItem = $(elem).parents('.item');
             if (firstItem.is(selfItem)) {
                 $(sibling).children(':first').remove();
             }
-            $(elem).parent().parent().remove();
+            selfItem.remove();
         }
     }
 

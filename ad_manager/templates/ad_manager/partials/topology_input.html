@@ -63,21 +63,21 @@
                 <div class="control-group well">
                     <div class="chevron {% if forloop.counter0 > 0 %}collapsed{% endif %}" data-toggle="collapse"
                          href="#{{ type|lower }}Accordion"><span class="sectionTitle">{{ type }} servers</span></div>
-                    <div id="{{ type|lower }}Accordion" class="collapse {% if forloop.counter0 == 0 %}in{% endif %}"
+                    <div id="{{ type|lower }}Accordion" class="accordion collapse {% if forloop.counter0 == 0 %}in{% endif %}"
                          {% comment%}
                           comment:  'if forloop.counter0 == 0 -> in' expands the first accordion, to show user how to
                           interact with input, that these accordions can be expanded
                          {%  endcomment %}
                          aria-expanded="true">
                         <br/>
-                        <div class="{{ type }}Item">
+                        <div class="{{ type }}Item item">
 
                             <input class="hidden" type="text" id="input{{ type }}ServerType" name="input{{ type }}ServerType"
                                    value="{{ type|lower }}_server">
+                            <label class="control-label col-sm-2 server-name-label" for="input{{ type }}ServerName">Server name: </label>
                             <div class="form-group">
-                                <label class="control-label col-sm-2" for="input{{ type }}ServerName">Server name: </label>
                                 <div class="controls">
-                                    <input type="text" id="input{{ type }}ServerName" name="input{{ type }}ServerName"
+                                    <input class="server-name-input" type="text" id="input{{ type }}ServerName" name="input{{ type }}ServerName"
                                            value="{{ type|lower|slice:":1" }}s{{ isd_id }}-{{ as_id }}-1">
                                     <label class="control-label" for="inputCloudEngine">cloud provider: </label>
                                     <select id="inputCloudEngine">
@@ -88,12 +88,12 @@
                                 </div>
                             </div>
 
-                            <label class="control-label col-sm-2" for="input{{ type }}ServerAddress">Address &
+                            <label class="control-label col-sm-2 server-address-label" for="input{{ type }}ServerAddress">Address &
                                 port: </label>
                             <div class="controls">
-                                <input type="text" id="input{{ type }}ServerAddress" name="input{{ type }}ServerAddress"
+                                <input class="server-address-input" type="text" id="input{{ type }}ServerAddress" name="input{{ type }}ServerAddress"
                                        placeholder="127.0.0.{{ forloop.counter0|add:49 }}" value=""> :
-                                <input id="input{{ type }}ServerPort" name="input{{ type }}ServerPort" class="inputPort"
+                                <input class="server-port-input inputPort" id="input{{ type }}ServerPort" name="input{{ type }}ServerPort"
                                        placeholder="{{ forloop.counter0|add:1025 }}" type="text">
                                 <button class="btn btn-success btn-add pull-right" type="button"
                                         onclick="toggleInput(this);">
@@ -107,20 +107,21 @@
         {% endwith %}
 
         <div class="control-group well">
-            <div class="chevron" data-toggle="collapse" href="#routerAccordion"><span
+            <div class="chevron" data-toggle="accordion collapse" href="#routerAccordion"><span
                     class="sectionTitle">Edge routers: </span></div>
-            <div id="routerAccordion" class="collapse in" aria-expanded="true">
-                <div class="routerItem">
+            <div id="routerAccordion" class="accordion collapse in" aria-expanded="true">
+                <br/>
+                <div class="routerItem item">
                     <div class="form-group">
-                        <label class="control-label col-sm-2" for="inputEdgeRouterName">Server name: </label>
+                        <label class="control-label col-sm-2 server-name-label" for="inputEdgeRouterName">Server name: </label>
                         <div class="controls">
-                            <input type="text" id="inputEdgeRouterName" name="inputEdgeRouterName" placeholder="er{{ isd_id }}-{{ as_id }}er1-19">
+                            <input class="server-name-input" type="text" id="inputEdgeRouterName" name="inputEdgeRouterName" placeholder="er{{ isd_id }}-{{ as_id }}er1-19">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-2" for="inputEdgeRouterAddress">Edge router: </label>
+                        <label class="control-label col-sm-2 server-address-label" for="inputEdgeRouterAddress">Edge router: </label>
                         <div class="controls">
-                            <input type="text" id="inputEdgeRouterAddress" name="inputEdgeRouterAddress"
+                            <input class="server-address-input" type="text" id="inputEdgeRouterAddress" name="inputEdgeRouterAddress"
                                    placeholder="127.0.0.52/29">
                             <button class="btn btn-success btn-add pull-right" type="button"
                                     onclick="toggleInput(this);">
@@ -223,16 +224,16 @@
         <div class="control-group well">
             <div class="chevron collapsed" data-toggle="collapse" href="#sibraAccordion"><span class="sectionTitle">Sibra servers</span>
             </div>
-            <div id="sibraAccordion" class="collapse" aria-expanded="true">
+            <div id="sibraAccordion" class="accordion collapse" aria-expanded="true">
                 <br/>
-                <div class="sibraItem">
+                <div class="sibraItem item">
 
                     <input class="hidden" type="text" id="inputSibraServerType" name="inputSibraServerType"
                            value="sibra_server">
-                    <label class="control-label col-sm-2" for="inputSibraServerName">Server name: </label>
+                    <label class="control-label col-sm-2 server-name-label" for="inputSibraServerName">Server name: </label>
                     <div class="form-group">
                         <div class="controls">
-                            <input type="text" id="inputSibraServerName" name="inputSibraServerName" value="sb{{ isd_id }}-{{ as_id }}-1">
+                            <input class="server-name-input" type="text" id="inputSibraServerName" name="inputSibraServerName" value="sb{{ isd_id }}-{{ as_id }}-1">
                             <label class="control-label" for="inputCloudEngine">cloud provider: </label>
                             <select id="inputCloudEngine">
                                 <option value="own" selected></option>
@@ -242,11 +243,11 @@
                         </div>
                     </div>
 
-                    <label class="control-label col-sm-2" for="inputSibraServerAddress">Address & port: </label>
+                    <label class="control-label col-sm-2 server-address-label" for="inputSibraServerAddress">Address & port: </label>
                     <div class="controls">
-                        <input type="text" id="inputSibraServerAddress" name="inputSibraServerAddress"
+                        <input class="server-address-input" type="text" id="inputSibraServerAddress" name="inputSibraServerAddress"
                                placeholder="127.0.0.54"> :
-                        <input id="inputSibraServerPort" name="inputSibraServerPort" class="inputPort"
+                        <input class="server-port-input inputPort" id="inputSibraServerPort" name="inputSibraServerPort"
                                placeholder="2048" type="text">
                         <button class="btn btn-success btn-add pull-right" type="button"
                                 onclick="toggleInput(this);">
@@ -260,16 +261,16 @@
         <div class="control-group well">
             <div class="chevron collapsed" data-toggle="collapse" href="#zookeeperAccordion"><span class="sectionTitle">Zookeeper servers</span>
             </div>
-            <div id="zookeeperAccordion" class="collapse" aria-expanded="true">
+            <div id="zookeeperAccordion" class="accordion collapse" aria-expanded="true">
                 <br/>
-                <div class="zookeeperItem">
+                <div class="zookeeperItem item">
 
                     <input class="hidden" type="text" id="inputZookeeperServerType" name="inputZookeeperServerType"
                            value="zookeeper_server">
-                    <label class="control-label col-sm-2" for="inputZookeeperServerName">Server name: </label>
+                    <label class="control-label col-sm-2 server-name-label" for="inputZookeeperServerName">Server name: </label>
                     <div class="form-group">
                         <div class="controls">
-                            <input type="text" id="inputZookeeperServerName" name="inputZookeeperServerName"
+                            <input class="server-name-input" type="text" id="inputZookeeperServerName" name="inputZookeeperServerName"
                                    value="zk{{ isd_id }}-{{ as_id }}-1">
                             <label class="control-label" for="inputCloudEngine">cloud provider: </label>
                             <select id="inputCloudEngine">
@@ -280,19 +281,19 @@
                         </div>
                     </div>
 
-                    <label class="control-label col-sm-2" for="inputZookeeperServerAddress">Address: </label>
+                    <label class="control-label col-sm-2 server-address-label" for="inputZookeeperServerAddress">Address: </label>
                     <div class="controls">
-                        <input type="text" id="inputZookeeperServerAddress" name="inputZookeeperServerAddress"
+                        <input class="server-address-input" type="text" id="inputZookeeperServerAddress" name="inputZookeeperServerAddress"
                                placeholder="127.0.0.1">
                         <button class="btn btn-success btn-add pull-right" type="button"
                                 onclick="toggleInput(this);">
                             <span class="glyphicon glyphicon-plus"></span>
                         </button>
                     </div>
-                    <label class="control-label col-sm-2" for="inputZookeeperServerPort">Zookeeper port: </label>
+                    <label class="control-label col-sm-2 server-port-label" for="inputZookeeperServerPort">Zookeeper port: </label>
                     <div class="controls">
-                        <input type="text" id="inputZookeeperServerPort" name="inputZookeeperServerPort"
-                               class="inputPort" placeholder="2181">
+                        <input class="server-port-input inputPort" type="text" id="inputZookeeperServerPort" name="inputZookeeperServerPort"
+                               placeholder="2181">
                     </div>
                 </div>
             </div>
