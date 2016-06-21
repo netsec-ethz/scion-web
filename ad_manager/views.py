@@ -797,61 +797,88 @@ def st_int(s):
     return int(s) if not s == '' else -1
 
 
+def name_entry_dict(name_list, address_list, port_list):
+    ret_dict = {}
+    for i in range(len(name_list)):
+        ret_dict[name_list[i]] = {'Addr': address_list[i],
+                                  'Port': st_int(port_list[i])}
+    return ret_dict
+
+
+def name_entry_dict_router(tp):
+    ret_dict = {}
+
+    name_list = tp.getlist('inputEdgeRouterName')
+    address_list = tp.getlist('inputEdgeRouterAddress')
+    interface_list = tp.getlist('inputInterfaceAddr')
+    bandwidth_list = tp.getlist('inputInterfaceBandwidth')
+    IFID_list = tp.getlist('inputInterfaceIFID')
+    remote_name_list = tp.getlist('inputInterfaceRemoteName')
+    interface_type_list = tp.getlist('inputInterfaceType')
+    link_MTU_list = tp.getlist('inputLinkMTU')
+    remote_address_list = tp.getlist('inputInterfaceRemoteAddress')
+    remote_port_list = tp.getlist('inputInterfaceRemotePort')
+    own_port_list = tp.getlist('inputInterfaceOwnPort')
+    for i in range(len(name_list)):
+        ret_dict[name_list[i]] = {'Addr': address_list[i],
+                                  'Interface':
+                                      {'Addr': interface_list[i],
+                                        'Bandwidth': st_int(bandwidth_list[i]),
+                                        'IFID': st_int(IFID_list[i]),
+                                        'ISD_AS': remote_name_list[i],
+                                        'LinkType': interface_type_list[i],
+                                        'MTU': st_int(link_MTU_list[i]),
+                                        'ToAddr': remote_address_list[i],
+                                        'ToUdpPort':
+                                        st_int(remote_port_list[i]),
+                                        'UdpPort': st_int(own_port_list[i])}
+                                  }
+    return ret_dict
+
+
 @require_POST
 def generate_topology(request):
     topology_params = request.POST.copy()
     topology_params.pop('csrfmiddlewaretoken',
-                        None)  # remove csrf entry, as we don't need it
+                        None)  # remove csrf entry, as we don't need it here
 
     mockup_dicts = {}
     tp = topology_params
     isd_as = tp['inputISD_AS']
     isd_id, as_id = isd_as.split('-')
-    mockup_dicts['BeaconServers'] = {
-        tp['inputBeaconServerName']: {'Addr': tp['inputBeaconServerAddress'],
-                                      'Port': st_int(
-                                          tp['inputBeaconServerPort'])}}
-    mockup_dicts['CertificateServers'] = {
-        tp['inputCertificateServerName']: {
-            'Addr': tp['inputCertificateServerAddress'],
-            'Port': st_int(tp['inputBeaconServerPort'])}}
     mockup_dicts['Core'] = True if (tp['inputIsCore'] == 'on') else False
-    mockup_dicts['DNSServers'] = {
-        tp['inputDomainServerName']: {'Addr': tp['inputDomainServerAddress'],
-                                      'Port': st_int(
-                                          tp['inputDomainServerPort'])}}
+
+    service_types = ['BeaconServer', 'CertificateServer',
+               'DomainServer', 'PathServer', 'SibraServer']
+
+    for s_type in service_types:
+        section_name = s_type+'s' if s_type != 'DomainServer' else 'DNSServers'
+        mockup_dicts[section_name] = \
+            name_entry_dict(tp.getlist('input{}Name'.format(s_type)),
+                            tp.getlist('input{}Address'.format(s_type)),
+                            tp.getlist('input{}Port'.format(s_type))
+                            )
+
     mockup_dicts['DnsDomain'] = tp['inputDnsDomain']
-    mockup_dicts['EdgeRouters'] = {
-        tp['inputEdgeRouterName']: {'Addr': tp['inputEdgeRouterAddress'],
-                                    'Interface':
-                                        {'Addr': tp['inputInterfaceAddr'],
-                                         'Bandwidth': st_int(
-                                             tp['inputInterfaceBandwidth']),
-                                         'IFID': st_int(
-                                             tp['inputInterfaceIFID']),
-                                         'ISD_AS': tp[
-                                             'inputInterfaceRemoteName'],
-                                         'LinkType': tp['inputInterfaceType'],
-                                         'MTU': st_int(tp['inputLinkMTU']),
-                                         'ToAddr': tp[
-                                             'inputInterfaceRemoteAddress'],
-                                         'ToUdpPort': st_int(
-                                             tp['inputInterfaceRemotePort']),
-                                         'UdpPort': st_int(
-                                             tp['inputInterfaceOwnPort'])}}}
+    mockup_dicts['EdgeRouters'] = name_entry_dict_router(tp)
     mockup_dicts['ISD_AS'] = tp['inputISD_AS']
     mockup_dicts['MTU'] = st_int(tp['inputMTU'])
-    mockup_dicts['PathServers'] = {
-        tp['inputPathServerName']: {'Addr': tp['inputPathServerAddress'],
-                                    'Port': st_int(tp['inputPathServerPort'])}}
-    mockup_dicts['SibraServers'] = {
-        tp['inputSibraServerName']: {'Addr': tp['inputSibraServerAddress'],
-                                     'Port': st_int(
-                                         tp['inputSibraServerPort'])}}
-    mockup_dicts['Zookeepers'] = {
-        1: {'Addr': tp['inputZookeeperServerAddress'],
-            'Port': st_int(tp['inputZookeeperServerPort'])}}
 
+    # Zookeeper special case
+    s_type = 'ZookeeperServer'
+    zk_dict = name_entry_dict(tp.getlist('input{}Name'.format(s_type)),
+                              tp.getlist('input{}Address'.format(s_type)),
+                              tp.getlist('input{}Port'.format(s_type))
+                              )
+    named_keys = list(zk_dict.keys())  # copy 'named' keys
+    int_key = 1  # dict keys get replaced with numeric keys, 1 based
+    for key in named_keys:
+        zk_dict[int_key] = zk_dict.pop(key)
+        int_key += 1
+
+    mockup_dicts['Zookeepers'] = zk_dict
+
+    # IP:port uniqueness in AS check
     all_IP_port_pairs = []
     for r in ['BeaconServers', 'CertificateServers', 'DNSServers',
               'PathServers', 'SibraServers', 'Zookeepers']:
