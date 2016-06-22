@@ -104,13 +104,16 @@ function setLoadedTopology(reloadedTopology) {
 
         var interface_obj = edgeRouter['Interface'];
         for (var interfaceKey in interface_obj) {
-            var value = interface[interfaceKey];
+            var value = interface_obj[interfaceKey];
             switch(interfaceKey) {
                 case 'ISD_AS':
                     $('#inputInterfaceRemoteName').attr('value', value);
                     break;
                 case 'LinkType':
                     $('#inputInterfaceType').attr('value', value);
+                    break;
+                case 'MTU':
+                    $('#inputLinkMTU').attr('value', value);
                     break;
                 case 'ToAddr':
                     $('#inputInterfaceRemoteAddress').attr('value', value);
