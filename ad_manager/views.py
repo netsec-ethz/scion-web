@@ -62,12 +62,20 @@ from lib.defines import (BEACON_SERVICE,
                          PATH_SERVICE,
                          ROUTER_SERVICE,
                          SIBRA_SERVICE)
+from lib.defines import (SCION_UDP_PORT,
+                         SCION_UDP_EH_DATA_PORT,
+                         SCION_DNS_PORT,
+                         SCION_ROUTER_PORT,
+                         DEFAULT_MTU,
+                         SCION_MIN_MTU)
 from lib.defines import GEN_PATH, PROJECT_ROOT
 
 from ad_manager.util.hostfile_generator import generate_ansible_hostfile
 
 import subprocess
 from shutil import copy, copytree
+
+DEFAULT_BANDWIDTH = 1000
 
 GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
 WEB_ROOT = os.path.join(PROJECT_ROOT, 'sub', 'web')  # TODO:fix import all paths
@@ -792,16 +800,16 @@ static_tmp_path = os.path.join(WEB_ROOT, 'ad_manager', 'static', 'tmp')
 yaml_topo_path = os.path.join(static_tmp_path, 'topology.yml')
 
 
-def st_int(s):
+def st_int(s, default):
     s = s.strip()
-    return int(s) if not s == '' else -1
+    return int(s) if not s == '' else default
 
 
 def name_entry_dict(name_list, address_list, port_list):
     ret_dict = {}
     for i in range(len(name_list)):
         ret_dict[name_list[i]] = {'Addr': address_list[i],
-                                  'Port': st_int(port_list[i])}
+                                  'Port': st_int(port_list[i], SCION_UDP_PORT)}
     return ret_dict
 
 
@@ -823,15 +831,19 @@ def name_entry_dict_router(tp):
         ret_dict[name_list[i]] = {'Addr': address_list[i],
                                   'Interface':
                                       {'Addr': interface_list[i],
-                                        'Bandwidth': st_int(bandwidth_list[i]),
-                                        'IFID': st_int(IFID_list[i]),
+                                        'Bandwidth': st_int(bandwidth_list[i],
+                                                            DEFAULT_BANDWIDTH),
+                                        'IFID': st_int(IFID_list[i], 1),
                                         'ISD_AS': remote_name_list[i],
                                         'LinkType': interface_type_list[i],
-                                        'MTU': st_int(link_MTU_list[i]),
+                                        'MTU': st_int(link_MTU_list[i],
+                                                      DEFAULT_MTU),
                                         'ToAddr': remote_address_list[i],
                                         'ToUdpPort':
-                                        st_int(remote_port_list[i]),
-                                        'UdpPort': st_int(own_port_list[i])}
+                                        st_int(remote_port_list[i],
+                                               SCION_ROUTER_PORT),
+                                        'UdpPort': st_int(own_port_list[i],
+                                                          SCION_ROUTER_PORT)}
                                   }
     return ret_dict
 
@@ -862,7 +874,7 @@ def generate_topology(request):
     mockup_dicts['DnsDomain'] = tp['inputDnsDomain']
     mockup_dicts['EdgeRouters'] = name_entry_dict_router(tp)
     mockup_dicts['ISD_AS'] = tp['inputISD_AS']
-    mockup_dicts['MTU'] = st_int(tp['inputMTU'])
+    mockup_dicts['MTU'] = st_int(tp['inputMTU'], DEFAULT_MTU)
 
     # Zookeeper special case
     s_type = 'ZookeeperServer'
