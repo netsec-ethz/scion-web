@@ -895,7 +895,7 @@ def generate_topology(request):
     with open(yaml_topo_path, 'w') as file:
         yaml.dump(mockup_dicts, file, default_flow_style=False)
 
-    create_local_gen(isd_as)
+    create_local_gen(isd_as, tp)
     generate_ansible_hostfile(topology_params, isd_as)
 
     curr_as = get_object_or_404(AD, id=as_id)
@@ -1050,7 +1050,7 @@ def deploy_config(request):
     return redirect(current_page)
 
 
-def create_local_gen(isd_as):
+def create_local_gen(isd_as, tp):
     """
     creates the usual gen folder structure for an ISD/AS under web_scion/gen,
     ready for Ansible deployment
@@ -1096,6 +1096,14 @@ def create_local_gen(isd_as):
         executable_name = lkx[service_type]
         # Get digits only from ISD and AS names
         serv_name = '{}{}-{}-1'.format(prefix, isd_id, as_id)
+        if service_type == 'router':
+            to_isd, to_as = tp['inputInterfaceRemoteName'].split('-')
+            serv_name = '{0}{1}-{2}{0}{3}-{4}-1'.format(prefix,
+                                                        isd_id,
+                                                        as_id,
+                                                        to_isd,
+                                                        to_as)
+
         config['program:' + serv_name] = \
             {'startsecs': '5',
              'command': '"bin/{0}" "{1}" "gen/ISD{2}/AS{3}/{1}"'.format(
