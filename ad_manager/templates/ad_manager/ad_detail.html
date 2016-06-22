@@ -253,40 +253,6 @@
           $("[data-toggle='tooltip']").tooltip();
     });
 
-    function toggleInput(elem) {
-        var accordion = $(elem).parents('.accordion');
-        var clone = $(elem).parents('.item').clone();
-        var currentClass = $(elem).children(':first').attr('class'); // either glyphicon glyphicon-{plus|minus}
-        if (currentClass === 'glyphicon glyphicon-plus') {
-
-            // increment current name for next field
-            var currentName = $(clone).find( '.server-name-input' ).attr('value');
-            var nameParts = currentName.split('-');
-            nameParts[nameParts.length-1]++;
-            var newName = nameParts.join('-');
-            $(clone).find('.server-name-input').attr('value', newName);
-            // reset IP
-            $(clone).find( '.server-address-input' ).val('');
-            // append the cloned and cleaned item
-            accordion.append(clone);
-            //var test = $(clone).children(':first').prop('tagName');
-            if ($(clone).children(':first').attr('class') !== 'doc-hr') {
-                // add separator
-                $(clone).prepend('<div class="doc-hr"></div>');
-            }
-            $(elem).removeClass('btn-success').addClass('btn-danger');
-            $(elem).children(':first').removeClass('glyphicon glyphicon-plus').addClass('glyphicon glyphicon-minus');
-        } else {
-            var sibling = $(elem).parents('.item').next();
-            var firstItem = $(elem).parents('.accordion').children(':nth-child(2)');
-            var selfItem = $(elem).parents('.item');
-            if (firstItem.is(selfItem)) {
-                $(sibling).children(':first').remove();
-            }
-            selfItem.remove();
-        }
-    }
-
     // Update the deploy form when management interface ip gets manually set
     $('#inputManagementInterfaceIP').bind('keypress keyup blur', function() {
         $('#inputManagementInterfaceIPretrieving').val($(this).val());

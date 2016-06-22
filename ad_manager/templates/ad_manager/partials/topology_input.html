@@ -70,7 +70,7 @@
                          {%  endcomment %}
                          aria-expanded="true">
                         <br/>
-                        <div class="{{ type }}Item item">
+                        <div class="{{ type }}Item item" id="{{ type }}Item-1">
 
                             <input class="hidden" type="text" id="input{{ type }}ServerType" name="input{{ type }}ServerType"
                                    value="{{ type|lower }}_server">
@@ -111,7 +111,7 @@
                     class="sectionTitle">Edge routers: </span></div>
             <div id="routerAccordion" class="accordion collapse in" aria-expanded="true">
                 <br/>
-                <div class="routerItem item">
+                <div class="routerItem item" id="routerItem-1">
                     <div class="form-group">
                         <label class="control-label col-sm-2 server-name-label" for="inputEdgeRouterName">Server name: </label>
                         <div class="controls">
@@ -226,7 +226,7 @@
             </div>
             <div id="sibraAccordion" class="accordion collapse" aria-expanded="true">
                 <br/>
-                <div class="sibraItem item">
+                <div class="sibraItem item" id="sibraItem-1">
 
                     <input class="hidden" type="text" id="inputSibraServerType" name="inputSibraServerType"
                            value="sibra_server">
@@ -263,7 +263,7 @@
             </div>
             <div id="zookeeperAccordion" class="accordion collapse" aria-expanded="true">
                 <br/>
-                <div class="zookeeperItem item">
+                <div class="zookeeperItem item" id="zookeeperItem-1">
 
                     <input class="hidden" type="text" id="inputZookeeperServerType" name="inputZookeeperServerType"
                            value="zookeeper_server">
