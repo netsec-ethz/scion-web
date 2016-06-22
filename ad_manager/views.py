@@ -49,7 +49,7 @@ from ad_manager.util import management_client
 from ad_manager.util.ad_connect import (
     create_new_ad_files,
     find_last_router,
-    link_ads,
+    # link_ads,
 )
 from ad_manager.util.errors import HttpResponseUnavailable
 from lib.util import write_file
@@ -63,11 +63,12 @@ from lib.defines import (BEACON_SERVICE,
                          ROUTER_SERVICE,
                          SIBRA_SERVICE)
 from lib.defines import (SCION_UDP_PORT,
-                         SCION_UDP_EH_DATA_PORT,
-                         SCION_DNS_PORT,
+                         # SCION_UDP_EH_DATA_PORT,
+                         # SCION_DNS_PORT,
                          SCION_ROUTER_PORT,
                          DEFAULT_MTU,
-                         SCION_MIN_MTU)
+                         # SCION_MIN_MTU
+                         )
 from lib.defines import GEN_PATH, PROJECT_ROOT
 
 from ad_manager.util.hostfile_generator import generate_ansible_hostfile
@@ -147,11 +148,11 @@ def add_as(request):
     new_as_id = request.POST['inputASname']
     current_isd = request.POST['inputISDname']
     isd = get_object_or_404(ISD, id=int(current_isd))
-    AS = AD.objects.create(id=new_as_id, isd=isd,
-                           is_core_ad=0,
-                           dns_domain='',
-                           is_open=False)
-    AS.save()
+    as_obj = AD.objects.create(id=new_as_id, isd=isd,
+                               is_core_ad=0,
+                               dns_domain='',
+                               is_open=False)
+    as_obj.save()
     ad_page = reverse('ad_detail', args=[new_as_id])
     return redirect(ad_page + '#!nodes')
 
@@ -537,7 +538,7 @@ class NewLinkView(FormView):
 
     def form_valid(self, form):
         this_ad = self._get_ad()
-        from_ad = this_ad
+        # from_ad = this_ad
         # to_ad = form.cleaned_data['end_point']
         # link_type = form.cleaned_data['link_type']
         #
@@ -820,10 +821,10 @@ def name_entry_dict_router(tp):
     address_list = tp.getlist('inputEdgeRouterAddress')
     interface_list = tp.getlist('inputInterfaceAddr')
     bandwidth_list = tp.getlist('inputInterfaceBandwidth')
-    IFID_list = tp.getlist('inputInterfaceIFID')
+    if_id_list = tp.getlist('inputInterfaceIFID')
     remote_name_list = tp.getlist('inputInterfaceRemoteName')
     interface_type_list = tp.getlist('inputInterfaceType')
-    link_MTU_list = tp.getlist('inputLinkMTU')
+    link_mtu_list = tp.getlist('inputLinkMTU')
     remote_address_list = tp.getlist('inputInterfaceRemoteAddress')
     remote_port_list = tp.getlist('inputInterfaceRemotePort')
     own_port_list = tp.getlist('inputInterfaceOwnPort')
@@ -831,19 +832,19 @@ def name_entry_dict_router(tp):
         ret_dict[name_list[i]] = {'Addr': address_list[i],
                                   'Interface':
                                       {'Addr': interface_list[i],
-                                        'Bandwidth': st_int(bandwidth_list[i],
-                                                            DEFAULT_BANDWIDTH),
-                                        'IFID': st_int(IFID_list[i], 1),
-                                        'ISD_AS': remote_name_list[i],
-                                        'LinkType': interface_type_list[i],
-                                        'MTU': st_int(link_MTU_list[i],
-                                                      DEFAULT_MTU),
-                                        'ToAddr': remote_address_list[i],
-                                        'ToUdpPort':
-                                        st_int(remote_port_list[i],
-                                               SCION_ROUTER_PORT),
-                                        'UdpPort': st_int(own_port_list[i],
-                                                          SCION_ROUTER_PORT)}
+                                       'Bandwidth': st_int(bandwidth_list[i],
+                                                           DEFAULT_BANDWIDTH),
+                                       'IFID': st_int(if_id_list[i], 1),
+                                       'ISD_AS': remote_name_list[i],
+                                       'LinkType': interface_type_list[i],
+                                       'MTU': st_int(link_mtu_list[i],
+                                                     DEFAULT_MTU),
+                                       'ToAddr': remote_address_list[i],
+                                       'ToUdpPort':
+                                       st_int(remote_port_list[i],
+                                              SCION_ROUTER_PORT),
+                                       'UdpPort': st_int(own_port_list[i],
+                                                         SCION_ROUTER_PORT)}
                                   }
     return ret_dict
 
@@ -861,7 +862,7 @@ def generate_topology(request):
     mockup_dicts['Core'] = True if (tp['inputIsCore'] == 'on') else False
 
     service_types = ['BeaconServer', 'CertificateServer',
-               'DomainServer', 'PathServer', 'SibraServer']
+                     'DomainServer', 'PathServer', 'SibraServer']
 
     for s_type in service_types:
         section_name = s_type+'s' if s_type != 'DomainServer' else 'DNSServers'
@@ -891,15 +892,15 @@ def generate_topology(request):
     mockup_dicts['Zookeepers'] = zk_dict
 
     # IP:port uniqueness in AS check
-    all_IP_port_pairs = []
+    all_ip_port_pairs = []
     for r in ['BeaconServers', 'CertificateServers', 'DNSServers',
               'PathServers', 'SibraServers', 'Zookeepers']:
         servers_of_type_r = mockup_dicts[r]
         for server in servers_of_type_r:
             curr_pair = servers_of_type_r[server]['Addr'] + ':' + str(
                 servers_of_type_r[server]['Port'])
-            all_IP_port_pairs.append(curr_pair)
-    if len(all_IP_port_pairs) != len(set(all_IP_port_pairs)):
+            all_ip_port_pairs.append(curr_pair)
+    if len(all_ip_port_pairs) != len(set(all_ip_port_pairs)):
         return JsonResponse(
             {'data': 'IP:port combinations not unique within AS'})
 
@@ -1068,6 +1069,7 @@ def create_local_gen(isd_as, tp):
     ready for Ansible deployment
     Args:
         isd_as: isd-as string
+        tp: topology dict data, to include more specifics about edge routes & co
 
     """
     # looks up the name of the executable for the service,
@@ -1185,7 +1187,7 @@ def create_local_gen(isd_as, tp):
 def run_remote_command(ip, process_name, command):
     use_ansible = True
 
-    if (not use_ansible):
+    if not use_ansible:
         server = xmlrpc.client.ServerProxy('http://{}:9011'.format(ip))
         wait_for_result = True
         succeeded = False
@@ -1216,14 +1218,14 @@ def run_remote_command(ip, process_name, command):
     return 0
 
 
-def run_rpc_command(ip, uuid, management_interface_ip, command, ISD, AS):
+def run_rpc_command(ip, uuid, management_interface_ip, command, isd_id, as_id):
     server = xmlrpc.client.ServerProxy('http://{}:9012'.format(ip))
     result = None
     if command == 'register':
-        result = server.register(management_interface_ip, ISD, AS)
+        result = server.register(management_interface_ip, isd_id, as_id)
     elif command == 'retrieve_tar':
         result = server.retrieve_configuration(uuid, management_interface_ip,
-                                               ISD, AS)
+                                               isd_id, as_id)
     else:
         print('Wrong command')
     print('Remote operation {} completed: {}'.format(command, 'True'))

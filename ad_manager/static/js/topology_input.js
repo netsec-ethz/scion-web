@@ -102,8 +102,8 @@ function setLoadedTopology(reloadedTopology) {
         var address = edgeRouter['Addr'];
         $('#inputEdgeRouterAddress').attr('value', address);
 
-        var interface = edgeRouter['Interface'];
-        for (var interfaceKey in interface) {
+        var interface_obj = edgeRouter['Interface'];
+        for (var interfaceKey in interface_obj) {
             var value = interface[interfaceKey];
             switch(interfaceKey) {
                 case 'ISD_AS':

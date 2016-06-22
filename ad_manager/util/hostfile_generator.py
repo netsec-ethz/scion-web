@@ -43,6 +43,7 @@ def generate_ansible_hostfile(topology_params, isd_as):
         for entry in val:
             server_index += 1
             entry = entry.split('/')[0]  # remove subnet size
+            section_name = None
             if service_type.endswith('_server'):
                 section_name = service_type + 's'
                 config[section_name] = \
@@ -69,7 +70,8 @@ def generate_ansible_hostfile(topology_params, isd_as):
                                                              lkp[service_type],
                                                              server_index,
                                                              hostname)}
-        scion_nodes.append(section_name)
+        if section_name is not None:
+            scion_nodes.append(section_name)
 
     config['scion_nodes:children'] = {}
     for role in scion_nodes:
