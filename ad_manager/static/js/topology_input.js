@@ -51,7 +51,7 @@ function toggleInput(elem) {
     }
 
 function setLoadedTopology(reloadedTopology) {
-    var isCore = reloadedTopology['Core'];
+    var isCore = reloadedTopology['Core'] == 'True';
     $('#inputIsCore.shownCheckbox').prop('checked', isCore);
     delete reloadedTopology['Core'];
     var dnsDomain = reloadedTopology['DnsDomain'];
@@ -111,6 +111,9 @@ function setLoadedTopology(reloadedTopology) {
                     break;
                 case 'LinkType':
                     $('#inputInterfaceType').attr('value', value);
+                    // we need to test if the AS is core, so that in case the link type is routing, the option gets added 
+                    checkShowCoreOption();
+                    $('#inputInterfaceType option[value="' + value + '"]').attr('selected', 'selected');
                     break;
                 case 'MTU':
                     $('#inputLinkMTU').attr('value', value);

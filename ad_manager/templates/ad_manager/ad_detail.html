@@ -265,7 +265,9 @@
     // Hide the link type ROUTING when current AS is not Core (isCore is not selected)
     function checkShowCoreOption() {
         var isChecked = $('#inputIsCore.shownCheckbox').is(':checked');
-        if (isChecked) {
+        // we need to check if ROUTING option already exists
+        var noExistingRoutingOption = $("#inputInterfaceType option[value='ROUTING']").length > 0;
+        if (isChecked && noExistingRoutingOption) {
             $('#inputInterfaceType').append('<option value="ROUTING">ROUTING</option>');
         } else {
             $('#inputInterfaceType').find('option[value="ROUTING"]').remove();
