@@ -10,7 +10,7 @@
   <tbody>
   {% for server in servers %}
     <tr id="{{ server.id_str }}">
-      <td> Server {{ server.name }}</td>
+      <td> {{ server.name }}</td>
       <td>{{ server.addr }}</td>
       <td class="status-column">
         {% with element=server %}

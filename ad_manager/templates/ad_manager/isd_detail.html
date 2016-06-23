@@ -38,12 +38,12 @@
 
   <br/>
   <div>
-      Select the .topo file you want to use to create the trc for this ISD. WARNING: This overwrites you main scion gen folder.
+      Select the .topo file you want to use to create the trc for this ISD. <span class="text-danger">WARNING: This overwrites you main scion gen folder.</span>
       <form class="form-inline" method="POST" enctype="multipart/form-data" action="{% url 'upload_file_ref' %}">
         {% csrf_token %}
         {% bootstrap_form upload_form %}
         <button type="submit" class="btn btn-default click-confirm" id="upload-topo-btn" name="_upload_topo">
-              Upload
+              Create/Update certs
         </button>
       </form>
   </div>

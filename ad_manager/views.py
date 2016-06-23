@@ -983,8 +983,8 @@ def create_global_gen(topo_path):
 
 def handle_uploaded_file(f):
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
-    shared_files_path = os.path.join(local_gen_path, 'shared_files')
-    destination_file_path = os.path.join(shared_files_path, f.name)
+    os.makedirs(local_gen_path, exist_ok=True)  # create the folder if not there
+    destination_file_path = os.path.join(local_gen_path, f.name)
     write_out_inmemory_uploaded(f, destination_file_path)
 
     create_global_gen(destination_file_path)  # to get the trc file
@@ -1143,12 +1143,27 @@ def create_local_gen(isd_as, tp):
     # matching keys to get Ansible testing
     # before integration with scion-coord
     shared_files_path = os.path.join(local_gen_path, 'shared_files')
-    if not os.path.exists(shared_files_path):
-        copytree(os.path.join(PROJECT_ROOT, 'gen/ISD1/AS1/endhost/'),
-                 shared_files_path)
-        # remove files that are not shared
+
+    rmtree(os.path.join(shared_files_path))  # remove shared_files and content
+    # populate the shared_files folder with the relevant files for this AS
+    certgen_path = os.path.join(PROJECT_ROOT,
+                                'gen/ISD{}/AS{}/endhost/'.format(isd_id, as_id))
+    copytree(certgen_path, shared_files_path)
+    # remove files that are not shared
+    try:
         os.remove(os.path.join(shared_files_path, 'supervisord.conf'))
+    except OSError:
+        pass
+    try:
         os.remove(os.path.join(shared_files_path, 'topology.yml'))
+    except OSError:
+        pass
+    try:
+        as_path = 'ISD{}/AS{}/'.format(isd_id, as_id)
+        as_path = os.path.join(local_gen_path, as_path)
+        rmtree(as_path, True)
+    except OSError:
+        pass
 
     types = ['router', 'beacon_server', 'path_server', 'certificate_server',
              'domain_server', 'sibra_server', 'zookeeper_service']
