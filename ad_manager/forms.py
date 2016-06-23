@@ -26,6 +26,12 @@ class PackageVersionSelectForm(forms.Form):
     )
 
 
+# never use for untrusted uploads
+class UploadFileForm(forms.Form):
+    file = forms.FileField()
+    # filename = forms.CharField(max_length=25)  # additional field to rename f
+
+
 class ConnectionRequestForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         current_as_id = kwargs.pop('pk')

@@ -30,6 +30,8 @@ isd_patterns = patterns(
     '',
     url(r'^isds/$',
         views.ISDListView.as_view(), name='list_isds'),
+    url(r'^isds/upload_file$',
+        views.upload_file, name='upload_file_ref'),
     url(r'^isds/add_isd$',
         views.add_isd, name='add_isd'),
     url(r'^isds/(?P<pk>\d+)/$',

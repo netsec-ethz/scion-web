@@ -1,4 +1,5 @@
 {% extends "ad_manager/base.html" %}
+{% load bootstrap3 %}
 
 {% block content %}
   <h1>
@@ -34,6 +35,18 @@
         </div>
     </div>
   </form>
+
+  <br/>
+  <div>
+      Select the .topo file you want to use to create the trc for this ISD. WARNING: This overwrites you main scion gen folder.
+      <form class="form-inline" method="POST" enctype="multipart/form-data" action="{% url 'upload_file_ref' %}">
+        {% csrf_token %}
+        {% bootstrap_form upload_form %}
+        <button type="submit" class="btn btn-default click-confirm" id="upload-topo-btn" name="_upload_topo">
+              Upload
+        </button>
+      </form>
+  </div>
 
   {% include 'ad_manager/partials/pagination_footer.html' %}
 

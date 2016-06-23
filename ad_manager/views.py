@@ -43,6 +43,7 @@ from ad_manager.forms import (
     ConnectionRequestForm,
     NewLinkForm,
     PackageVersionSelectForm,
+    UploadFileForm
 )
 from ad_manager.models import AD, ISD, PackageVersion, ConnectionRequest, Node
 from ad_manager.util import management_client
@@ -62,8 +63,8 @@ from lib.defines import (BEACON_SERVICE,
                          PATH_SERVICE,
                          ROUTER_SERVICE,
                          SIBRA_SERVICE)
-from lib.defines import (SCION_UDP_PORT,
-                         # SCION_UDP_EH_DATA_PORT,
+from lib.defines import (# SCION_UDP_PORT,
+                         SCION_UDP_EH_DATA_PORT,
                          # SCION_DNS_PORT,
                          SCION_ROUTER_PORT,
                          DEFAULT_MTU,
@@ -140,6 +141,15 @@ class ISDDetailView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['object'] = self.isd
+        return context
+
+    def get_context_data(self, **kwargs):
+        """
+        Populate 'context' dictionary with the required objects
+        """
+        context = super(ISDDetailView, self).get_context_data(**kwargs)
+        # upload form
+        context['upload_form'] = UploadFileForm()
         return context
 
 
@@ -810,7 +820,8 @@ def name_entry_dict(name_list, address_list, port_list):
     ret_dict = {}
     for i in range(len(name_list)):
         ret_dict[name_list[i]] = {'Addr': address_list[i],
-                                  'Port': st_int(port_list[i], SCION_UDP_PORT)}
+                                  'Port': st_int(port_list[i],
+                                                 SCION_UDP_EH_DATA_PORT)}
     return ret_dict
 
 
@@ -956,6 +967,47 @@ def create_tar(tar_file_path):
     return
 
 
+def write_out_inmemory_uploaded(file, destination_file_path):
+    # we can not simply copy the InMemoryUploadedFile, we have to read it in chunks
+    # to safely get it stored
+    with open(destination_file_path, 'wb') as dest:
+        for chunk in file.chunks():
+            dest.write(chunk)
+    return
+
+
+def create_global_gen(topo_path):
+    # ./scion.sh topology -c '/../scion/topology/Switzerland.topo'
+    # we reuse the generation facility provided by scion.sh
+    scion_sh_path = os.path.join(PROJECT_ROOT, 'scion.sh')
+    result = subprocess.check_call([scion_sh_path, 'topology', '-c', topo_path],
+                                   cwd=PROJECT_ROOT)
+    return result
+
+def handle_uploaded_file(f):
+    local_gen_path = os.path.join(WEB_ROOT, 'gen')
+    shared_files_path = os.path.join(local_gen_path, 'shared_files')
+    destination_file_path = os.path.join(shared_files_path, f.name)
+    write_out_inmemory_uploaded(f, destination_file_path)
+
+    create_global_gen(destination_file_path)  # to get the trc file
+
+
+@require_POST
+def upload_file(request):
+    current_page = request.META.get('HTTP_REFERER')
+    if request.method == 'GET':
+        form = UploadFileForm()
+        return render(request, 'isd_list.html', {'form': form})
+    elif request.method == 'POST':
+        form = UploadFileForm(request.POST, request.FILES)
+        if form.is_valid():
+            handle_uploaded_file(request.FILES['file'])
+        return redirect(current_page)
+    else:
+        return redirect(current_page)
+
+
 def lookup_dict_services_prefixes():
     # looks up the prefix used for naming supervisor processes,
     # beacon server -> 'bs', ... TODO: move to util
@@ -1095,7 +1147,7 @@ def create_local_gen(isd_as, tp):
     # before integration with scion-coord
     shared_files_path = os.path.join(local_gen_path, 'shared_files')
     if not os.path.exists(shared_files_path):
-        copytree(os.path.join(PROJECT_ROOT, 'gen/ISD1/AS10/bs1-10-1/'),
+        copytree(os.path.join(PROJECT_ROOT, 'gen/ISD1/AS1/endhost/'),
                  shared_files_path)
         # remove files that are not shared
         os.remove(os.path.join(shared_files_path, 'supervisord.conf'))
@@ -1126,7 +1178,7 @@ def create_local_gen(isd_as, tp):
              'stdout_logfile': 'logs/' + serv_name + '.OUT',
              'redirect_stderr': 'true',
              'autorestart': 'false',
-             'environment': 'PYTHONPATH =.',
+             'environment': 'PYTHONPATH=.',
              'autostart': 'false',
              'stdout_logfile_maxbytes': '0'}
 
