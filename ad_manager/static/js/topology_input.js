@@ -63,6 +63,11 @@ function setLoadedTopology(reloadedTopology) {
     var isd_as = reloadedTopology['ISD_AS'];
     delete reloadedTopology['ISD_AS'];
 
+    var name;
+    var server;
+    var address;
+    var port;
+
     for (var entryKey in reloadedTopology) {
         if (entryKey.endsWith("Servers")) {
             var entry = reloadedTopology[entryKey];
@@ -75,7 +80,7 @@ function setLoadedTopology(reloadedTopology) {
             var names = Object.keys(entry); // get a list of keys
 
             for (var i in names) {
-                var name = names[i];
+                name = names[i];
                 if (i > 0) {
                     // if more than one entry, create additional form input
                     $('.' + type + 'Item'+':last').find('.btn-success').click()
@@ -83,10 +88,10 @@ function setLoadedTopology(reloadedTopology) {
                 // fill form values
                 var itemSelector = '#' + type + 'Item-' + (parseInt(i) + 1).toString();
                 $(itemSelector + ' #input'+type+'ServerName').val(name);
-                var server = entry[name];
-                var address = server['Addr'];
+                server = entry[name];
+                address = server['Addr'];
                 $(itemSelector + ' #input'+type+'ServerAddress').val(address);
-                var port = server['Port'];
+                port = server['Port'];
                 $(itemSelector + ' #input'+type+'ServerPort').val(port);
             }
 
@@ -97,9 +102,9 @@ function setLoadedTopology(reloadedTopology) {
 
     for (var edgeRouterKey in reloadedTopology['EdgeRouters']) {
         var edgeRouter = reloadedTopology['EdgeRouters'][edgeRouterKey];
-        var name = edgeRouterKey;
+        name = edgeRouterKey;
         $('#inputEdgeRouterName').attr('value', name);
-        var address = edgeRouter['Addr'];
+        address = edgeRouter['Addr'];
         $('#inputEdgeRouterAddress').attr('value', address);
 
         var interface_obj = edgeRouter['Interface'];
@@ -110,10 +115,11 @@ function setLoadedTopology(reloadedTopology) {
                     $('#inputInterfaceRemoteName').attr('value', value);
                     break;
                 case 'LinkType':
-                    $('#inputInterfaceType').attr('value', value);
+                    var linkType = $('#inputInterfaceType')
+                    $(linkType).attr('value', value);
                     // we need to test if the AS is core, so that in case the link type is routing, the option gets added 
                     checkShowCoreOption();
-                    $('#inputInterfaceType option[value="' + value + '"]').attr('selected', 'selected');
+                    $(linkType).find('option[value="' + value + '"]').attr('selected', 'selected');
                     break;
                 case 'MTU':
                     $('#inputLinkMTU').attr('value', value);
@@ -138,11 +144,11 @@ function setLoadedTopology(reloadedTopology) {
     var zookeepers = reloadedTopology['Zookeepers'];
 
     for (var zkKey in zookeepers) {
-        var server = zookeepers[zkKey]; //inputZookeeperServerType
+        server = zookeepers[zkKey]; //inputZookeeperServerType
         //$('#inputZookeeperServerType').attr('value', 'zookeeper_server'); // already set
-        var address = server['Addr'];
+        address = server['Addr'];
         $('#inputZookeeperServerAddress').attr('value', address);
-        var port = server['Port'];
+        port = server['Port'];
         $('#inputZookeeperServerPort').attr('value', port);
     }
 }

@@ -233,14 +233,6 @@
 
   {% include 'ad_manager/partials/log_modal.html' %}
 
-  <!-- set data reloaded from DB -->
-  <script>
-    reloadedTopology = '{{ reloaded_topology }}';
-    //test_django_dict = "{{ reloaded_topology.MTU }}";
-    reloadedTopology = parseTopology(reloadedTopology);
-    setLoadedTopology(reloadedTopology);
-  </script>
-
   <!-- JS variables passed from the view to JavaScript files -->
   <script>
     var isdAdId = '{{ object }}';
@@ -266,7 +258,7 @@
     function checkShowCoreOption() {
         var isChecked = $('#inputIsCore.shownCheckbox').is(':checked');
         // we need to check if ROUTING option already exists
-        var noExistingRoutingOption = $("#inputInterfaceType option[value='ROUTING']").length > 0;
+        var noExistingRoutingOption = $("#inputInterfaceType").find("option[value='ROUTING']").length == 0;
         if (isChecked && noExistingRoutingOption) {
             $('#inputInterfaceType').append('<option value="ROUTING">ROUTING</option>');
         } else {
@@ -288,6 +280,14 @@
         }
     });
 
+  </script>
+
+  <!-- set data reloaded from DB -->
+  <script>
+    reloadedTopology = '{{ reloaded_topology }}';
+    //test_django_dict = "{{ reloaded_topology.MTU }}";
+    reloadedTopology = parseTopology(reloadedTopology);
+    setLoadedTopology(reloadedTopology);
   </script>
   <style>
     .doc-hr {

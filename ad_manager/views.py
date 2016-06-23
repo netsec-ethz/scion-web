@@ -63,7 +63,7 @@ from lib.defines import (BEACON_SERVICE,
                          PATH_SERVICE,
                          ROUTER_SERVICE,
                          SIBRA_SERVICE)
-from lib.defines import (# SCION_UDP_PORT,
+from lib.defines import (  # SCION_UDP_PORT,
                          SCION_UDP_EH_DATA_PORT,
                          # SCION_DNS_PORT,
                          SCION_ROUTER_PORT,
@@ -139,15 +139,11 @@ class ISDDetailView(ListView):
         return queryset
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['object'] = self.isd
-        return context
-
-    def get_context_data(self, **kwargs):
         """
         Populate 'context' dictionary with the required objects
         """
         context = super(ISDDetailView, self).get_context_data(**kwargs)
+        context['object'] = self.isd
         # upload form
         context['upload_form'] = UploadFileForm()
         return context
@@ -968,8 +964,8 @@ def create_tar(tar_file_path):
 
 
 def write_out_inmemory_uploaded(file, destination_file_path):
-    # we can not simply copy the InMemoryUploadedFile, we have to read it in chunks
-    # to safely get it stored
+    # we can not simply copy the InMemoryUploadedFile,
+    # we have to read it in chunks to safely get it stored
     with open(destination_file_path, 'wb') as dest:
         for chunk in file.chunks():
             dest.write(chunk)
@@ -983,6 +979,7 @@ def create_global_gen(topo_path):
     result = subprocess.check_call([scion_sh_path, 'topology', '-c', topo_path],
                                    cwd=PROJECT_ROOT)
     return result
+
 
 def handle_uploaded_file(f):
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
