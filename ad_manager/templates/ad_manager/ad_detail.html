@@ -158,75 +158,8 @@
       <!-- Requests tab -->
       <div role="tabpanel" class="tab-pane" id="nodes">
           <br />
-          <div>
-              Register machines:
-              <form class="form-inline" method="POST" action="{% url 'register_node' %}">
-                  {% csrf_token %}
-                  <div id="node_registration" class="well">
-                      <div class="form-group">
-                          <label class="control-label" for="inputManagementInterfaceIP">Management Interface IP: </label>
-                          <input type="text" id="inputManagementInterfaceIP" name="inputManagementInterfaceIP" value="{{ management_interface_ip }}" alt="Could be put as: readonly">
-                      </div>
-                      <br />
-                      <div class="form-group">
-                          <label class="control-label" for="inputNodeIP">Node IP: </label>
-                          <input type="text" id="inputNodeIP" name="inputNodeIP" placeholder="192.168.0.15" value="">
-                      </div>
-                      <div class="form-group">
-                          <label class="control-label" for="inputNodeName">Node name: </label>
-                          <input type="text" id="inputNodeName" name="inputNodeName" placeholder="furious-linx" value="">
-                      </div>
-                      <div class="form-group">
-                          <label class="control-label" for="inputNodeISD">Node ISD: </label>
-                          <input type="text" id="inputNodeISD" name="inputNodeISD" placeholder="ISD{{ isd_id }}" value="">
-                      </div>
-                      <div class="form-group">
-                          <label class="control-label" for="inputNodeAS">Node AS: </label>
-                          <input type="text" id="inputNodeAS" name="inputNodeAS" placeholder="AS{{ as_id }}" value="">
-                      </div>
-                      <button type="submit" class="btn btn-primary">Register node</button>
-                  </div>
-              </form>
-          </div>
-          <br />
           {% include 'ad_manager/partials/topology_input.html' %}
           <br />
-          <br />
-          <br />
-          <br />
-          <!--div height="500px">
-              Provision node :
-
-          <form method="POST" action="/ad_manager/ads/deploy_config">
-              {% csrf_token %}
-              <input class="hidden" type="text" id="inputManagementInterfaceIPretrieving" name="managementInterfaceIP"
-                     value="{{ management_interface_ip }}">
-              <select  name="nodeUUID" class="selectpicker" data-show-subtext="true" required>
-                <optgroup label="available nodes">
-                <option value="" class="placeholder hidden" selected disabled>Choose node</option>
-                {% for node in nodes %}
-                  <option data-subtext="{{ node.name }}">{{ node.uuid }}</option>
-                {% endfor %}
-                </optgroup>
-              </select>
-
-              and deploy service :
-              <select name="type[]" class="selectpicker" multiple required>
-                  <optgroup label="servers">
-                      <option value="router">Edge router</option>
-                      <option value="beacon_server">Beacon server</option>
-                      <option value="path_server">Path server</option>
-                      <option value="certificate_server">Certificate server</option>
-                      <option value="sibra_server">Sibra server</option>
-                      <option value="domain_server">Domain server</option>
-                  </optgroup>
-                  <optgroup label="services">
-                      <option value="zookeeper_service">Zookeeper service</option>
-                  </optgroup>
-              </select>
-              <button type="submit" class="btn">Go</button>
-          </form>
-          </div-->
       </div>
     </div>
   </div>
