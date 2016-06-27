@@ -179,6 +179,7 @@ class ADDetailView(DetailView):
         context['certificate_servers'] = ad.certificateserverweb_set.all()
         context['beacon_servers'] = ad.beaconserverweb_set.all()
         context['dns_servers'] = ad.dnsserverweb_set.all()
+        context['sibra_servers'] = ad.sibraserverweb_set.all()
 
         context['nodes'] = Node.objects.all()
         context['management_interface_ip'] = get_own_local_ip()
@@ -189,7 +190,7 @@ class ADDetailView(DetailView):
         # Sort by name numerically
         lists_to_sort = ['routers', 'path_servers',
                          'certificate_servers', 'beacon_servers',
-                         'dns_servers']
+                         'dns_servers', 'sibra_servers']
         for list_name in lists_to_sort:
             context[list_name] = sorted(
                 context[list_name],

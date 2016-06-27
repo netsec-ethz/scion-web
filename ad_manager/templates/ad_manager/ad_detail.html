@@ -57,6 +57,10 @@
           {% include 'ad_manager/partials/server_table.html' %}
         {% endwith %}
 
+        {% with table_name='Sibra servers' servers=sibra_servers table_id='sibra-servers' %}
+          {% include 'ad_manager/partials/server_table.html' %}
+        {% endwith %}
+
         {% include 'ad_manager/partials/router_table.html' %}
         <br /><br />
       </div>

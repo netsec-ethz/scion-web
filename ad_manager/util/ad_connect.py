@@ -15,6 +15,7 @@ from ad_manager.models import (
     PathServerWeb,
     RouterWeb,
     DnsServerWeb,
+    SibraServerWeb,
     AD)
 from ad_manager.util.common import is_private_address
 from lib.defines import PROJECT_ROOT
@@ -67,7 +68,8 @@ def find_next_ip_global():
     object_groups = [PathServerWeb.objects.all(),
                      DnsServerWeb.objects.all(),
                      CertificateServerWeb.objects.all(),
-                     BeaconServerWeb.objects.all()]
+                     BeaconServerWeb.objects.all(),
+                     SibraServerWeb.objects.all()]
     for group in object_groups:
         for element in group:
             element_addr = ip_address(element.addr)

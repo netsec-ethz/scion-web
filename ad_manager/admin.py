@@ -19,6 +19,7 @@ from ad_manager.models import (
     ISD,
     PathServerWeb,
     RouterWeb,
+    SibraServerWeb,
 )
 
 
@@ -81,6 +82,7 @@ class SortRelatedAdmin(PrivilegedChangeAdmin):
                 CertificateServerWeb,
                 PathServerWeb,
                 DnsServerWeb,
+                SibraServerWeb,
                 site=admin_site)
 class ServerAdmin(PrivilegedChangeAdmin):
     fields = ('name', 'addr', ('ad', 'ad_link'),)

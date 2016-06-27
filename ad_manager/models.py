@@ -21,6 +21,7 @@ from lib.defines import (
     CERTIFICATE_SERVICE,
     DNS_SERVICE,
     PATH_SERVICE,
+    SIBRA_SERVICE
 )
 
 PORT = 50000
@@ -100,7 +101,7 @@ class AD(models.Model):
             'ISDID': int(self.isd_id), 'ADID': int(self.id),
             'Core': int(self.is_core_ad), 'DnsDomain': self.dns_domain,
             'EdgeRouters': {}, 'PathServers': {}, 'BeaconServers': {},
-            'CertificateServers': {}, 'DNSServers': {},
+            'CertificateServers': {}, 'DNSServers': {}, 'SibraServers': {},
         })
         for router in self.routerweb_set.all():
             out_dict['EdgeRouters'][str(router.name)] = router.get_dict()
@@ -112,6 +113,8 @@ class AD(models.Model):
             out_dict['CertificateServers'][str(cs.name)] = cs.get_dict()
         for ds in self.dnsserverweb_set.all():
             out_dict['DNSServers'][str(ds.name)] = ds.get_dict()
+        for sb in self.sibraserverweb_set.all():
+            out_dict['SibraServers'][str(sb.name)] = sb.get_dict()
         return out_dict
 
     def get_all_elements(self):
@@ -119,7 +122,8 @@ class AD(models.Model):
                     self.pathserverweb_set.all(),
                     self.beaconserverweb_set.all(),
                     self.certificateserverweb_set.all(),
-                    self.dnsserverweb_set.all()]
+                    self.dnsserverweb_set.all(),
+                    self.sibraserverweb_set.all()]
         for element_group in elements:
             for element in element_group:
                 yield element
@@ -142,6 +146,7 @@ class AD(models.Model):
             self.certificateserverweb_set.all().delete()
             self.beaconserverweb_set.all().delete()
             self.dnsserverweb_set.all().delete()
+            self.sibraserverweb_set.all().delete()
 
         self.original_topology = topology_dict
         self.is_core_ad = (topology_dict['Core'] == 1)
@@ -153,6 +158,7 @@ class AD(models.Model):
         certificate_servers = topology_dict["CertificateServers"]
         path_servers = topology_dict["PathServers"]
         dns_servers = topology_dict["DNSServers"]
+        sibra_servers = topology_dict["SibraServers"]
 
         try:
             for name, router in routers.items():
@@ -194,6 +200,11 @@ class AD(models.Model):
                 DnsServerWeb.objects.update_or_create(addr=str(ds["Addr"]),
                                                       name=name,
                                                       ad=self)
+
+            for name, sb in sibra_servers.items():
+                SibraServerWeb.objects.update_or_create(addr=sb["Addr"],
+                                                        name=name,
+                                                        ad=self)
         except IntegrityError:
             logging.warning("Integrity error in AD.fill_from_topology(): "
                             "ignoring")
@@ -308,6 +319,14 @@ class RouterWeb(SCIONWebElement):
 
     class Meta:
         verbose_name = 'Router'
+        unique_together = (("ad", "addr"),)
+
+
+class SibraServerWeb(SCIONWebElement):
+    prefix = SIBRA_SERVICE
+
+    class Meta:
+        verbose_name = 'SIBRA server'
         unique_together = (("ad", "addr"),)
 
 
