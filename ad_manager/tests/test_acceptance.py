@@ -216,43 +216,6 @@ class TestUsersAndPermissions(BasicWebTestUsers):
         self.assertTrue(res.json)
 
 
-class TestPackageDownload(BasicWebTestUsers):
-
-    def _get_download_form(self, get_args=None):
-        if get_args is None:
-            get_args = {}
-
-        ad = self.ads[1]
-        ad_detail = self._get_ad_detail(ad, **get_args)
-
-        download_form = self._find_form_by_action(ad_detail, 'update_action',
-                                                  args=[ad.id])
-        return download_form
-
-    def test_nonpriv_user(self):
-        download_form = self._get_download_form()
-        res = download_form.submit('_download_update', expect_errors=True)
-        self.assertEqual(res.status_code, 403)
-
-    def test_download(self):
-        data = b'123'
-        with tempfile.NamedTemporaryFile() as tmp_file:
-            tmp_file.write(data)
-            tmp_file.flush()
-
-            package = PackageVersion(name='test_package',
-                                     filepath=tmp_file.name,
-                                     date_created=timezone.now(),
-                                     size=tmp_file.tell())
-            package.save()
-
-            args = {'user': self.admin_user}
-            download_form = self._get_download_form(get_args=args)
-            download_form.fields['selected_version'] = package
-            res = download_form.submit('_download_update').maybe_follow()
-            self.assertEqual(data, res.body)
-
-
 class TestConnectionRequests(BasicWebTestUsers):
 
     def _get_request_page(self, ad_id):
