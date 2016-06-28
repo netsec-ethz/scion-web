@@ -1,5 +1,11 @@
 ## Installation
 
+#### One click install
+
+If you have trouble following the manual installation below, make sure your keys are set up for github.com and run oneclick_install.sh in the location where you want your installation.
+Run `ssh -T git@github.com' if you are not sure about your keys.
+Feedback about the script is welcome.
+
 #### Manual installation
 
 1. Go to to this repos top folder (which would be sub/web if you checked it out as a submodule of the main scion repo), install the dependencies

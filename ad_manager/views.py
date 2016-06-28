@@ -1145,7 +1145,7 @@ def create_local_gen(isd_as, tp):
     # before integration with scion-coord
     shared_files_path = os.path.join(local_gen_path, 'shared_files')
 
-    rmtree(os.path.join(shared_files_path))  # remove shared_files and content
+    rmtree(os.path.join(shared_files_path), True)  # rm shared_files & content
     # populate the shared_files folder with the relevant files for this AS
     certgen_path = os.path.join(PROJECT_ROOT,
                                 'gen/ISD{}/AS{}/endhost/'.format(isd_id, as_id))
