@@ -31,6 +31,11 @@ Thumbs.db
 /traces/
 
 
+# scion-web generated files
+/ad_manager/static/tmp/
+*.sqlite3
+
+
 # Python generated files #
 #########################
 __pycache__
