@@ -1,17 +1,15 @@
 
 # External packages
-import tempfile
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
-from django.utils import timezone
 from django_webtest import WebTest
 from unittest.mock import patch
 
 # SCION
 from guardian.shortcuts import assign_perm
 from ad_manager.util.response_handling import response_success
-from ad_manager.models import ISD, AD, PackageVersion, ConnectionRequest
+from ad_manager.models import ISD, AD, ConnectionRequest
 
 
 class BasicWebTest(WebTest):

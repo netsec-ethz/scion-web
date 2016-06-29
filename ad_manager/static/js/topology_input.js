@@ -106,6 +106,8 @@ function setLoadedTopology(reloadedTopology) {
         $('#inputEdgeRouterName').attr('value', name);
         address = edgeRouter['Addr'];
         $('#inputEdgeRouterAddress').attr('value', address);
+        port = edgeRouter['Port'];
+        $('#inputEdgeRouterPort').attr('value', port);
 
         var interface_obj = edgeRouter['Interface'];
         for (var interfaceKey in interface_obj) {

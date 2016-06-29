@@ -61,12 +61,12 @@
         {% with 'Beacon Certificate Domain Path' as serverTypes %}
             {% for type in serverTypes.split %}
                 <div class="control-group well">
-                    <div class="chevron {% if forloop.counter0 > 0 %}collapsed{% endif %}" data-toggle="collapse"
+                    <div class="chevron {% if forloop.counter0 == 2 %}collapsed{% endif %}" data-toggle="collapse"
                          href="#{{ type|lower }}Accordion"><span class="sectionTitle">{{ type }} servers</span></div>
-                    <div id="{{ type|lower }}Accordion" class="accordion collapse {% if forloop.counter0 == 0 %}in{% endif %}"
+                    <div id="{{ type|lower }}Accordion" class="accordion collapse {% if forloop.counter0 != 2 %}in{% endif %}"
                          {% comment%}
-                          comment:  'if forloop.counter0 == 0 -> in' expands the first accordion, to show user how to
-                          interact with input, that these accordions can be expanded
+                          comment:  'if forloop.counter0 == 2 -> in' expands the 2nd accordion, to show user how to
+                          interact with input, that these accordions can be collapsed
                          {%  endcomment %}
                          aria-expanded="true">
                         <br/>
@@ -107,9 +107,9 @@
         {% endwith %}
 
         <div class="control-group well">
-            <div class="chevron" data-toggle="accordion collapse" href="#routerAccordion"><span
+            <div class="chevron collapsed" data-toggle="collapse" href="#routerAccordion"><span
                     class="sectionTitle">Edge routers: </span></div>
-            <div id="routerAccordion" class="accordion collapse in" aria-expanded="true">
+            <div id="routerAccordion" class="accordion collapse" aria-expanded="true">
                 <br/>
                 <div class="routerItem item" id="routerItem-1">
                     <div class="form-group">
@@ -119,11 +119,13 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-2 server-address-label" for="inputEdgeRouterAddress">Edge router: </label>
+                        <label class="control-label col-sm-2 server-address-label" for="inputEdgeRouterAddress">Address & port: </label>
                         <div class="controls">
                             <input class="server-address-input" type="text" id="inputEdgeRouterAddress" name="inputEdgeRouterAddress"
-                                   placeholder="127.0.0.52/29">
-                            <button class="btn btn-success btn-add pull-right" type="button"
+                                   placeholder="127.0.0.52/29"> :
+                            <input class="server-port-input inputPort" id="inputEdgeRouterPort" name="inputEdgeRouterPort"
+                               placeholder="2048" type="text">
+                            <button class="btn btn-success btn-add pull-right" type="button" style="margin-right: 1.2em;"
                                     onclick="toggleInput(this);">
                                 <span class="glyphicon glyphicon-plus"></span>
                             </button>
@@ -222,9 +224,9 @@
         </div>
 
         <div class="control-group well">
-            <div class="chevron collapsed" data-toggle="collapse" href="#sibraAccordion"><span class="sectionTitle">Sibra servers</span>
+            <div class="chevron" data-toggle="collapse" href="#sibraAccordion"><span class="sectionTitle">Sibra servers</span>
             </div>
-            <div id="sibraAccordion" class="accordion collapse" aria-expanded="true">
+            <div id="sibraAccordion" class="accordion collapse in" aria-expanded="true">
                 <br/>
                 <div class="SibraItem item" id="SibraItem-1">
 
@@ -259,9 +261,9 @@
         </div>
 
         <div class="control-group well">
-            <div class="chevron collapsed" data-toggle="collapse" href="#zookeeperAccordion"><span class="sectionTitle">Zookeeper servers</span>
+            <div class="chevron" data-toggle="collapse" href="#zookeeperAccordion"><span class="sectionTitle">Zookeeper servers</span>
             </div>
-            <div id="zookeeperAccordion" class="accordion collapse" aria-expanded="true">
+            <div id="zookeeperAccordion" class="accordion collapse in" aria-expanded="true">
                 <br/>
                 <div class="zookeeperItem item" id="zookeeperItem-1">
 

@@ -827,6 +827,7 @@ def name_entry_dict_router(tp):
 
     name_list = tp.getlist('inputEdgeRouterName')
     address_list = tp.getlist('inputEdgeRouterAddress')
+    port_list = tp.getlist('inputEdgeRouterPort')
     interface_list = tp.getlist('inputInterfaceAddr')
     bandwidth_list = tp.getlist('inputInterfaceBandwidth')
     if_id_list = tp.getlist('inputInterfaceIFID')
@@ -838,6 +839,7 @@ def name_entry_dict_router(tp):
     own_port_list = tp.getlist('inputInterfaceOwnPort')
     for i in range(len(name_list)):
         ret_dict[name_list[i]] = {'Addr': address_list[i],
+                                  'Port': port_list[i],
                                   'Interface':
                                       {'Addr': interface_list[i],
                                        'Bandwidth': st_int(bandwidth_list[i],
@@ -1177,11 +1179,11 @@ def create_local_gen(isd_as, tp):
         serv_name = '{}{}-{}-1'.format(prefix, isd_id, as_id)
         if service_type == 'router':
             to_isd, to_as = tp['inputInterfaceRemoteName'].split('-')
-            serv_name = '{0}{1}-{2}{0}{3}-{4}-1'.format(prefix,
-                                                        isd_id,
-                                                        as_id,
-                                                        to_isd,
-                                                        to_as)
+            serv_name = '{0}{1}-{2}{0}{3}-{4}'.format(prefix,
+                                                      isd_id,
+                                                      as_id,
+                                                      to_isd,
+                                                      to_as)
 
         config['program:' + serv_name] = \
             {'startsecs': '5',
