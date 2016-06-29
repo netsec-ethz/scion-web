@@ -9,8 +9,11 @@ from lib.defines import (BEACON_SERVICE,
                          ROUTER_SERVICE,
                          SIBRA_SERVICE,
                          PROJECT_ROOT)
+
 ZOOKEEPER_SERVICE = "zk"  # TODO: make PR to add into lib.defines as it used to
 WEB_ROOT = os.path.join(PROJECT_ROOT, 'sub', 'web')
+
+SUPPORTED_CLOUD_ENGINES = ['switch_engines', 'amazon_ec2']
 
 
 def generate_ansible_hostfile(topology_params, isd_as):
@@ -77,6 +80,24 @@ def generate_ansible_hostfile(topology_params, isd_as):
     config['scion_nodes:children'] = {}
     for role in scion_nodes:
         config.set('scion_nodes:children', role)
+
+    # cloud providers sections
+    try:
+        addresses = topology_params.getlist('inputCloudAddress')
+        providers = topology_params.getlist('inputCloudEngine')
+        for provider in SUPPORTED_CLOUD_ENGINES:
+            if provider in providers:
+                # a direct mask would be more efficient
+                config[provider] = filter(
+                    None, map(lambda matched:
+                              matched[0] if matched[1] == provider else None,
+                              zip(addresses, providers)
+                              )
+                )
+    except KeyError:
+        # There are no IPs with a selected cloud provider so the previous
+        # section is superfluous
+        pass
 
     config['scion_nodes:vars'] = {}
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
