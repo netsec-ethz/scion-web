@@ -839,7 +839,8 @@ def name_entry_dict_router(tp):
     own_port_list = tp.getlist('inputInterfaceOwnPort')
     for i in range(len(name_list)):
         ret_dict[name_list[i]] = {'Addr': address_list[i],
-                                  'Port': port_list[i],
+                                  'Port': st_int(port_list[i],
+                                                 SCION_ROUTER_PORT),
                                   'Interface':
                                       {'Addr': interface_list[i],
                                        'Bandwidth': st_int(bandwidth_list[i],
@@ -872,7 +873,9 @@ def generate_topology(request):
     mockup_dicts['Core'] = True if (tp['inputIsCore'] == 'on') else False
 
     service_types = ['BeaconServer', 'CertificateServer',
-                     'DomainServer', 'PathServer', 'SibraServer']
+                     'PathServer', 'SibraServer']  # 'DomainServer', tmp fix
+    # until the discovery replaces it
+    mockup_dicts['DNSServers'] = {'1': {'Addr': '127.0.0.1', 'Port': -1}}
 
     for s_type in service_types:
         section_name = s_type+'s' if s_type != 'DomainServer' else 'DNSServers'
@@ -903,7 +906,7 @@ def generate_topology(request):
 
     # IP:port uniqueness in AS check
     all_ip_port_pairs = []
-    for r in ['BeaconServers', 'CertificateServers', 'DNSServers',
+    for r in ['BeaconServers', 'CertificateServers',  # 'DNSServers', tmp fix
               'PathServers', 'SibraServers', 'Zookeepers']:
         servers_of_type_r = mockup_dicts[r]
         for server in servers_of_type_r:
@@ -915,15 +918,22 @@ def generate_topology(request):
             {'data': 'IP:port combinations not unique within AS'})
 
     os.makedirs(static_tmp_path, exist_ok=True)
+    # tmp fix DNSServer
+    mask_dns = mockup_dicts.pop('DNSServers')
     with open(yaml_topo_path, 'w') as file:
         yaml.dump(mockup_dicts, file, default_flow_style=False)
 
     create_local_gen(isd_as, tp)
+    # tmp fix DNSServer
+    mockup_dicts['DNSServers'] = mask_dns
     generate_ansible_hostfile(topology_params, isd_as)
 
     curr_as = get_object_or_404(AD, id=as_id)
-    curr_as.fill_from_topology(
-        mockup_dicts)  # load as usual model (for display in overview)
+    # load as usual model (for persistance and display in overview)
+    # TODO : hash displayed queryset and curr_as query set and compare
+    # allow the user to write back the new configuration only if it hasn't
+    # changed in the meantime
+    curr_as.fill_from_topology(mockup_dicts, clear=True)
 
     current_page = request.META.get('HTTP_REFERER')
     return redirect(current_page)
@@ -1169,7 +1179,8 @@ def create_local_gen(isd_as, tp):
         pass
 
     types = ['router', 'beacon_server', 'path_server', 'certificate_server',
-             'domain_server', 'sibra_server', 'zookeeper_service']
+             'sibra_server', 'zookeeper_service']  # 'domain_server', # tmp fix
+    # until the discovery replaces it
 
     for service_type in types:
         config = configparser.ConfigParser()

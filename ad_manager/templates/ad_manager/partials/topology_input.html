@@ -60,7 +60,7 @@
 
         {% with 'Beacon Certificate Domain Path' as serverTypes %}
             {% for type in serverTypes.split %}
-                <div class="control-group well">
+                <div class="control-group well {% if forloop.counter0 == 2 %}hidden{% endif %}">
                     <div class="chevron {% if forloop.counter0 == 2 %}collapsed{% endif %}" data-toggle="collapse"
                          href="#{{ type|lower }}Accordion"><span class="sectionTitle">{{ type }} servers</span></div>
                     <div id="{{ type|lower }}Accordion" class="accordion collapse {% if forloop.counter0 != 2 %}in{% endif %}"

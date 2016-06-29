@@ -32,7 +32,8 @@ def generate_ansible_hostfile(topology_params, isd_as):
     scion_nodes = []  # entries for the scion_node section
     for key, service_type in [('BeaconServer', 'beacon_server'),
                               ('CertificateServer', 'cert_server'),
-                              ('DomainServer', 'dns_server'),
+                              #  ('DomainServer', 'dns_server'), # tmp fix
+                              # until the discovery replaces it
                               ('EdgeRouter', 'router'),
                               ('PathServer', 'path_server'),
                               ('SibraServer', 'sibra_server'),
