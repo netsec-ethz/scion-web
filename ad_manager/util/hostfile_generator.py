@@ -24,7 +24,7 @@ def generate_ansible_hostfile(topology_params, isd_as):
     isd_id, as_id = isd_as.split('-')
     host_file_path = os.path.join(WEB_ROOT, 'gen',
                                   'ISD' + str(isd_id), 'AS' + str(as_id),
-                                  'hostfile.yml')
+                                  'host.{}-{}'.format(isd_id, as_id))
     # looks up the prefix used for naming supervisor processes,
     # beacon server -> 'bs', ...
     lkp = lookup_dict_services_prefixes()

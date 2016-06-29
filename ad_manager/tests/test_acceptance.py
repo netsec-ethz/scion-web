@@ -110,7 +110,7 @@ class TestAdDetail(BasicWebTest):
 
         # Test that tables are not empty
         tables = [beacon_servers, certificate_servers, path_servers,
-                  dns_servers, routers]
+                  routers]  # dns_servers, # tmp fix until discov service exists
         for table in tables:
             assert table, 'No table found'
             self.assertFalse('No servers' in str(table), "Table is empty")
