@@ -923,7 +923,7 @@ def generate_topology(request):
     with open(yaml_topo_path, 'w') as file:
         yaml.dump(mockup_dicts, file, default_flow_style=False)
 
-    create_local_gen(isd_as, tp)
+    create_local_gen(isd_as, mockup_dicts)
     # tmp fix DNSServer
     mockup_dicts['DNSServers'] = mask_dns
     generate_ansible_hostfile(topology_params, isd_as)
@@ -1131,16 +1131,12 @@ def create_local_gen(isd_as, tp):
     ready for Ansible deployment
     Args:
         isd_as: isd-as string
-        tp: topology dict data, to include more specifics about edge routes & co
+        tp: the topology file as a dict of dicts
 
     """
     # looks up the name of the executable for the service,
     # certificate server -> 'cert_server', ...
     lkx = lookup_dict_executables()
-
-    # looks up the prefix used for naming supervisor processes,
-    # beacon server -> 'bs', ...
-    lkp = lookup_dict_services_prefixes()
 
     isd_id, as_id = isd_as.split('-')
 
@@ -1178,88 +1174,92 @@ def create_local_gen(isd_as, tp):
     except OSError:
         pass
 
-    types = ['router', 'beacon_server', 'path_server', 'certificate_server',
+    types = ['beacon_server', 'certificate_server', 'router', 'path_server',
              'sibra_server', 'zookeeper_service']  # 'domain_server', # tmp fix
     # until the discovery replaces it
 
-    for service_type in types:
+    dict_keys = ['BeaconServers', 'CertificateServers', 'EdgeRouters',
+                 'PathServers', 'SibraServers', 'Zookeepers']
+
+    types_keys = zip(types, dict_keys)
+    zk_name_counter = 1
+
+    for service_type, type_key in types_keys:
         config = configparser.ConfigParser()
-        prefix = lkp[service_type]
         executable_name = lkx[service_type]
-        # Get digits only from ISD and AS names
-        serv_name = '{}{}-{}-1'.format(prefix, isd_id, as_id)
-        if service_type == 'router':
-            to_isd, to_as = tp['inputInterfaceRemoteName'].split('-')
-            serv_name = '{0}{1}-{2}{0}{3}-{4}'.format(prefix,
-                                                      isd_id,
-                                                      as_id,
-                                                      to_isd,
-                                                      to_as)
+        replicas = tp[type_key].keys()  # SECURITY WARNING:allows arbitrary path
+        # the user can enter arbitrary paths for his output
+        # might want to sanitize at least for '.', '\\' and variations
+        for serv_name in replicas:
+            # replace serv_name if zookeeper special case (they have only ids)
+            if service_type == 'zookeeper_service':
+                serv_name = '{}{}-{}-{}'.format('zk', isd_id,
+                                                as_id, zk_name_counter)
+                zk_name_counter += 1
+            config['program:' + serv_name] = \
+                {'startsecs': '5',
+                 'command': '"bin/{0}" "{1}" "gen/ISD{2}/AS{3}/{1}"'.format(
+                     executable_name, serv_name, isd_id, as_id),
+                 'startretries': '0',
+                 'stdout_logfile': 'logs/' + str(serv_name) + '.OUT',
+                 'redirect_stderr': 'true',
+                 'autorestart': 'false',
+                 'environment': 'PYTHONPATH=.',
+                 'autostart': 'false',
+                 'stdout_logfile_maxbytes': '0'}
 
-        config['program:' + serv_name] = \
-            {'startsecs': '5',
-             'command': '"bin/{0}" "{1}" "gen/ISD{2}/AS{3}/{1}"'.format(
-                 executable_name, serv_name, isd_id, as_id),
-             'startretries': '0',
-             'stdout_logfile': 'logs/' + serv_name + '.OUT',
-             'redirect_stderr': 'true',
-             'autorestart': 'false',
-             'environment': 'PYTHONPATH=.',
-             'autostart': 'false',
-             'stdout_logfile_maxbytes': '0'}
+            # replace command entry if zookeeper special case
+            if service_type == 'zookeeper_service':
+                config['program:' + serv_name]['command'] = \
+                    '"java" "-cp"' \
+                    ' "gen/{2}/{3}/{1}:' \
+                    '/usr/share/java/jline.jar:' \
+                    '/usr/share/java/log4j-1.2.jar:' \
+                    '/usr/share/java/xercesImpl.jar:' \
+                    '/usr/share/java/xmlParserAPIs.jar:' \
+                    '/usr/share/java/netty.jar:' \
+                    '/usr/share/java/slf4j-api.jar:' \
+                    '/usr/share/java/slf4j-log4j12.jar:' \
+                    '/usr/share/java/{0}" ' \
+                    '"-Dzookeeper.log.file=logs/{1}.log" ' \
+                    '"org.apache.zookeeper.server.quorum.QuorumPeerMain" ' \
+                    '"gen/ISD{2}/AS{3}/{1}/zoo.cfg"'.format(executable_name,
+                                                            serv_name,
+                                                            isd_id,
+                                                            as_id)
 
-        # replace command entry if zookeeper special case
-        if service_type == 'zookeeper_service':
-            config['program:' + serv_name]['command'] = \
-                '"java" "-cp"' \
-                ' "gen/{2}/{3}/{1}:' \
-                '/usr/share/java/jline.jar:' \
-                '/usr/share/java/log4j-1.2.jar:' \
-                '/usr/share/java/xercesImpl.jar:' \
-                '/usr/share/java/xmlParserAPIs.jar:' \
-                '/usr/share/java/netty.jar:' \
-                '/usr/share/java/slf4j-api.jar:' \
-                '/usr/share/java/slf4j-log4j12.jar:' \
-                '/usr/share/java/{0}" ' \
-                '"-Dzookeeper.log.file=logs/{1}.log" ' \
-                '"org.apache.zookeeper.server.quorum.QuorumPeerMain" ' \
-                '"gen/ISD{2}/AS{3}/{1}/zoo.cfg"'.format(executable_name,
-                                                        serv_name,
-                                                        isd_id,
-                                                        as_id)
+            node_path = 'ISD{}/AS{}/{}'.format(isd_id, as_id, serv_name)
+            node_path = os.path.join(local_gen_path, node_path)
+            # os.makedirs(node_path, exist_ok=True)
+            if not os.path.exists(node_path):
+                copytree(os.path.join(shared_files_path), node_path)
+            conf_file_path = os.path.join(node_path, 'supervisord.conf')
+            with open(conf_file_path, 'w') as configfile:
+                config.write(configfile)
 
-        node_path = 'ISD{}/AS{}/{}'.format(isd_id, as_id, serv_name)
-        node_path = os.path.join(local_gen_path, node_path)
-        # os.makedirs(node_path, exist_ok=True)
-        if not os.path.exists(node_path):
-            copytree(os.path.join(shared_files_path), node_path)
-        conf_file_path = os.path.join(node_path, 'supervisord.conf')
-        with open(conf_file_path, 'w') as configfile:
-            config.write(configfile)
+            # copy AS topology.yml file into node
+            copy(yaml_topo_path, node_path)
+            # Generating only the needed intermediate parts
+            # not used as for now we generator.py all certs and keys resources
+            # (minimaly required are only the certs and keys folders.
+            # path_policy.yml can be copied over from PathPolicy.yml,
+            # and as.yml is only a dict dump with a random master key)
 
-        # copy AS topology.yml file into node
-        copy(yaml_topo_path, node_path)
-        # Generating only the needed intermediate parts
-        # not used as for now we generator.py all certs and keys resources
-        # (minimaly required are only the certs and keys folders.
-        # path_policy.yml can be copied over from PathPolicy.yml,
-        # and as.yml is only a dict dump with a random master key)
-
-        # tmp_cert_gen_path = os.path.join(PROJECT_ROOT, 'web_scion',
-        # 'tmp_cert_gen')
-        # os.makedirs(tmp_cert_gen_path, exist_ok=True)
-        # copy(yaml_topo_path, tmp_cert_gen_path)
-        #
-        # topo_config = os.path.join(tmp_cert_gen_path, 'topology.yml')
-        # path_policy = DEFAULT_PATH_POLICY_FILE
-        # mininet = False
-        # network = "127.0.0.0/8"
-        # output_dir = tmp_cert_gen_path
-        # zk_config = os.path.join(PROJECT_ROOT, 'topology/Zookeeper.yml')
-        # confgen = ConfigGenerator(
-        #     output_dir, topo_config, path_policy, zk_config,
-        #     network, mininet)
-        # confgen.generate_all()
+            # tmp_cert_gen_path = os.path.join(PROJECT_ROOT, 'web_scion',
+            # 'tmp_cert_gen')
+            # os.makedirs(tmp_cert_gen_path, exist_ok=True)
+            # copy(yaml_topo_path, tmp_cert_gen_path)
+            #
+            # topo_config = os.path.join(tmp_cert_gen_path, 'topology.yml')
+            # path_policy = DEFAULT_PATH_POLICY_FILE
+            # mininet = False
+            # network = "127.0.0.0/8"
+            # output_dir = tmp_cert_gen_path
+            # zk_config = os.path.join(PROJECT_ROOT, 'topology/Zookeeper.yml')
+            # confgen = ConfigGenerator(
+            #     output_dir, topo_config, path_policy, zk_config,
+            #     network, mininet)
+            # confgen.generate_all()
 
 
 def run_remote_command(ip, process_name, command):
