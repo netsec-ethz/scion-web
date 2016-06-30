@@ -41,7 +41,7 @@ def generate_ansible_hostfile(topology_params, isd_as):
                               ('PathServer', 'path_server'),
                               ('SibraServer', 'sibra_server'),
                               ('ZookeeperServer', 'zookeeper_service')]:
-        val = [topology_params['input' + key + 'Address']]
+        val = topology_params.getlist('input' + key + 'Address')
         hostname = topology_params['input' + key + 'Name']
         server_index = 0
         for entry in val:
@@ -50,6 +50,10 @@ def generate_ansible_hostfile(topology_params, isd_as):
             section_name = None
             if service_type.endswith('_server'):
                 section_name = service_type + 's'
+                try:
+                    config.add_section(section_name)
+                except configparser.DuplicateSectionError:
+                    pass  # section already exists
                 config[section_name] = \
                     {entry: 'isd={} as={} {}={} # {}'.format(isd_id, as_id,
                                                              lkp[service_type],
@@ -59,15 +63,19 @@ def generate_ansible_hostfile(topology_params, isd_as):
                 remote_isd, remote_as = topology_params[
                     'inputInterfaceRemoteName'].split('-')
                 section_name = 'edge_routers'
-                config[section_name] = \
-                    {entry: 'isd={} as={} to_isd={} to_as={} {}={} # {}'.format(
-                        isd_id,
-                        as_id,
-                        remote_isd,
-                        remote_as,
-                        lkp[service_type],
-                        server_index,
-                        hostname)}
+                try:
+                    config.add_section(section_name)
+                except configparser.DuplicateSectionError:
+                    pass  # section already exists
+                config[section_name][entry] = \
+                    'isd={} as={} to_isd={}' \
+                    ' to_as={} {}={} # {}'.format(isd_id,
+                                                  as_id,
+                                                  remote_isd,
+                                                  remote_as,
+                                                  lkp[service_type],
+                                                  server_index,
+                                                  hostname)
             elif service_type == 'zookeeper_service':
                 config['zookeepers'] = \
                     {entry: 'isd={} as={} {}={} # {}'.format(isd_id, as_id,
