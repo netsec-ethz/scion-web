@@ -100,45 +100,55 @@ function setLoadedTopology(reloadedTopology) {
         }
     }
 
+    var edgeRouterIndex = 0;
+    type = 'router';
     for (var edgeRouterKey in reloadedTopology['EdgeRouters']) {
         var edgeRouter = reloadedTopology['EdgeRouters'][edgeRouterKey];
         name = edgeRouterKey;
-        $('#inputEdgeRouterName').attr('value', name);
+        if (edgeRouterIndex > 0) {
+            // if more than one entry, create additional form input
+            $('.' + type + 'Item'+':last').find('.btn-success').click()
+        }
+        itemSelector = '#' + type + 'Item-' + (parseInt(edgeRouterIndex) + 1).toString() + ' ';
+        $(itemSelector + '#inputEdgeRouterName').attr('value', name);
         address = edgeRouter['Addr'];
-        $('#inputEdgeRouterAddress').attr('value', address);
+        $(itemSelector + '#inputEdgeRouterAddress').attr('value', address);
+        $(itemSelector + '#inputEdgeRouterAddress').val(address);
         port = edgeRouter['Port'];
-        $('#inputEdgeRouterPort').attr('value', port);
+        $(itemSelector + '#inputEdgeRouterPort').attr('value', port);
 
         var interface_obj = edgeRouter['Interface'];
         for (var interfaceKey in interface_obj) {
             var value = interface_obj[interfaceKey];
             switch(interfaceKey) {
                 case 'ISD_AS':
-                    $('#inputInterfaceRemoteName').attr('value', value);
+                    $(itemSelector + '#inputInterfaceRemoteName').attr('value', value);
                     break;
                 case 'LinkType':
-                    var linkType = $('#inputInterfaceType')
+                    var linkType = $(itemSelector + '#inputInterfaceType')
                     $(linkType).attr('value', value);
                     // we need to test if the AS is core, so that in case the link type is routing, the option gets added 
                     checkShowCoreOption();
                     $(linkType).find('option[value="' + value + '"]').attr('selected', 'selected');
                     break;
                 case 'MTU':
-                    $('#inputLinkMTU').attr('value', value);
+                    $(itemSelector + '#inputLinkMTU').attr('value', value);
                     break;
                 case 'ToAddr':
-                    $('#inputInterfaceRemoteAddress').attr('value', value);
+                    $(itemSelector + '#inputInterfaceRemoteAddress').attr('value', value);
                     break;
                 case 'ToUdpPort':
-                    $('#inputInterfaceRemotePort').attr('value', value);
+                    $(itemSelector + '#inputInterfaceRemotePort').attr('value', value);
                     break;
                 case 'UdpPort':
-                    $('#inputInterfaceOwnPort').attr('value', value);
+                    $(itemSelector + '#inputInterfaceOwnPort').attr('value', value);
                     break;
                 default: // Addr, Bandwidth, IFID
-                    $('#inputInterface'+interfaceKey).attr('value', value);
+                    $(itemSelector + '#inputInterface'+interfaceKey).attr('value', value);
             }
         }
+
+        edgeRouterIndex++;
     }
 
     delete reloadedTopology['EdgeRouters'];
@@ -155,3 +165,8 @@ function setLoadedTopology(reloadedTopology) {
     }
 }
 
+function gatherIPsforCloudEngines() {
+    $(".server-address-input").each(function() {
+        alert($(this).val());
+    });
+}

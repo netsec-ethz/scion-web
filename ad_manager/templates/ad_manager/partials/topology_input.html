@@ -4,8 +4,6 @@
     Define topology file for AS:
     You only define the logical topology of the AS, i.e. you only need to specify the links for the edge routers.
     Endhosts are not specified.
-    <br/>(Abstraction: naming and prefixing is provided, default values suggested: ip to 127.0.0.--/29 subnets,
-    bandwidth, ports)
     <br/>
     <br/>
     <form class="form-horizontal" method="POST" action="/ad_manager/ads/generate_topology">
@@ -115,7 +113,7 @@
                     <div class="form-group">
                         <label class="control-label col-sm-2 server-name-label" for="inputEdgeRouterName">Server name: </label>
                         <div class="controls">
-                            <input class="server-name-input" type="text" id="inputEdgeRouterName" name="inputEdgeRouterName" placeholder="er{{ isd_id }}-{{ as_id }}er1-19">
+                            <input class="server-name-input" type="text" id="inputEdgeRouterName" name="inputEdgeRouterName" value="er-1" placeholder="er{{ isd_id }}-{{ as_id }}er1-19">
                         </div>
                     </div>
                     <div class="form-group">
