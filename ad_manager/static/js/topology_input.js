@@ -166,7 +166,24 @@ function setLoadedTopology(reloadedTopology) {
 }
 
 function gatherIPsforCloudEngines() {
+    ipList = [];
+    var parent = $('.cloudEngineItemList');
     $(".server-address-input").each(function() {
-        alert($(this).val());
+        var value = $(this).val();
+        value = value.split('/')[0];
+        var unique = $.inArray(value, ipList) == -1;
+        if (unique) {
+            ipList.push(value);
+        }
     });
+
+    //clear previous list
+    $(parent).empty();
+    for (var i = 0; i < ipList.length; i++) {
+        var clone = $('.cloudEngineItemModel').clone();
+        $(clone).children('.server-cloud-address-input').val(ipList[i]);
+        $(clone).removeClass('hidden');
+        $(clone).removeClass('cloudEngineItemModel');
+        parent.append($(clone));
+    }
 }

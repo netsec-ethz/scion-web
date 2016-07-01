@@ -95,13 +95,19 @@ def generate_ansible_hostfile(topology_params, isd_as):
         providers = topology_params.getlist('inputCloudEngine')
         for provider in SUPPORTED_CLOUD_ENGINES:
             if provider in providers:
+                try:
+                    config.add_section(provider)
+                except configparser.DuplicateSectionError:
+                    pass  # section already exists
                 # a direct mask would be more efficient
-                config[provider] = filter(
+                section_values = filter(
                     None, map(lambda matched:
                               matched[0] if matched[1] == provider else None,
                               zip(addresses, providers)
                               )
                 )
+                for ip in section_values:
+                    config.set(provider, ip)
     except KeyError:
         # There are no IPs with a selected cloud provider so the previous
         # section is superfluous

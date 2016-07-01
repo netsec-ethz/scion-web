@@ -77,12 +77,6 @@
                                 <div class="controls">
                                     <input class="server-name-input" type="text" id="input{{ type }}ServerName" name="input{{ type }}ServerName"
                                            value="{{ type|lower|slice:":1" }}s{{ isd_id }}-{{ as_id }}-1">
-                                    <label class="control-label" for="inputCloudEngine">cloud provider: </label>
-                                    <select id="inputCloudEngine">
-                                        <option value="own" selected></option>
-                                        <option value="switchEngine">switchEngine</option>
-                                        <option value="amazonEC2">Amazon ec2</option>
-                                    </select>
                                 </div>
                             </div>
 
@@ -234,12 +228,6 @@
                     <div class="form-group">
                         <div class="controls">
                             <input class="server-name-input" type="text" id="inputSibraServerName" name="inputSibraServerName" value="sb{{ isd_id }}-{{ as_id }}-1">
-                            <label class="control-label" for="inputCloudEngine">cloud provider: </label>
-                            <select id="inputCloudEngine">
-                                <option value="own" selected></option>
-                                <option value="switchEngine">switchEngine</option>
-                                <option value="amazonEC2">Amazon ec2</option>
-                            </select>
                         </div>
                     </div>
 
@@ -272,12 +260,6 @@
                         <div class="controls">
                             <input class="server-name-input" type="text" id="inputZookeeperServerName" name="inputZookeeperServerName"
                                    value="zk{{ isd_id }}-{{ as_id }}-1">
-                            <label class="control-label" for="inputCloudEngine">cloud provider: </label>
-                            <select id="inputCloudEngine">
-                                <option value="own" selected></option>
-                                <option value="switchEngine">switchEngine</option>
-                                <option value="amazonEC2">Amazon ec2</option>
-                            </select>
                         </div>
                     </div>
 
@@ -299,6 +281,28 @@
             </div>
         </div>
 
+        <div class="control-group well">
+            <div style="display: inline-block;">
+                <span>
+                    <h4 style="float: left;">Select here which cloud provider to use for each IP (enables cloud provider specific setups for Ansible host files)</h4>
+                    <button style="margin-left: 2em;" type="button" onclick="gatherIPsforCloudEngines();">Update IP address list</button>
+                </span>
+            </div>
+            <div class="controls hidden cloudEngineItemModel">
+                <label class="control-label col-sm-2 server-cloud-address-label" for="inputCloudAddress">IP address: </label>
+                <input class="server-cloud-address-input" type="text" id="inputCloudAddress" name="inputCloudAddress"
+                       value="123" readonly>
+                <label class="control-label" for="inputCloudEngine">cloud provider: </label>
+                <select id="inputCloudEngine" name="inputCloudEngine">
+                    <option value="own" selected></option>
+                    <option value="switch_engines">switchEngine</option>
+                    <option value="amazon_ec2">Amazon ec2</option>
+                </select>
+            </div>
+            <div class="form-group cloudEngineItemList">
+            </div>
+        </div>
+
         <br/>
         <div class="control-group">
             <button type="submit" class="btn">Save to topology file</button>
@@ -306,5 +310,3 @@
     </form>
 
 </div>
-
-
