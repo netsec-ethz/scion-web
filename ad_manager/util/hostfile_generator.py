@@ -23,12 +23,38 @@ def add_new_section(config, section_name):
         pass  # section already exists
 
 
-def fill_section(config, section_name, val, tags, hostname):
+def fill_section(config, section_name, val, tags, hostname_lookup):
     server_index = 0
     add_new_section(config, section_name)
     for entry in val:
         server_index += 1
         entry = entry.split('/')[0]  # remove subnet size
+        try:
+            hostname = hostname_lookup[entry]
+        except KeyError:
+            hostname = ''  # no hostname defined
+        config[section_name][entry] = tags + '={} # {}'.format(server_index,
+                                                               hostname)
+
+
+def fill_router_section(config, section_name, val, remote_isd_as,
+                        base_tags, prefix, hostname_lookup):
+    server_index = 0
+    add_new_section(config, section_name)
+    remote_isd, remote_as = zip(
+        *map(lambda ip: ip.split('-'), remote_isd_as)
+    )
+    for entry in val:
+        tags = base_tags + 'to_isd={}' ' to_as={} {}'.format(
+            remote_isd[server_index],
+            remote_as[server_index],
+            prefix)
+        server_index += 1
+        entry = entry.split('/')[0]  # remove subnet size
+        try:
+            hostname = hostname_lookup[entry]
+        except KeyError:
+            hostname = ''  # no hostname defined
         config[section_name][entry] = tags + '={} # {}'.format(server_index,
                                                                hostname)
 
@@ -55,7 +81,11 @@ def set_cloud_providers(config, topology_params):
         pass
 
 
-def generate_ansible_hostfile(topology_params, isd_as):
+def get_section_attr(mockup_dict, section_name, attr):
+    return [server[attr] for server in mockup_dict[section_name].values()]
+
+
+def generate_ansible_hostfile(topology_params, mockup_dict, isd_as):
     """
     Generate the host file for Ansible
     The hostfile is per AS and can have the same IP in multiple roles
@@ -79,31 +109,30 @@ def generate_ansible_hostfile(topology_params, isd_as):
                               ('EdgeRouter', 'router'),
                               ('PathServer', 'path_server'),
                               ('SibraServer', 'sibra_server'),
-                              ('ZookeeperServer', 'zookeeper_service')]:
-        val = topology_params.getlist('input' + key + 'Address')
-        hostname = topology_params['input' + key + 'Name']
+                              ('Zookeeper', 'zookeeper_service')]:
+        val = get_section_attr(mockup_dict, key+'s', 'Addr')
+        hostnames = topology_params.getlist('inputHostname')
+        unique_addr = topology_params.getlist('inputCloudAddress')
+        hostname_lookup = dict(zip(unique_addr, hostnames))
         if service_type.endswith('_server'):
             section_name = service_type + 's'
             tags = 'isd={} as={} {}'.format(isd_id, as_id,
                                             lkp[service_type])
-            fill_section(config, section_name, val, tags, hostname)
+            fill_section(config, section_name, val, tags, hostname_lookup)
         elif service_type == 'router':
-            remote_isd, remote_as = topology_params[
-                'inputInterfaceRemoteName'].split('-')
+            interfaces = get_section_attr(mockup_dict, key+'s', 'Interface')
+            remote_isd_as = [x['ISD_AS'] for x in interfaces]
             section_name = 'edge_routers'
-            tags = 'isd={} as={} to_isd={}' \
-                ' to_as={} {}'.format(isd_id,
-                                      as_id,
-                                      remote_isd,
-                                      remote_as,
-                                      lkp[service_type])
-            fill_section(config, section_name, val, tags, hostname)
+            tags = 'isd={} as={} '.format(isd_id,
+                                          as_id)
+            fill_router_section(config, section_name, val, remote_isd_as,
+                                tags, lkp[service_type], hostname_lookup)
         elif service_type == 'zookeeper_service':
             section_name = 'zookeepers'
             tags = 'isd={} as={} {}'.format(isd_id,
                                             as_id,
                                             lkp[service_type])
-            fill_section(config, section_name, val, tags, hostname)
+            fill_section(config, section_name, val, tags, hostname_lookup)
             continue  # zookeepers are not to be listed in scion_nodes children
         scion_nodes.append(section_name)
 

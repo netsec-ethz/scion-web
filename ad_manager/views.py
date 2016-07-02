@@ -926,7 +926,7 @@ def generate_topology(request):
     create_local_gen(isd_as, mockup_dicts)
     # tmp fix DNSServer
     mockup_dicts['DNSServers'] = mask_dns
-    generate_ansible_hostfile(topology_params, isd_as)
+    generate_ansible_hostfile(topology_params, mockup_dicts, isd_as)
 
     curr_as = get_object_or_404(AD, id=as_id)
     # load as usual model (for persistance and display in overview)
