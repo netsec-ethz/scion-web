@@ -3,6 +3,7 @@ import json
 import tempfile
 import time
 import os
+import hashlib
 from collections import deque
 from shutil import rmtree
 
@@ -23,6 +24,7 @@ from django.shortcuts import redirect, get_object_or_404, render
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView, DetailView, FormView
+from django.views.decorators.csrf import csrf_exempt
 
 from datetime import datetime
 import yaml
@@ -184,6 +186,10 @@ class ADDetailView(DetailView):
         context['nodes'] = Node.objects.all()
         context['management_interface_ip'] = get_own_local_ip()
         context['reloaded_topology'] = ad.original_topology
+        flat_string = json.dumps(ad.original_topology, sort_keys=True)
+        # hash for non cryptographic purpose (state comparison for user warning)
+        context['reloaded_topology_hash'] = \
+            hashlib.md5(flat_string.encode('utf-8')).hexdigest()
         context['as_id'] = ad.id
         context['isd_id'] = ad.isd_id
 
@@ -220,6 +226,19 @@ def get_ad_status(request, pk):
     else:
         error = get_failure_errors(ad_info_list_response)
         return HttpResponseUnavailable(error)
+
+
+@csrf_exempt  # remove csrf for this request
+def as_topo_hash(request, isd_id, as_id):
+    try:
+        ad = AD.objects.get(id=as_id,
+                            isd=isd_id)
+        flat_string = json.dumps(ad.original_topology, sort_keys=True)
+        # hash for non cryptographic purpose (state comparison for user warning)
+        topo_hash = hashlib.md5(flat_string.encode('utf-8')).hexdigest()
+        return JsonResponse({'topo_hash': topo_hash})
+    except AD.DoesNotExist:
+        return JsonResponse({'topo_hash': -1})
 
 
 def get_group_master(request, pk):

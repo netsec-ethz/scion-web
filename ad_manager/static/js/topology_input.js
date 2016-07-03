@@ -1,4 +1,54 @@
 
+function checkFreshness(isd_id, as_id) {
+    var xmlhttp = new XMLHttpRequest();
+    var url = "../../api/v1/internal/isd/" + isd_id + "/as/" + as_id + "/topo_hash";
+    var submit = false;
+    xmlhttp.onreadystatechange = function() {
+        // check if XMLHttpRequest is ready and HTTP status code is 200
+        if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+            var response = xmlhttp.responseText;
+            if (response != "") { // don't try to parse empty answer
+                var res = JSON.parse(response);
+                // check if data has changed since page loading
+                var changes = res['topo_hash'] == reloadedTopologyHash;
+                // check if force submitting is enabled
+                var forceSubmit = $('#forceSubmit:checked').length > 0;
+                if (changes && !forceSubmit) {
+                    overlayAlert("The data has changed, please reload the page or force submit.", 3000);
+                    $('#forceSubmitDiv').removeClass('hidden');
+                    $('#submitButton')[0].innerHTML = "Save to topology file";
+                    // abort POST
+                    submit = false;
+                } else {
+                    overlayAlert("Data submitted", 1000);
+                    submit = true;
+                    document.getElementById("topologyForm").submit();
+                    //$('#submitButton').innerHTML = "Save to topology file";
+                }
+            }
+        }
+        return submit;
+    };
+    $('#submitButton')[0].innerHTML = "Submitting...";
+    xmlhttp.open("POST", url, true);
+    xmlhttp.send();
+    return submit;
+}
+
+function overlayAlert(message, duration) {
+    var pageOverlay = document.createElement("div");
+    var bodyHeight = document.body.scrollHeight;
+    pageOverlay.setAttribute("style", "position: absolute; top: 0px; left: 0px; width: 100%; background-color: rgba(0, 0, 0, 0.3); height: " + bodyHeight + "px;");
+    var messageBox = document.createElement("div");
+    messageBox.innerHTML = message;
+    messageBox.setAttribute("style", "position: fixed; top: 50%; left: 50%; background-color: white; padding: 4em; width: 600px; margin-left: -300px;");
+    pageOverlay.appendChild(messageBox);
+    setTimeout(function(){
+      pageOverlay.parentNode.removeChild(pageOverlay);
+     },duration);
+    document.body.appendChild(pageOverlay);
+}
+
 function sanitize(loadenString) {
     loadenString = loadenString.replace(/&#39;/g, '"');
     loadenString = loadenString.replace(/True/g, '"True"');
