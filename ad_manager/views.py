@@ -1204,12 +1204,12 @@ def create_local_gen(isd_as, tp):
     zk_name_counter = 1
 
     for service_type, type_key in types_keys:
-        config = configparser.ConfigParser()
         executable_name = lkx[service_type]
         replicas = tp[type_key].keys()  # SECURITY WARNING:allows arbitrary path
         # the user can enter arbitrary paths for his output
-        # might want to sanitize at least for '.', '\\' and variations
+        # TODO: might want to sanitize at least for '.', '\\' and variations
         for serv_name in replicas:
+            config = configparser.ConfigParser()
             # replace serv_name if zookeeper special case (they have only ids)
             if service_type == 'zookeeper_service':
                 serv_name = '{}{}-{}-{}'.format('zk', isd_id,

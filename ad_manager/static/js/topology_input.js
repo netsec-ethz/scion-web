@@ -10,7 +10,7 @@ function checkFreshness(isd_id, as_id) {
             if (response != "") { // don't try to parse empty answer
                 var res = JSON.parse(response);
                 // check if data has changed since page loading
-                var changes = res['topo_hash'] == reloadedTopologyHash;
+                var changes = res['topo_hash'] != reloadedTopologyHash;
                 // check if force submitting is enabled
                 var forceSubmit = $('#forceSubmit:checked').length > 0;
                 if (changes && !forceSubmit) {
@@ -216,7 +216,7 @@ function setLoadedTopology(reloadedTopology) {
 }
 
 function gatherIPsforCloudEngines() {
-    ipList = [];
+    var ipList = [];
     var parent = $('.cloudEngineItemList');
     $(".server-address-input").each(function() {
         var value = $(this).val();
