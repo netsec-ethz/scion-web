@@ -36,7 +36,16 @@
     </div>
   </form>
 
-  <br/>
+  <hr>
+  <form method="POST" action="coord/upload_join_request">
+    {% csrf_token %}
+    <div class="control-group">
+        <input class="hidden" id="inputISDname" name="inputISDname" title="ISD name" type="text" value="{{ object.id }}">
+        <button type="submit" class="btn">Create Test AS</button>
+    </div>
+  </form>
+
+  <hr>
   <div>
       Select the .topo file you want to use to create the trc for this ISD.
       <span class="text-danger">WARNING: This overwrites you main scion gen folder.</span><br/>

@@ -1,14 +1,20 @@
 # Stdlib
+import base64
 import json
+import random
+import requests
 import tempfile
 import time
 import os
 import hashlib
 from collections import deque
 from shutil import rmtree
+from time import sleep
+from urllib.parse import urljoin
 
 # External packages
 import dictdiffer
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -59,6 +65,8 @@ from lib.util import write_file
 from topology.generator import ConfigGenerator  # , DEFAULT_PATH_POLICY_FILE,
 # DEFAULT_ZK_CONFIG
 
+from lib.crypto.asymcrypto import generate_sign_keypair
+from lib.crypto.certificate import Certificate, CertificateChain
 from lib.defines import (BEACON_SERVICE,
                          CERTIFICATE_SERVICE,
                          DNS_SERVICE,
@@ -110,6 +118,9 @@ SERVICE_EXECUTABLES = (
     SIBRA_EXECUTABLE,
 )
 
+login_key = settings.LOGIN_KEY
+login_secret = settings.LOGIN_SECRET
+
 
 class ISDListView(ListView):
     model = ISD
@@ -156,7 +167,8 @@ def add_as(request):
     new_as_id = request.POST['inputASname']
     current_isd = request.POST['inputISDname']
     isd = get_object_or_404(ISD, id=int(current_isd))
-    as_obj = AD.objects.create(id=new_as_id, isd=isd,
+    as_obj = AD.objects.create(id=new_as_id,
+                               isd=isd,
                                is_core_ad=0,
                                dns_domain='',
                                is_open=False)
@@ -789,6 +801,253 @@ def network_view(request):
     return render(request, 'ad_manager/network_view.html', {'data': graph})
 
 
+def makeAS(request):
+    url = 'http://localhost:8080/api/as/insert/%s/%s' % (login_key, login_secret)
+    AS = {'isdas':"1-1", 'core':1}
+    headers = {'content-type': 'application/json'}
+    r = requests.post(url, json=AS, headers=headers)
+    response = r.text
+    return HttpResponse(response)
+
+
+@require_POST
+def upload_join_request(request, isd_id):
+    # Generate the signature and encryption keys for the new AS
+    sig_pub, sig_priv = generate_sign_keypair()
+    enc_pub, enc_priv = generate_sign_keypair()
+    sig_pub = base64.b64encode(sig_pub).decode('utf-8')
+    sig_priv = base64.b64encode(sig_priv).decode('utf-8')
+    enc_pub = base64.b64encode(enc_pub).decode('utf-8')
+    enc_priv = base64.b64encode(enc_priv).decode('utf-8')
+
+    # Send a POST request to scion-coord for registering a new AS
+    url = urljoin(settings.SCION_COORD_BASE_URL,
+                  settings.UPLOAD_JOIN_REQUEST_SVC)
+    url += "/" + login_key + "/" + login_secret
+    params ={
+                'isd_to_join': int(isd_id),
+                'sigkey': sig_pub,
+                'enckey': enc_pub,
+            }
+    headers = {'content-type': 'application/json'}
+    r = requests.post(url, json=params, headers=headers)
+    if r.status_code != 200 :  # Debug
+        print("Failed to upload join request (ISD: ", isd_id, ")")
+
+    # Obtain the request ID from the scion-coord and keep looking for a response
+    # to the join request against that request ID
+    request_id = json.loads(r.text)['id']
+    url = urljoin(settings.SCION_COORD_BASE_URL, settings.POLL_JOIN_REPLY_SVC)
+    url += "/" + login_key + "/" + login_secret
+    params ={
+                "request_id": request_id
+            }
+    while True:
+        r = requests.post(url, json=params, headers=headers)
+        if r.status_code == 200 and r.text != "No reply\n":
+            break
+        sleep(2)
+
+    # Insert new AS entry into the database, using the isd_as in the response
+    as_info = json.loads(r.text)
+    isd_id, new_as_id = as_info['isdas'].split('-')
+    isd = get_object_or_404(ISD, id=int(isd_id))
+    as_obj = AD.objects.create(id=new_as_id,
+                               isd=isd,
+                               is_core_ad=0,
+                               dns_domain='',
+                               is_open=False,
+                               sig_pub_key=sig_pub,
+                               sig_priv_key=sig_priv,
+                               enc_pub_key=enc_pub,
+                               enc_priv_key=enc_priv,
+                               certificate=as_info['certificate'])
+    as_obj.save()
+    ad_page = reverse('ad_detail', args=[new_as_id])
+    return redirect(ad_page + '#!nodes')
+
+
+def upload_join_replies(args, core_isd_as):
+    # Iterate through all the join requests you ('core_isd_as') received
+    # and generate replies for each one of them
+    replies = []
+    isd_id, as_id = core_isd_as.split('-')
+    ad = AD.objects.get(id=as_id, isd=isd_id)
+    sig_priv_key = base64.b64decode(ad.sig_priv_key)
+
+    for arg in args:
+        sig_key = base64.b64decode(arg['sigkey'])
+        enc_key = base64.b64decode(arg['enckey'])
+        request_id = arg['id']
+        isd_as = isd_id + '-' + str(request_id)
+        certificate = Certificate.from_values(isd_as, sig_key, enc_key,
+                                              core_isd_as, sig_priv_key, 0)
+        reply = {
+                    'request_id': request_id,
+                    'certificate': str(certificate),
+                    'trc': 'Fake TRC', #Your TRC file, that of the core AS
+                }
+        replies.append(reply)
+
+    # Upload these join replies to the SCION coord service
+    url = urljoin(settings.SCION_COORD_BASE_URL,
+                  settings.UPLOAD_JOIN_REPLIES_SVC)
+    url += "/" + login_key + "/" + login_secret
+    params = {
+                'isdas': core_isd_as,
+                'replies':replies
+             }
+    headers = {'content-type': 'application/json'}
+    r = requests.post(url, json=params, headers=headers)
+
+    if r.status_code != 200 :  # Debug
+        print("Failed to upload join replies (Core ISD_AS: ", core_isd_as, ")")
+    return HttpResponse(r.text)
+
+
+@require_POST
+def upload_conn_requests(request):
+    return
+
+
+def upload_conn_replies(args, isd_as):
+    # Iterate through all the connection requests you received, and generate
+    # replies for each one of them. For now, we neglect unauthenticated
+    # requests and create new ER and send its IP/port details for authenticated
+    # requests.
+    # TODO(shyamjvs): Choose the ER's public IP/port from a table of available
+    # IP/port pairs instead of randomly generating them.
+    isd_id, as_id = isd_as.split('-')
+    curr_as = get_object_or_404(AD, id=as_id)
+    conn_replies = []
+
+    for arg in args:
+        cert_to_verify = Certificate.from_dict(json.loads(arg['certificate']))
+        cert_chain = CertificateChain.from_values(cert_to_verify)
+         # TODO(shyamjvs): Obtain trc and its version from AD model
+        trc = 'Your trc'
+        trc_version = 0
+
+        if cert_chain.verify(cert_to_verify.subject, trc, trc_version):
+            # Fetch the AS's current topology and add a new ER entry to it
+            as_topo = curr_as.generate_topology_dict()
+
+            elem_id = "er%ser%s" % (isd_as, arg['requester_isdas'])
+            er_id = arg['id']
+            er_local_addr = '127.0.0.' + str(random.randint(5, 250)) + '/29'
+            er_local_port = random.randint(30050, 30100)
+            er_public_addr = '127.0.0.' + str(random.randint(5, 250)) + '/31'
+            er_public_port = SCION_ROUTER_PORT
+
+            requester_isdas = arg['requester_isdas']
+            requester_addr = arg['ip']
+            requester_port = arg['port']
+
+            link_type = ''
+            if arg['linktype'] == 'CHILD':
+                link_type = 'PARENT'
+            elif arg['linktype'] == 'PARENT':
+                link_type = 'CHILD'
+            else:
+                link_type = 'PEER'
+            bandwidth = arg['bandwidth']
+            mtu = arg['mtu']
+
+            as_topo['EdgeRouters'][elem_id] = {
+                'Addr': er_local_addr,
+                'Port': er_local_port,
+                'Interface': {
+                    'IFID': er_id,
+                    'Addr': er_public_addr,
+                    'UdpPort': er_public_port,
+                    'ISD_AS': requester_isdas,
+                    'ToAddr': requester_addr,
+                    'ToUdpPort': requester_port,
+                    'LinkType': link_type,
+                    'Bandwidth': bandwidth,
+                    'MTU': mtu,
+                }
+            }
+
+            # Write back the new AS topology to the database and to 'gen'
+            os.makedirs(static_tmp_path, exist_ok=True)
+            mask_dns = as_topo.pop('DNSServers')
+            with open(yaml_topo_path, 'w') as file:
+                yaml.dump(as_topo, file, default_flow_style=False)
+
+            create_local_gen(isd_as, as_topo)
+            as_topo['DNSServers'] = mask_dns
+            generate_ansible_hostfile(topology_params, as_topo, isd_as)
+            curr_as.fill_from_topology(as_topo, clear=True)
+
+            # Create a connection reply for the requester
+            conn_reply = {
+                        'request_id': arg['id'],
+                        'ip': er_public_addr,
+                        'port': er_public_port,
+                        'mtu': mtu,
+                        'bandwidth': bandwidth,
+                    }
+        else:
+            conn_reply = {
+                        'request_id': arg['id'],
+                        'ip': '',
+                        'mtu': 0,
+                        'port': 0,
+                        'bandwidth': 0,
+                    }
+        conn_replies.append(reply)
+
+    # Upload these connection replies to the SCION coord service
+    url = urljoin(settings.SCION_COORD_BASE_URL,
+                  settings.UPLOAD_CONN_REPLIES_SVC)
+    url += "/" + login_key + "/" + login_secret
+    params = {
+                "isdas": isd_as,
+                "certificate": curr_as.certificate,
+                "replies": conn_replies,                
+             }
+    headers = {'content-type': 'application/json'}
+    r = requests.post(url, json=params, headers=headers)
+
+    if r.status_code != 200 :  # Debug
+        print("Failed to upload conn replies (ISD_AS: ", isd_as, ")")
+    return HttpResponse(r.text)
+
+
+def poll_events(request):
+    # Poll for any pending events for any AS under this instance of web scion.
+    # If there indeed is a join/connection request directed towards an AS, then
+    # forward the request to that AS asking it to upload back reply(ies).
+    # TODO(shyamjvs): Run this function as a seperate thread from scion-web
+    url = urljoin(settings.SCION_COORD_BASE_URL, settings.POLL_EVENTS_SVC)
+    url += "/" + login_key + "/" + login_secret
+    headers = {'content-type': 'application/json'}
+
+    print("Poll running")
+    while True:
+        for ad in AD.objects.all():
+            isd_as = str(ad.isd.id) + "-" + str(ad.id)
+            print(type(isd_as), ":", isd_as)
+            params = {
+                        "isdas": isd_as,
+                     }
+            r = requests.post(url, json=params, headers=headers)
+
+            print("status: ", r.status_code)
+            if r.status_code != 200 :  # Debug
+                print("Failed to poll for events (ISD_AS: ", isd_as, ")")
+
+            req = json.loads(r.text)
+            join_requests = req["join_requests"]
+            conn_requests = req["conn_requests"]
+            if join_requests:
+                upload_join_replies(join_requests, isd_as)
+            if conn_requests:
+                upload_conn_replies(conn_requests, isd_as)
+        sleep(settings.POLL_INTERVAL)
+    print("Poll stopped")
+
 def register_node(request):
     node_values = request.POST
     node_name = node_values['inputNodeName']
@@ -841,9 +1100,10 @@ def name_entry_dict(name_list, address_list, port_list):
     return ret_dict
 
 
-def name_entry_dict_router(tp):
+def name_entry_dict_router(isd_as, tp):
     ret_dict = {}
 
+    # Obtain the list of fields for the ER connections requested
     name_list = tp.getlist('inputEdgeRouterName')
     address_list = tp.getlist('inputEdgeRouterAddress')
     port_list = tp.getlist('inputEdgeRouterPort')
@@ -853,28 +1113,109 @@ def name_entry_dict_router(tp):
     remote_name_list = tp.getlist('inputInterfaceRemoteName')
     interface_type_list = tp.getlist('inputInterfaceType')
     link_mtu_list = tp.getlist('inputLinkMTU')
-    remote_address_list = tp.getlist('inputInterfaceRemoteAddress')
-    remote_port_list = tp.getlist('inputInterfaceRemotePort')
+    remote_address_list = {}  # To be obtained
+    remote_port_list = {}     # To be obtained
     own_port_list = tp.getlist('inputInterfaceOwnPort')
+
+    # Create a list of connection requests from the above fields (after
+    # processing some of the fields as integers)
+    conn_requests = []
     for i in range(len(name_list)):
+        port_list[i] = st_int(port_list[i], SCION_ROUTER_PORT)
+        bandwidth_list[i] = st_int(bandwidth_list[i], DEFAULT_BANDWIDTH)
+        if_id_list[i] = st_int(if_id_list[i], 1)
+        link_mtu_list[i] = st_int(link_mtu_list[i], DEFAULT_MTU)
+        own_port_list[i] = st_int(own_port_list[i], SCION_ROUTER_PORT)
+        conn_request = {'isdas': remote_name_list[i],
+                        'ip': interface_list[i],
+                        'port': own_port_list[i],
+                        'bandwidth': bandwidth_list[i],
+                        'linktype': interface_type_list[i],
+                        'mtu': link_mtu_list[i]
+                        }
+        conn_requests.append(conn_request)
+
+    # Upload the connection requests to scion-coord and obtain ids for them
+    isd_id, as_id = isd_as.split('-')
+    curr_as = get_object_or_404(AD, id=as_id)
+
+    url = urljoin(settings.SCION_COORD_BASE_URL,
+                  settings.UPLOAD_CONN_REQUESTS_SVC)
+    url += "/" + login_key + "/" + login_secret    
+    params = {
+                'isd_as': isd_as,
+                'certificate': curr_as.certificate,
+                'conn_requests': conn_requests,
+            }
+    headers = {'content-type': 'application/json'}
+
+    r = requests.post(url, json=params, headers=headers)    
+    request_ids = json.loads(r.text)['ids']
+    request_id_to_idx = {}
+    for i in range(len(name_list)):
+        request_id_to_idx[request_ids[i]] = i
+
+    # Poll for replies to the connection requests from scion-coord. Fill the
+    # remote address and port details for the connections from the replies
+    url = urljoin(settings.SCION_COORD_BASE_URL,
+                  settings.POLL_CONN_REQUESTS_SVC)
+    url += "/" + login_key + "/" + login_secret
+    params = {
+        'isdas' : isd_as
+    }
+
+    while request_ids:
+        r = requests.post(url, json=params, headers=headers) 
+        response = r.text
+        if response != '{}':
+            conn_replies = json.loads(response)['conn_replies']
+            if not conn_replies:
+                continue
+            for conn_reply in conn_replies:
+                request_id = conn_reply['request_id']
+                request_idx = request_id_to_idx[request_id]
+
+                cert_to_verify = Certificate.from_dict(
+                        json.loads(conn_reply['certificate']))
+                cert_chain = CertificateChain.from_values(cert_to_verify)
+                # TODO(shyamjvs): Obtain trc and its version from AD model
+                trc = 'Your trc'
+                trc_version = 0
+                if cert_chain.verify(cert_to_verify.subject, trc, trc_version):
+                    remote_address_list[request_idx] = conn_reply['ip']
+                    remote_port_list[request_idx] = st_int(conn_reply['port'],
+                                                           SCION_ROUTER_PORT)
+                    link_mtu_list[request_idx] = min(
+                        conn_reply['mtu'], link_mtu_list[request_idx])
+                    bandwidth_list[request_idx] = min(
+                        conn_reply['bandwidth'], bandwidth_list[request_idx])
+                else:
+                    remote_address_list[request_idx] = ''
+                    remote_port_list[request_idx] = ''
+                    print('Invalid Certificate for response to request_id: ',
+                          request_id)
+                request_ids.remove(request_id)
+        sleep(2)
+
+    # Now fill in all details for the ER connections since you now know remote
+    # ERs' IPs and ports. Neglect a connection request if the remote IP/port
+    # field received is empty.
+    for i in range(len(name_list)):
+        if remote_address_list[i] == '' or remote_port_list[i] == '':
+            continue
         ret_dict[name_list[i]] = {'Addr': address_list[i],
-                                  'Port': st_int(port_list[i],
-                                                 SCION_ROUTER_PORT),
+                                  'Port': port_list[i],
                                   'Interface':
                                       {'Addr': interface_list[i],
-                                       'Bandwidth': st_int(bandwidth_list[i],
-                                                           DEFAULT_BANDWIDTH),
-                                       'IFID': st_int(if_id_list[i], 1),
+                                       'Bandwidth': bandwidth_list[i],
+                                       'IFID': if_id_list[i],
                                        'ISD_AS': remote_name_list[i],
                                        'LinkType': interface_type_list[i],
-                                       'MTU': st_int(link_mtu_list[i],
-                                                     DEFAULT_MTU),
+                                       'MTU': link_mtu_list[i],
                                        'ToAddr': remote_address_list[i],
-                                       'ToUdpPort':
-                                       st_int(remote_port_list[i],
-                                              SCION_ROUTER_PORT),
-                                       'UdpPort': st_int(own_port_list[i],
-                                                         SCION_ROUTER_PORT)}
+                                       'ToUdpPort': remote_port_list[i],
+                                       'UdpPort': own_port_list[i]
+                                      }
                                   }
     return ret_dict
 
@@ -905,7 +1246,7 @@ def generate_topology(request):
                             )
 
     mockup_dicts['DnsDomain'] = tp['inputDnsDomain']
-    mockup_dicts['EdgeRouters'] = name_entry_dict_router(tp)
+    mockup_dicts['EdgeRouters'] = name_entry_dict_router(isd_as, tp)
     mockup_dicts['ISD_AS'] = tp['inputISD_AS']
     mockup_dicts['MTU'] = st_int(tp['inputMTU'], DEFAULT_MTU)
 
@@ -1204,12 +1545,12 @@ def create_local_gen(isd_as, tp):
     zk_name_counter = 1
 
     for service_type, type_key in types_keys:
+        config = configparser.ConfigParser()
         executable_name = lkx[service_type]
         replicas = tp[type_key].keys()  # SECURITY WARNING:allows arbitrary path
         # the user can enter arbitrary paths for his output
-        # TODO: might want to sanitize at least for '.', '\\' and variations
+        # might want to sanitize at least for '.', '\\' and variations
         for serv_name in replicas:
-            config = configparser.ConfigParser()
             # replace serv_name if zookeeper special case (they have only ids)
             if service_type == 'zookeeper_service':
                 serv_name = '{}{}-{}-{}'.format('zk', isd_id,

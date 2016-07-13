@@ -78,6 +78,18 @@ ad_patterns = patterns(
         views.register_node, name='register_node'),
 )
 
+test_ad_patterns = patterns(
+    '',
+    url(r'^isds/(?P<isd_id>\d+)/coord/upload_join_request$',
+        views.upload_join_request, name='upload_join_request'),
+    url(r'^coord/makeAS$',
+        views.makeAS, name='makeAS'),
+    url(r'^coord/poll$',
+        views.poll_events, name='poll_events'),
+    #url(r'^isds/(?P<isd_id>\d+)/coord/upload_conn_requests$',
+    #    views.upload_conn_requests, name='upload_conn_requests'),
+)
+
 connection_request_patterns = patterns(
     '',
     url(r'^connection_requests/new/(?P<pk>\d+)/$',
@@ -99,4 +111,4 @@ misc = patterns(
 )
 
 urlpatterns = api_patterns_internal + isd_patterns + ad_patterns + \
-              connection_request_patterns + misc
+              test_ad_patterns + connection_request_patterns + misc
