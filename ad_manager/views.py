@@ -1117,10 +1117,21 @@ def name_entry_dict_router(isd_as, tp):
     remote_port_list = {}     # To be obtained
     own_port_list = tp.getlist('inputInterfaceOwnPort')
 
-    # Create a list of connection requests from the above fields (after
-    # processing some of the fields as integers)
+    print("yo routers: ", len(name_list))
+    print("edge router name: ", name_list[0])
+    # Create a list of connection requests from the above fields for only those
+    # in which all the required fields are non-empty.
     conn_requests = []
+    nonemptylist = []
     for i in range(len(name_list)):
+        if "" not in [name_list[i], address_list[i],
+                      interface_list[i], remote_name_list[i]]:
+            nonemptylist.append(i)
+
+    if not nonemptylist:
+        return {}
+
+    for i in nonemptylist:
         port_list[i] = st_int(port_list[i], SCION_ROUTER_PORT)
         bandwidth_list[i] = st_int(bandwidth_list[i], DEFAULT_BANDWIDTH)
         if_id_list[i] = st_int(if_id_list[i], 1)
@@ -1152,8 +1163,9 @@ def name_entry_dict_router(isd_as, tp):
     r = requests.post(url, json=params, headers=headers)    
     request_ids = json.loads(r.text)['ids']
     request_id_to_idx = {}
-    for i in range(len(name_list)):
-        request_id_to_idx[request_ids[i]] = i
+    for i in range(len(nonemptylist)):
+        request_id_to_idx[request_id[i]] = nonemptylist[i]
+    print("yo mama")
 
     # Poll for replies to the connection requests from scion-coord. Fill the
     # remote address and port details for the connections from the replies
@@ -1200,7 +1212,8 @@ def name_entry_dict_router(isd_as, tp):
     # Now fill in all details for the ER connections since you now know remote
     # ERs' IPs and ports. Neglect a connection request if the remote IP/port
     # field received is empty.
-    for i in range(len(name_list)):
+    for j in range(len(nonemptylist)):
+        i = nonemptylist[j]
         if remote_address_list[i] == '' or remote_port_list[i] == '':
             continue
         ret_dict[name_list[i]] = {'Addr': address_list[i],
