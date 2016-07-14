@@ -222,11 +222,15 @@
   <!-- set data reloaded from DB -->
   <script>
     reloadedTopology = '{{ reloaded_topology }}';
-    reloadedTopologyHash = '{{ reloaded_topology_hash }}';
-    //test_django_dict = "{{ reloaded_topology.MTU }}";
     reloadedTopology = parseTopology(reloadedTopology);
     setLoadedTopology(reloadedTopology);
   </script>
+
+  <!-- set topology hash at load time -->
+  <script>
+    reloadedTopologyHash = '{{ reloaded_topology_hash }}';
+  </script>
+
   <style>
     .doc-hr {
         width: 100%;

@@ -24,7 +24,6 @@ from django.shortcuts import redirect, get_object_or_404, render
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView, DetailView, FormView
-from django.views.decorators.csrf import csrf_exempt
 
 from datetime import datetime
 import yaml
@@ -228,7 +227,6 @@ def get_ad_status(request, pk):
         return HttpResponseUnavailable(error)
 
 
-@csrf_exempt  # remove csrf for this request
 def as_topo_hash(request, isd_id, as_id):
     try:
         ad = AD.objects.get(id=as_id,
@@ -838,6 +836,7 @@ def name_entry_dict(name_list, address_list, port_list):
         ret_dict[name_list[i]] = {'Addr': address_list[i],
                                   'Port': st_int(port_list[i],
                                                  SCION_UDP_EH_DATA_PORT)}
+        # add NAT settings here
     return ret_dict
 
 

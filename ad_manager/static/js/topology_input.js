@@ -1,5 +1,6 @@
 
 function checkFreshness(isd_id, as_id) {
+    var csrftoken = $("input[name='csrfmiddlewaretoken']").attr('value');
     var xmlhttp = new XMLHttpRequest();
     var url = "../../api/v1/internal/isd/" + isd_id + "/as/" + as_id + "/topo_hash";
     var submit = false;
@@ -23,7 +24,6 @@ function checkFreshness(isd_id, as_id) {
                     overlayAlert("Data submitted", 1000);
                     submit = true;
                     document.getElementById("topologyForm").submit();
-                    //$('#submitButton').innerHTML = "Save to topology file";
                 }
             }
         }
@@ -31,6 +31,7 @@ function checkFreshness(isd_id, as_id) {
     };
     $('#submitButton')[0].innerHTML = "Submitting...";
     xmlhttp.open("POST", url, true);
+    xmlhttp.setRequestHeader("X-CSRFToken", csrftoken);
     xmlhttp.send();
     return submit;
 }
@@ -142,7 +143,7 @@ function setLoadedTopology(reloadedTopology) {
                 address = server['Addr'];
                 $(itemSelector + ' #input'+type+'ServerAddress').val(address);
                 port = server['Port'];
-                $(itemSelector + ' #input'+type+'ServerPort').val(port);
+                $(itemSelector + ' #input'+type+'ServerPort').val(port);  // add NAT reloading here
             }
 
             // remove entry
