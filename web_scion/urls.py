@@ -40,7 +40,8 @@ else:
     # Basic login/logout views
     urlpatterns += patterns(
         '',
-        url(r'^login/$', login,
+        url(r'^admin/login/$', login,
             {'template_name': 'admin/login.html'}, name='login'),
     )
     settings.LOGIN_URL = reverse_lazy('login')
+

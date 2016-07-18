@@ -24,6 +24,13 @@ from ad_manager.models import (
 
 
 class MyAdminSite(AdminSite):
+    # disable autocomple for password field
+    # def login(self, request, extra_context=None):
+    #     form = AuthenticationForm(request)
+    #     form.fields['username'].widget.attrs['autocomplete'] = 'off'
+    #     form.fields['password'].widget.attrs['autocomplete'] = 'off'
+    #     return render_to_response('admin/login.html', {'form': form},
+    #                               context_instance=RequestContext(request))
     def has_permission(self, request):
         """
         Every registered active user is allowed to view *at least* one page of
