@@ -24,7 +24,6 @@ from django.shortcuts import redirect, get_object_or_404, render
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView, DetailView, FormView
-from django.views.decorators.csrf import csrf_exempt
 
 from datetime import datetime
 import yaml
@@ -228,7 +227,6 @@ def get_ad_status(request, pk):
         return HttpResponseUnavailable(error)
 
 
-@csrf_exempt  # remove csrf for this request
 def as_topo_hash(request, isd_id, as_id):
     try:
         ad = AD.objects.get(id=as_id,
@@ -838,6 +836,7 @@ def name_entry_dict(name_list, address_list, port_list):
         ret_dict[name_list[i]] = {'Addr': address_list[i],
                                   'Port': st_int(port_list[i],
                                                  SCION_UDP_EH_DATA_PORT)}
+        # add NAT settings here
     return ret_dict
 
 
@@ -1059,91 +1058,6 @@ def lookup_dict_executables():
             'zookeeper_service': ZOOKEEPER_EXECUTABLE}
 
 
-@require_POST
-def deploy_config(request):
-    """
-    Finalize and deploy tar
-    """
-    tar_params = request.POST.copy()
-    node_uuid = tar_params['nodeUUID']
-    node = Node.objects.get(uuid=node_uuid)
-    types = tar_params.getlist('type[]')
-    management_interface_ip = tar_params['managementInterfaceIP']
-
-    # looks up the name of the executable for the service,
-    # certificate server -> 'cert_server', ...
-    lkx = lookup_dict_executables()
-
-    # looks up the prefix used for naming supervisor processes,
-    # beacon server -> 'bs', ...
-    lkp = lookup_dict_services_prefixes()
-
-    tmp_folder_path = os.path.join(WEB_ROOT, 'ad_manager',
-                                   'static', 'tmp')
-
-    current_node_file = os.path.join(tmp_folder_path, node_uuid + '.tar')
-    create_tar(current_node_file)
-
-    for service_type in types:
-        config = configparser.ConfigParser()
-        prefix = lkp[service_type]
-        executable_name = lkx[service_type]
-        # Get digits only from ISD and AS names
-        lkp['d'] = lambda x: ''.join(filter(str.isdigit(), x))
-        serv_name = '{}{}-{}-1'.format(prefix, lkp['d'](node.ISD),
-                                       lkp['d'](node.AS))
-        config['program:' + serv_name] = \
-            {'startsecs': '5',
-             'command': '"bin/{0}" "{1}" "gen/{2}/{3}/{1}"'.format(
-                 executable_name, serv_name, node.ISD, node.AS),
-             'startretries': '0',
-             'stdout_logfile': 'logs/' + serv_name + '.OUT',
-             'redirect_stderr': 'true',
-             'autorestart': 'false',
-             'environment': 'PYTHONPATH =.',
-             'autostart': 'false',
-             'stdout_logfile_maxbytes': '0'}
-
-        # replace command entry if zookeeper special case
-        if service_type == 'zookeeper_service':
-            config['program:' + serv_name]['command'] = \
-                '"java" "-cp"' \
-                ' "gen/{2}/{3}/{1}:' \
-                '/usr/share/java/jline.jar:' \
-                '/usr/share/java/log4j-1.2.jar:' \
-                '/usr/share/java/xercesImpl.jar:' \
-                '/usr/share/java/xmlParserAPIs.jar:' \
-                '/usr/share/java/netty.jar:' \
-                '/usr/share/java/slf4j-api.jar:' \
-                '/usr/share/java/slf4j-log4j12.jar:' \
-                '/usr/share/java/{0}" ' \
-                '"-Dzookeeper.log.file=logs/{1}.log" ' \
-                '"org.apache.zookeeper.server.quorum.QuorumPeerMain" ' \
-                '"gen/{2}/{3}/{1}/zoo.cfg"'.format(executable_name,
-                                                   serv_name,
-                                                   node.ISD,
-                                                   node.AS)
-
-        conf_file_path = os.path.join(tmp_folder_path, 'supervisord.conf')
-        with open(conf_file_path, 'w') as configfile:
-            config.write(configfile)
-
-        cert_path = os.path.join(tmp_folder_path, 'certs_only')
-        add_file_to_tar(cert_path, serv_name, current_node_file)
-        # add instead data and zoo.cfg for zookeeper config
-        add_file_to_tar(yaml_topo_path,
-                        os.path.join('/' + serv_name, 'topology.yml'),
-                        current_node_file)
-        add_file_to_tar(conf_file_path,
-                        os.path.join('/' + serv_name, 'supervisord.conf'),
-                        current_node_file)
-
-    run_rpc_command(node.IP, node.uuid, management_interface_ip, 'retrieve_tar',
-                    node.ISD, node.AS)
-    current_page = request.META.get('HTTP_REFERER')
-    return redirect(current_page)
-
-
 def create_local_gen(isd_as, tp):
     """
     creates the usual gen folder structure for an ISD/AS under web_scion/gen,
@@ -1229,23 +1143,29 @@ def create_local_gen(isd_as, tp):
 
             # replace command entry if zookeeper special case
             if service_type == 'zookeeper_service':
-                config['program:' + serv_name]['command'] = \
-                    '"java" "-cp"' \
-                    ' "gen/{2}/{3}/{1}:' \
-                    '/usr/share/java/jline.jar:' \
-                    '/usr/share/java/log4j-1.2.jar:' \
-                    '/usr/share/java/xercesImpl.jar:' \
-                    '/usr/share/java/xmlParserAPIs.jar:' \
-                    '/usr/share/java/netty.jar:' \
-                    '/usr/share/java/slf4j-api.jar:' \
-                    '/usr/share/java/slf4j-log4j12.jar:' \
-                    '/usr/share/java/{0}" ' \
-                    '"-Dzookeeper.log.file=logs/{1}.log" ' \
-                    '"org.apache.zookeeper.server.quorum.QuorumPeerMain" ' \
-                    '"gen/ISD{2}/AS{3}/{1}/zoo.cfg"'.format(executable_name,
-                                                            serv_name,
-                                                            isd_id,
-                                                            as_id)
+                zk_config_path = os.path.join(PROJECT_ROOT,
+                                              'topology',
+                                              'Zookeeper.yml')
+                zk_config = {}
+                with open(zk_config_path, 'r') as stream:
+                    try:
+                        zk_config = yaml.load(stream)
+                    except (yaml.YAMLError, KeyError):
+                        zk_config = ''  # TODO: give user feedback, add TC
+                class_path = zk_config['Environment']['CLASSPATH']
+                zoomain_env = zk_config['Environment']['ZOOMAIN']
+                command_string = '"java" "-cp" ' \
+                                     '"gen/{1}/{2}/{0}:{3}" ' \
+                                     '"-Dzookeeper.' \
+                                     'log.file=logs/{0}.log" ' \
+                                     '"{4}" ' \
+                                     '"gen/ISD{1}/AS{2}/{0}/' \
+                                     'zoo.cfg"'.format(serv_name,
+                                                       isd_id,
+                                                       as_id,
+                                                       class_path,
+                                                       zoomain_env)
+                config['program:' + serv_name]['command'] = command_string
 
             node_path = 'ISD{}/AS{}/{}'.format(isd_id, as_id, serv_name)
             node_path = os.path.join(local_gen_path, node_path)
@@ -1260,25 +1180,6 @@ def create_local_gen(isd_as, tp):
             copy(yaml_topo_path, node_path)
             # Generating only the needed intermediate parts
             # not used as for now we generator.py all certs and keys resources
-            # (minimaly required are only the certs and keys folders.
-            # path_policy.yml can be copied over from PathPolicy.yml,
-            # and as.yml is only a dict dump with a random master key)
-
-            # tmp_cert_gen_path = os.path.join(PROJECT_ROOT, 'web_scion',
-            # 'tmp_cert_gen')
-            # os.makedirs(tmp_cert_gen_path, exist_ok=True)
-            # copy(yaml_topo_path, tmp_cert_gen_path)
-            #
-            # topo_config = os.path.join(tmp_cert_gen_path, 'topology.yml')
-            # path_policy = DEFAULT_PATH_POLICY_FILE
-            # mininet = False
-            # network = "127.0.0.0/8"
-            # output_dir = tmp_cert_gen_path
-            # zk_config = os.path.join(PROJECT_ROOT, 'topology/Zookeeper.yml')
-            # confgen = ConfigGenerator(
-            #     output_dir, topo_config, path_policy, zk_config,
-            #     network, mininet)
-            # confgen.generate_all()
 
 
 def run_remote_command(ip, process_name, command):
