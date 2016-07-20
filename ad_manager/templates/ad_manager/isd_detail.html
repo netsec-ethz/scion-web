@@ -23,25 +23,12 @@
     {% endfor %}
   </ul>
 
+  <hr>
   <form method="POST" action="/ad_manager/ads/add_as">
     {% csrf_token %}
     <div class="control-group">
-        <br/>
-        <div class="form-group">
-            <label class="control-label" style="vertical-align: sub;" for="inputASname">new AS name:</label>
-            <input class="hidden" id="inputISDname" name="inputISDname" title="ISD name" type="text" value="{{ object.id }}">
-            <input id="inputASname" name="inputASname" type="text">
-            <button type="submit" class="btn">Create AS</button>
-        </div>
-    </div>
-  </form>
-
-  <hr>
-  <form method="POST" action="coord/upload_join_request">
-    {% csrf_token %}
-    <div class="control-group">
         <input class="hidden" id="inputISDname" name="inputISDname" title="ISD name" type="text" value="{{ object.id }}">
-        <button type="submit" class="btn">Create Test AS</button>
+        <button type="submit" class="btn">Create AS</button>
     </div>
   </form>
 

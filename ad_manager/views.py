@@ -61,8 +61,14 @@ from ad_manager.util.ad_connect import (
     # link_ads,
 )
 from ad_manager.util.errors import HttpResponseUnavailable
-from lib.util import write_file
-from topology.generator import ConfigGenerator  # , DEFAULT_PATH_POLICY_FILE,
+from lib.util import (get_cert_chain_file_path,
+                      get_trc_file_path,
+                      get_sig_key_file_path,
+                      get_enc_key_file_path,
+                      write_file)
+from topology.generator import (COMMON_DIR,
+                                ConfigGenerator,
+                                DEFAULT_PATH_POLICY_FILE,)
 # DEFAULT_ZK_CONFIG
 
 from lib.crypto.asymcrypto import generate_sign_keypair
@@ -118,6 +124,8 @@ SERVICE_EXECUTABLES = (
     SIBRA_EXECUTABLE,
 )
 
+SERVICE_NICKNAMES = ["er", "ps", "bs", "cs", "sb"]
+
 login_key = settings.LOGIN_KEY
 login_secret = settings.LOGIN_SECRET
 
@@ -164,15 +172,66 @@ class ISDDetailView(ListView):
 
 @require_POST
 def add_as(request):
-    new_as_id = request.POST['inputASname']
+    # Obtain the ISD for which the request is being made
     current_isd = request.POST['inputISDname']
     isd = get_object_or_404(ISD, id=int(current_isd))
+
+    # Generate the signature and encryption keys for the new AS
+    sig_pub, sig_priv = generate_sign_keypair()
+    enc_pub, enc_priv = generate_sign_keypair()
+    sig_pub = base64.b64encode(sig_pub).decode('utf-8')
+    sig_priv = base64.b64encode(sig_priv).decode('utf-8')
+    enc_pub = base64.b64encode(enc_pub).decode('utf-8')
+    enc_priv = base64.b64encode(enc_priv).decode('utf-8')
+
+    # Send a POST request to scion-coord for registering a new AS
+    url = urljoin(settings.SCION_COORD_BASE_URL,
+                  settings.UPLOAD_JOIN_REQUEST_SVC)
+    url += "/" + login_key + "/" + login_secret
+    params ={
+                'isd_to_join': int(current_isd),
+                'sigkey': sig_pub,
+                'enckey': enc_pub,
+            }
+    headers = {'content-type': 'application/json'}
+    r = requests.post(url, json=params, headers=headers)
+    if r.status_code != 200 :  # Debug
+        return HttpResponse("Failed to add a new as")
+
+    # Obtain the request ID from the scion-coord and keep looking for a response
+    # to the join request against that request ID
+    request_id = json.loads(r.text)['id']
+    url = urljoin(settings.SCION_COORD_BASE_URL, settings.POLL_JOIN_REPLY_SVC)
+    url += "/" + login_key + "/" + login_secret
+    params ={
+                "request_id": request_id
+            }
+    while True:
+        r = requests.post(url, json=params, headers=headers)
+        if r.status_code == 200 and r.text != "No reply\n":
+            break
+        sleep(2)
+
+    # Insert new AS entry into the database, using the isd_as in the response
+    as_info = json.loads(r.text)
+    isd_id, new_as_id = as_info['isdas'].split('-')
     as_obj = AD.objects.create(id=new_as_id,
                                isd=isd,
                                is_core_ad=0,
                                dns_domain='',
-                               is_open=False)
+                               is_open=False,
+                               sig_pub_key=sig_pub,
+                               sig_priv_key=sig_priv,
+                               enc_pub_key=enc_pub,
+                               enc_priv_key=enc_priv,
+                               certificate=as_info['certificate']
+                               cert_version=as_info['cert_version'])
     as_obj.save()
+
+    # Create the directory structure in 'gen' for the new AS.
+    # This overwrites the existing (if present) directory of the AS
+    create_local_gen_without_topo(as_info, sig_priv, enc_priv)
+
     ad_page = reverse('ad_detail', args=[new_as_id])
     return redirect(ad_page + '#!nodes')
 
@@ -810,63 +869,6 @@ def makeAS(request):
     return HttpResponse(response)
 
 
-@require_POST
-def upload_join_request(request, isd_id):
-    # Generate the signature and encryption keys for the new AS
-    sig_pub, sig_priv = generate_sign_keypair()
-    enc_pub, enc_priv = generate_sign_keypair()
-    sig_pub = base64.b64encode(sig_pub).decode('utf-8')
-    sig_priv = base64.b64encode(sig_priv).decode('utf-8')
-    enc_pub = base64.b64encode(enc_pub).decode('utf-8')
-    enc_priv = base64.b64encode(enc_priv).decode('utf-8')
-
-    # Send a POST request to scion-coord for registering a new AS
-    url = urljoin(settings.SCION_COORD_BASE_URL,
-                  settings.UPLOAD_JOIN_REQUEST_SVC)
-    url += "/" + login_key + "/" + login_secret
-    params ={
-                'isd_to_join': int(isd_id),
-                'sigkey': sig_pub,
-                'enckey': enc_pub,
-            }
-    headers = {'content-type': 'application/json'}
-    r = requests.post(url, json=params, headers=headers)
-    if r.status_code != 200 :  # Debug
-        print("Failed to upload join request (ISD: ", isd_id, ")")
-
-    # Obtain the request ID from the scion-coord and keep looking for a response
-    # to the join request against that request ID
-    request_id = json.loads(r.text)['id']
-    url = urljoin(settings.SCION_COORD_BASE_URL, settings.POLL_JOIN_REPLY_SVC)
-    url += "/" + login_key + "/" + login_secret
-    params ={
-                "request_id": request_id
-            }
-    while True:
-        r = requests.post(url, json=params, headers=headers)
-        if r.status_code == 200 and r.text != "No reply\n":
-            break
-        sleep(2)
-
-    # Insert new AS entry into the database, using the isd_as in the response
-    as_info = json.loads(r.text)
-    isd_id, new_as_id = as_info['isdas'].split('-')
-    isd = get_object_or_404(ISD, id=int(isd_id))
-    as_obj = AD.objects.create(id=new_as_id,
-                               isd=isd,
-                               is_core_ad=0,
-                               dns_domain='',
-                               is_open=False,
-                               sig_pub_key=sig_pub,
-                               sig_priv_key=sig_priv,
-                               enc_pub_key=enc_pub,
-                               enc_priv_key=enc_priv,
-                               certificate=as_info['certificate'])
-    as_obj.save()
-    ad_page = reverse('ad_detail', args=[new_as_id])
-    return redirect(ad_page + '#!nodes')
-
-
 def upload_join_replies(args, core_isd_as):
     # Iterate through all the join requests you ('core_isd_as') received
     # and generate replies for each one of them
@@ -886,6 +888,7 @@ def upload_join_replies(args, core_isd_as):
                     'request_id': request_id,
                     'certificate': str(certificate),
                     'trc': 'Fake TRC', #Your TRC file, that of the core AS
+                    'trc_version': 0
                 }
         replies.append(reply)
 
@@ -1113,15 +1116,14 @@ def name_entry_dict_router(isd_as, tp):
     remote_name_list = tp.getlist('inputInterfaceRemoteName')
     interface_type_list = tp.getlist('inputInterfaceType')
     link_mtu_list = tp.getlist('inputLinkMTU')
+    own_port_list = tp.getlist('inputInterfaceOwnPort')
     remote_address_list = {}  # To be obtained
     remote_port_list = {}     # To be obtained
-    own_port_list = tp.getlist('inputInterfaceOwnPort')
 
     print("yo routers: ", len(name_list))
     print("edge router name: ", name_list[0])
     # Create a list of connection requests from the above fields for only those
     # in which all the required fields are non-empty.
-    conn_requests = []
     nonemptylist = []
     for i in range(len(name_list)):
         if "" not in [name_list[i], address_list[i],
@@ -1131,6 +1133,7 @@ def name_entry_dict_router(isd_as, tp):
     if not nonemptylist:
         return {}
 
+    conn_requests = []
     for i in nonemptylist:
         port_list[i] = st_int(port_list[i], SCION_ROUTER_PORT)
         bandwidth_list[i] = st_int(bandwidth_list[i], DEFAULT_BANDWIDTH)
@@ -1498,6 +1501,43 @@ def deploy_config(request):
     return redirect(current_page)
 
 
+def create_local_gen_without_topo(as_info, sig_priv_key, enc_priv_key):
+    """
+    creates the usual gen folder structure for an ISD/AS under web_scion/gen,
+    but without the topology.yml file
+    Args:
+        isd_as: isd-as string
+    """
+    # Create a new directory for the AS in WEB_ROOT/... (overwrite if exists)
+    isd_id, as_id = as_info['isdas'].split('-')
+    as_path = os.path.join(WEB_ROOT, GEN_PATH,
+                           'ISD{}/AS{}'.format(isd_id, as_id))
+    rmtree(as_path, True)
+    os.makedir(as_path)
+
+    # Create keys and cert files inside the AS directory (in temporary dirs)
+    # Note: These directories are moved into the node directories when topology
+    # is generated for the AS.
+    cert_file = get_cert_chain_file_path(as_path,
+                                         [isd_id, as_id],
+                                         as_info['cert_version'])
+    trc_file = get_trc_file_path(as_path,
+                                 isd_id,
+                                 as_info['trc_version'])
+    sig_key_file = get_sig_key_file_path(as_path)
+    enc_key_file = get_enc_key_file_path(as_path)
+
+    write_file(cert_file, as_info['certificate'])
+    write_file(trc_file, as_info['trc'])
+    write_file(sig_key_file, sig_priv_key)
+    write_file(enc_key_file, enc_priv_key)
+
+    #
+
+
+
+
+
 def create_local_gen(isd_as, tp):
     """
     creates the usual gen folder structure for an ISD/AS under web_scion/gen,
@@ -1515,6 +1555,7 @@ def create_local_gen(isd_as, tp):
 
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
 
+    # Add the dispatcher folder in sub/web/gen/ if not already there
     dispatcher_folder_path = os.path.join(local_gen_path, 'dispatcher')
     if not os.path.exists(dispatcher_folder_path):
         copytree(os.path.join(PROJECT_ROOT, 'gen', 'dispatcher'),

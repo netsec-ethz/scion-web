@@ -80,8 +80,6 @@ ad_patterns = patterns(
 
 test_ad_patterns = patterns(
     '',
-    url(r'^isds/(?P<isd_id>\d+)/coord/upload_join_request$',
-        views.upload_join_request, name='upload_join_request'),
     url(r'^coord/makeAS$',
         views.makeAS, name='makeAS'),
     url(r'^coord/poll$',
