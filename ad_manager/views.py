@@ -1181,6 +1181,14 @@ def create_local_gen(isd_as, tp):
             # Generating only the needed intermediate parts
             # not used as for now we generator.py all certs and keys resources
 
+    # git issue "Scion-web should create endhost folder #1"
+    # Add endhost folder for all ASes
+    node_path = 'ISD{}/AS{}/{}'.format(isd_id, as_id, 'endhost')
+    node_path = os.path.join(local_gen_path, node_path)
+    if not os.path.exists(node_path):
+        copytree(os.path.join(shared_files_path), node_path)
+    copy(yaml_topo_path, node_path)
+
 
 def run_remote_command(ip, process_name, command):
     use_ansible = True
