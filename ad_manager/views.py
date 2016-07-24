@@ -118,6 +118,10 @@ class ISDListView(ListView):
 @require_POST
 def add_isd(request):
     new_isd_id = request.POST['inputISDname']
+    try:
+        new_isd_id = int(new_isd_id)
+    except ValueError:
+        return JsonResponse({'data': 'Invalid ISD id'})
     isd = ISD(id=new_isd_id)
     isd.save()
     current_page = request.META.get('HTTP_REFERER')
@@ -153,6 +157,10 @@ class ISDDetailView(ListView):
 @require_POST
 def add_as(request):
     new_as_id = request.POST['inputASname']
+    try:
+        new_as_id = int(new_as_id)
+    except ValueError:
+        return JsonResponse({'data': 'Invalid AS id'})
     current_isd = request.POST['inputISDname']
     isd = get_object_or_404(ISD, id=int(current_isd))
     as_obj = AD.objects.create(id=new_as_id, isd=isd,
@@ -1121,7 +1129,8 @@ def create_local_gen(isd_as, tp):
         executable_name = lkx[service_type]
         replicas = tp[type_key].keys()  # SECURITY WARNING:allows arbitrary path
         # the user can enter arbitrary paths for his output
-        # TODO: might want to sanitize at least for '.', '\\' and variations
+        # Mitigation: make path at least relative
+        executable_name = os.path.normpath('/'+executable_name).lstrip('/')
         for serv_name in replicas:
             config = configparser.ConfigParser()
             # replace serv_name if zookeeper special case (they have only ids)
