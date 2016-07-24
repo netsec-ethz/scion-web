@@ -72,8 +72,6 @@ ad_patterns = patterns(
         views.get_group_master, name='get_group_master'),
     url(r'^ads/generate_topology$',
         views.generate_topology, name='generate_topology'),
-    url(r'^ads/deploy_config',
-        views.deploy_config, name='deploy_config'),
     url(r'^ads/register_node',
         views.register_node, name='register_node'),
 )
