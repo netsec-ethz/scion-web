@@ -198,7 +198,7 @@
         var noExistingRoutingOption = $("#inputInterfaceType").find("option[value='ROUTING']").length == 0;
         if (isChecked && noExistingRoutingOption) {
             $('#inputInterfaceType').append('<option value="ROUTING">ROUTING</option>');
-        } else {
+        } else if (!isChecked && !noExistingRoutingOption) {
             $('#inputInterfaceType').find('option[value="ROUTING"]').remove();
         }
     }

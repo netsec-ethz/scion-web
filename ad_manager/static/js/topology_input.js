@@ -176,10 +176,13 @@ function setLoadedTopology(reloadedTopology) {
                     $(itemSelector + '#inputInterfaceRemoteName').attr('value', value);
                     break;
                 case 'LinkType':
-                    var linkType = $(itemSelector + '#inputInterfaceType')
+                    var linkType = $(itemSelector + '#inputInterfaceType');
                     $(linkType).attr('value', value);
                     // we need to test if the AS is core, so that in case the link type is routing, the option gets added 
                     checkShowCoreOption();
+                    // remove all previous selected options for this select
+                    $(linkType).find("option").removeAttr("selected");
+                    // set selected option
                     $(linkType).find('option[value="' + value + '"]').attr('selected', 'selected');
                     break;
                 case 'MTU':
