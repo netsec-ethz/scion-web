@@ -151,24 +151,24 @@ function setLoadedTopology(reloadedTopology) {
         }
     }
 
-    var edgeRouterIndex = 0;
+    var borderRouterIndex = 0;
     type = 'router';
-    for (var edgeRouterKey in reloadedTopology['EdgeRouters']) {
-        var edgeRouter = reloadedTopology['EdgeRouters'][edgeRouterKey];
-        name = edgeRouterKey;
-        if (edgeRouterIndex > 0) {
+    for (var borderRouterKey in reloadedTopology['BorderRouters']) {
+        var borderRouter = reloadedTopology['BorderRouters'][borderRouterKey];
+        name = borderRouterKey;
+        if (borderRouterIndex > 0) {
             // if more than one entry, create additional form input
             $('.' + type + 'Item'+':last').find('.btn-success').click()
         }
-        itemSelector = '#' + type + 'Item-' + (parseInt(edgeRouterIndex) + 1).toString() + ' ';
-        $(itemSelector + '#inputEdgeRouterName').attr('value', name);
-        address = edgeRouter['Addr'];
-        $(itemSelector + '#inputEdgeRouterAddress').attr('value', address);
-        $(itemSelector + '#inputEdgeRouterAddress').val(address);
-        port = edgeRouter['Port'];
-        $(itemSelector + '#inputEdgeRouterPort').attr('value', port);
+        itemSelector = '#' + type + 'Item-' + (parseInt(borderRouterIndex) + 1).toString() + ' ';
+        $(itemSelector + '#inputBorderRouterName').attr('value', name);
+        address = borderRouter['Addr'];
+        $(itemSelector + '#inputBorderRouterAddress').attr('value', address);
+        $(itemSelector + '#inputBorderRouterAddress').val(address);
+        port = borderRouter['Port'];
+        $(itemSelector + '#inputBorderRouterPort').attr('value', port);
 
-        var interface_obj = edgeRouter['Interface'];
+        var interface_obj = borderRouter['Interface'];
         for (var interfaceKey in interface_obj) {
             var value = interface_obj[interfaceKey];
             switch(interfaceKey) {
@@ -202,10 +202,10 @@ function setLoadedTopology(reloadedTopology) {
             }
         }
 
-        edgeRouterIndex++;
+        borderRouterIndex++;
     }
 
-    delete reloadedTopology['EdgeRouters'];
+    delete reloadedTopology['BorderRouters'];
 
     var zookeepers = reloadedTopology['Zookeepers'];
 

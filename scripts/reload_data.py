@@ -111,7 +111,7 @@ def reload_data_from_files(topology_files):
 
         # Fixing routers
         for topo in as_topos:
-            routers = topo.get_all_edge_routers()
+            routers = topo.get_all_border_routers()
             for router in routers:
                 neighbor_id = router.interface.neighbor_ad
                 new_neighbor_id = id_map[(neighbor_id,

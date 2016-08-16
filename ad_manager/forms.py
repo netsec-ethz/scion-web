@@ -40,9 +40,9 @@ class ConnectionRequestForm(forms.ModelForm):
         ad = get_object_or_404(AD, id=current_as_id)
         remote_ip_choices = []
 
-        if 'EdgeRouters' in ad.original_topology.keys():
-            for edge_router in ad.original_topology['EdgeRouters'].values():
-                val = edge_router['Interface']['ToAddr']
+        if 'BorderRouters' in ad.original_topology.keys():
+            for border_router in ad.original_topology['BorderRouters'].values():
+                val = border_router['Interface']['ToAddr']
                 remote_ip_choices.append((val, val))
 
         self.fields['router_public_ip'] = forms.ChoiceField(

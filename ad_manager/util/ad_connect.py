@@ -35,8 +35,8 @@ def find_last_router(topo_dict):
     """
     Return a tuple: (index, router_dict)
     """
-    assert 'EdgeRouters' in topo_dict
-    routers = topo_dict['EdgeRouters']
+    assert 'BorderRouters' in topo_dict
+    routers = topo_dict['BorderRouters']
     if routers:
         sorted_routers = sorted(routers.items(),
                                 key=lambda pair: ip_address(pair[1]['Addr']))
@@ -99,7 +99,7 @@ def create_next_router(topo_dict, ip_gen):
     if router_item:
         _, last_router = router_item
         new_router = copy.deepcopy(last_router)
-        last_index = sorted(topo_dict['EdgeRouters'].keys(),
+        last_index = sorted(topo_dict['BorderRouters'].keys(),
                             key=lambda x: -int(x))[0]
         router_index = int(last_index) + 1
 
@@ -175,8 +175,8 @@ def link_topologies(first_topo, second_topo, link_type):
     else:
         raise ValueError('Invalid link type')
 
-    first_topo['EdgeRouters'][first_router_id] = first_topo_router
-    second_topo['EdgeRouters'][second_router_id] = second_topo_router
+    first_topo['BorderRouters'][first_router_id] = first_topo_router
+    second_topo['BorderRouters'][second_router_id] = second_topo_router
 
     return first_topo, second_topo
 

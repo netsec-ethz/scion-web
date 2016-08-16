@@ -100,11 +100,11 @@ class AD(models.Model):
         out_dict.update({
             'ISDID': int(self.isd_id), 'ADID': int(self.id),
             'Core': int(self.is_core_ad), 'DnsDomain': self.dns_domain,
-            'EdgeRouters': {}, 'PathServers': {}, 'BeaconServers': {},
+            'BorderRouters': {}, 'PathServers': {}, 'BeaconServers': {},
             'CertificateServers': {}, 'DNSServers': {}, 'SibraServers': {},
         })
         for router in self.routerweb_set.all():
-            out_dict['EdgeRouters'][str(router.name)] = router.get_dict()
+            out_dict['BorderRouters'][str(router.name)] = router.get_dict()
         for ps in self.pathserverweb_set.all():
             out_dict['PathServers'][str(ps.name)] = ps.get_dict()
         for bs in self.beaconserverweb_set.all():
@@ -153,7 +153,7 @@ class AD(models.Model):
         self.dns_domain = topology_dict['DnsDomain']
         self.save()
 
-        routers = topology_dict["EdgeRouters"]
+        routers = topology_dict["BorderRouters"]
         beacon_servers = topology_dict["BeaconServers"]
         certificate_servers = topology_dict["CertificateServers"]
         path_servers = topology_dict["PathServers"]
