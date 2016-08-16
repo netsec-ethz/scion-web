@@ -10,7 +10,11 @@ import os
 import sys
 from os.path import dirname as d
 
+sys.path.insert(0, d(d(os.path.abspath(__file__))))  # noqa
 sys.path.insert(0, d(d(d(d(d(os.path.abspath(__file__)))))))  # noqa
+
+# Set up the Django environment
+os.environ['DJANGO_SETTINGS_MODULE'] = 'web_scion.settings.private'  # noqa
 
 # External packages
 import django
@@ -25,9 +29,6 @@ from lib.topology import Topology
 # Django app imports
 from ad_manager.models import AD, ISD
 from django.contrib.auth.models import User
-
-# Set up the Django environment
-os.environ['DJANGO_SETTINGS_MODULE'] = 'web_scion.settings.private'  # noqa
 
 WEB_SCION_DIR = os.path.join(PROJECT_ROOT, 'web_scion')
 sys.path.insert(0, WEB_SCION_DIR)  # noqa
@@ -148,7 +149,7 @@ def reload_data_from_files(topology_files):
 
 
 def reload_data():
-    transaction.set_autocommit(False)
+    transaction.set_autocommit(True)
     clear_everything()
     add_users()
 
@@ -158,7 +159,7 @@ def reload_data():
     yaml_path = os.path.join(GEN_PATH, 'ISD*', 'AS*', 'endhost', 'topology.yml')
     topology_files = glob.glob(yaml_path)
 
-    reload_data_from_files(topology_files)
+    reload_data_from_files([topology_files])
 
 
 if __name__ == "__main__":

@@ -74,6 +74,7 @@ from lib.defines import (  # SCION_UDP_PORT,
 from lib.defines import GEN_PATH, PROJECT_ROOT
 
 from ad_manager.util.hostfile_generator import generate_ansible_hostfile
+from scripts.reload_data import reload_data_from_files
 
 import subprocess
 from shutil import copy, copytree
@@ -118,6 +119,10 @@ class ISDListView(ListView):
 @require_POST
 def add_isd(request):
     new_isd_id = request.POST['inputISDname']
+    try:
+        new_isd_id = int(new_isd_id)
+    except ValueError:
+        return JsonResponse({'data': 'Invalid ISD id'})
     isd = ISD(id=new_isd_id)
     isd.save()
     current_page = request.META.get('HTTP_REFERER')
@@ -153,6 +158,10 @@ class ISDDetailView(ListView):
 @require_POST
 def add_as(request):
     new_as_id = request.POST['inputASname']
+    try:
+        new_as_id = int(new_as_id)
+    except ValueError:
+        return JsonResponse({'data': 'Invalid AS id'})
     current_isd = request.POST['inputISDname']
     isd = get_object_or_404(ISD, id=int(current_isd))
     as_obj = AD.objects.create(id=new_as_id, isd=isd,
@@ -1017,8 +1026,7 @@ def handle_uploaded_file(f):
     os.makedirs(local_gen_path, exist_ok=True)  # create the folder if not there
     destination_file_path = os.path.join(local_gen_path, f.name)
     write_out_inmemory_uploaded(f, destination_file_path)
-
-    create_global_gen(destination_file_path)  # to get the trc file
+    return destination_file_path
 
 
 @require_POST
@@ -1030,7 +1038,12 @@ def upload_file(request):
     elif request.method == 'POST':
         form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
-            handle_uploaded_file(request.FILES['file'])
+            if '_upload_topo' in request.POST:
+                path = handle_uploaded_file(request.FILES['file'])
+                create_global_gen(path)  # to get the trc file
+            elif '_upload_init_topo' in request.POST:
+                path = handle_uploaded_file(request.FILES['file'])
+                reload_data_from_files([path])
         return redirect(current_page)
     else:
         return redirect(current_page)
@@ -1121,7 +1134,8 @@ def create_local_gen(isd_as, tp):
         executable_name = lkx[service_type]
         replicas = tp[type_key].keys()  # SECURITY WARNING:allows arbitrary path
         # the user can enter arbitrary paths for his output
-        # TODO: might want to sanitize at least for '.', '\\' and variations
+        # Mitigation: make path at least relative
+        executable_name = os.path.normpath('/'+executable_name).lstrip('/')
         for serv_name in replicas:
             config = configparser.ConfigParser()
             # replace serv_name if zookeeper special case (they have only ids)
@@ -1155,16 +1169,16 @@ def create_local_gen(isd_as, tp):
                 class_path = zk_config['Environment']['CLASSPATH']
                 zoomain_env = zk_config['Environment']['ZOOMAIN']
                 command_string = '"java" "-cp" ' \
-                                     '"gen/{1}/{2}/{0}:{3}" ' \
-                                     '"-Dzookeeper.' \
-                                     'log.file=logs/{0}.log" ' \
-                                     '"{4}" ' \
-                                     '"gen/ISD{1}/AS{2}/{0}/' \
-                                     'zoo.cfg"'.format(serv_name,
-                                                       isd_id,
-                                                       as_id,
-                                                       class_path,
-                                                       zoomain_env)
+                                 '"gen/{1}/{2}/{0}:{3}" ' \
+                                 '"-Dzookeeper.' \
+                                 'log.file=logs/{0}.log" ' \
+                                 '"{4}" ' \
+                                 '"gen/ISD{1}/AS{2}/{0}/' \
+                                 'zoo.cfg"'.format(serv_name,
+                                                   isd_id,
+                                                   as_id,
+                                                   class_path,
+                                                   zoomain_env)
                 config['program:' + serv_name]['command'] = command_string
 
             node_path = 'ISD{}/AS{}/{}'.format(isd_id, as_id, serv_name)
@@ -1190,8 +1204,17 @@ def create_local_gen(isd_as, tp):
     copy(yaml_topo_path, node_path)
 
 
-def run_remote_command(ip, process_name, command):
-    use_ansible = True
+def deploy(request, isd_id, as_id):
+    # need to call Ansible for consistency check for isd_id, as_id on topo
+    ansible_check = (lambda _isd_id, _as_id: True)  # mock
+    # deploy with Ansible
+    if ansible_check(isd_id, as_id):
+        run_remote_command(None, None, None, use_ansible=True)
+    current_page = request.META.get('HTTP_REFERER')
+    return redirect(current_page)
+
+
+def run_remote_command(ip, process_name, command, use_ansible=True):
 
     if not use_ansible:
         server = xmlrpc.client.ServerProxy('http://{}:9011'.format(ip))
@@ -1216,11 +1239,15 @@ def run_remote_command(ip, process_name, command):
     else:
         # using the ansibleCLI instead of
         # duplicating code to use the PlaybookExecutor
-        result = subprocess.check_call(['ansible-playbook',
-                                        os.path.join(PROJECT_ROOT, 'ansible',
-                                                     'deploy-ethz.yml'),
-                                        '-f', '32'], cwd=PROJECT_ROOT)
-        print(result)
+        result = "Call failed"
+        try:
+            result = subprocess.check_call(['ansible-playbook',
+                                            os.path.join(PROJECT_ROOT,
+                                                         'ansible',
+                                                         'deploy-current.yml')],
+                                           cwd=PROJECT_ROOT)
+        except subprocess.CalledProcessError:
+            print(result)
     return 0
 
 

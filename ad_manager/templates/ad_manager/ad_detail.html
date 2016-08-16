@@ -164,6 +164,14 @@
           <br />
           {% include 'ad_manager/partials/topology_input.html' %}
           <br />
+          <br />
+          <div class="well">
+              <form method="POST" action="../../api/v1/internal/isd/{{ isd_id }}/as/{{ as_id }}/deploy">
+                  {% csrf_token %}
+                  Deploy the saved configuration with Ansible:
+                  <button type="submit">Deploy</button>
+              </form>
+          </div>
       </div>
     </div>
   </div>
