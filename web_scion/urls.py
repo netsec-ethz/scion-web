@@ -44,4 +44,3 @@ else:
             {'template_name': 'admin/login.html'}, name='login'),
     )
     settings.LOGIN_URL = reverse_lazy('login')
-

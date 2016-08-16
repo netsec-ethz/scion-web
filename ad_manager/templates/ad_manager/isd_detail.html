@@ -23,18 +23,30 @@
     {% endfor %}
   </ul>
 
-  <form method="POST" action="/ad_manager/ads/add_as">
-    {% csrf_token %}
-    <div class="control-group">
-        <br/>
-        <div class="form-group">
-            <label class="control-label" style="vertical-align: sub;" for="inputASname">new AS name:</label>
-            <input class="hidden" id="inputISDname" name="inputISDname" title="ISD name" type="text" value="{{ object.id }}">
-            <input id="inputASname" name="inputASname" type="text">
-            <button type="submit" class="btn">Create AS</button>
+  <div style="display: inline-block;">
+      <form method="POST" action="/ad_manager/ads/add_as" style="display: inline-block;">
+        {% csrf_token %}
+        <div class="control-group">
+            <br/>
+            <div class="form-group">
+                <label class="control-label" style="vertical-align: sub;" for="inputASname">new AS name:</label>
+                <input class="hidden" id="inputISDname" name="inputISDname" title="ISD name" type="text" value="{{ object.id }}">
+                <input id="inputASname" name="inputASname" type="text">
+                <button type="submit" class="btn">Create AS</button>
+            </div>
         </div>
-    </div>
-  </form>
+      </form>
+      <form id="createASByFile" method="POST" enctype="multipart/form-data" action="{% url 'upload_file_ref' %}" style="display: inline-block;">
+        {% csrf_token %}
+        <div class="hidden" id="topoInitUpload">
+            {% bootstrap_form upload_form %}
+        </div>
+        <input type="test" class="hidden" name="_upload_init_topo" value="_upload_init_topo">
+        <button type="button" class="btn btn-default click-confirm" id="upload-topo-btn" onclick="delayedUpload('#topoInitUpload', 'createASByFile')">
+              Create AS from file
+        </button>
+      </form>
+  </div>
 
   <br/>
   <div>
@@ -59,6 +71,11 @@
         var certFileName = $('#id_file')[0].value;
         sessionStorage.certFileInUse = certFileName;
         document.getElementById('certfileName').innerHTML = sessionStorage.getItem("certFileInUse");
+    }
+
+    function delayedUpload(uploadInput, id) {
+        $(uploadInput).find('#id_file').click();
+        document.getElementById(id).submit();
     }
   </script>
 
