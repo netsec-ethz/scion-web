@@ -1204,11 +1204,37 @@ def create_local_gen(isd_as, tp):
     copy(yaml_topo_path, node_path)
 
 
+def update_hash_var(isd_id, as_id, commit_hash):
+    commit_hash, _ = commit_hash.split('|')  # remove comment
+    commit_hash = commit_hash.replace(' ', '')  # remove space
+    host_file_path = os.path.join(WEB_ROOT, 'gen',
+                                  'ISD' + str(isd_id), 'AS' + str(as_id),
+                                  'host.{}-{}'.format(isd_id, as_id))
+    config = configparser.ConfigParser(allow_no_value=True, delimiters=' ',
+                                       inline_comment_prefixes='#')
+    try:
+        config.read(host_file_path)
+    except configparser.ParsingError:
+        print('Tried to parse invalid host file at {}'.format(host_file_path))
+        return
+
+    for option in config['scion_nodes:vars']:  # remove obsolete entries
+        if option.startswith('git_commit_hash'):
+            config.remove_option('scion_nodes:vars', option)
+    config.set('scion_nodes:vars', 'git_commit_hash={}'.format(commit_hash))
+
+    with open(host_file_path, 'w') as configfile:
+        config.write(configfile, space_around_delimiters=False)
+
+
+@require_POST
 def deploy(request, isd_id, as_id):
     # need to call Ansible for consistency check for isd_id, as_id on topo
     ansible_check = (lambda _isd_id, _as_id: True)  # mock
+    commit_hash = request.POST['commitHash']
     # deploy with Ansible
     if ansible_check(isd_id, as_id):
+        update_hash_var(isd_id, as_id, commit_hash)
         run_remote_command(None, None, None, use_ansible=True)
     current_page = request.META.get('HTTP_REFERER')
     return redirect(current_page)

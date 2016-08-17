@@ -169,12 +169,25 @@
               <form method="POST" action="../../api/v1/internal/isd/{{ isd_id }}/as/{{ as_id }}/deploy">
                   {% csrf_token %}
                   Deploy the saved configuration with Ansible:
+                  <br/>
+                  <label for="commitHash" >Use the code of the commit with this hash:</label>
+                  <input id="commitHash" name="commitHash" list="queriedHashes" type="text" size="72" placeholder="df9d702d9e77a503b475c501df035d95e5152ee9 |      Latest compatible commit" class="selectpicker" data-show-subtext="true"
+                         onmouseover="if (! $('#commitHash').is(':focus')) {$('#commitHash').focus();}"
+                         onfocus="if ($('#queriedHashes').children().length <= 1) {queryForHashes();}">
+                  <datalist id="queriedHashes" class="selectpicker" data-show-subtext="true">
+                      <option data-subtext="Latest compatible" value="df9d702d9e77a503b475c501df035d95e5152ee9 |      Latest compatible commit"></option>
+                  </datalist>
                   <button type="submit">Deploy</button>
               </form>
           </div>
       </div>
     </div>
   </div>
+
+  <br />
+  <br />
+  <br />
+  <br />
 
   {% include 'ad_manager/partials/log_modal.html' %}
 

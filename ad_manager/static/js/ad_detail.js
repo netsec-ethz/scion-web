@@ -233,3 +233,24 @@ $(document).ready(function() {
     // Display log files
     displayLogs();
 });
+
+
+// Query github for the last Hashes
+function queryForHashes() {
+    var gitBaseUrl = "https://api.github.com/repos"; // https://api.github.com/repos/netsec-ethz/scion-web/commits?page=1&per_page=3
+    var organisation = "/netsec-ethz";
+    var repo = "/scion-web/"; // set this to the main scion repo aka /scion/ one it is public
+    var numberOfResults = 5;
+    var query = "commits?page=1&per_page=" + numberOfResults;
+
+    // var xmlhttp = new XMLHttpRequest();
+    var url = gitBaseUrl + organisation + repo + query;
+
+    $.getJSON(url, function( data ) {
+        $.each( data, function( key, val) {
+            var sha = val['sha'];
+            var comment = val['commit']['message'].substr(0,25);
+            $('#queriedHashes').append('<option value="' + sha + ' |      ' + comment +'..."></option>');
+        });
+    });
+}
