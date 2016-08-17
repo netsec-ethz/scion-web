@@ -87,7 +87,7 @@
                                        placeholder="127.0.0.{{ forloop.counter0|add:49 }}" value=""> :
                                 <input class="server-port-input inputPort" id="input{{ type }}ServerPort" name="input{{ type }}ServerPort"
                                        placeholder="{{ forloop.counter0|add:1025 }}" type="text">
-                                <label class="server-nat-address-label m-l-3" for="input{{ type }}ServerNatAddress" style="margin-left: 2em;">NAT address & port: </label>
+                                <label class="server-nat-address-label m-l-3" for="input{{ type }}ServerNatAddress">NAT address & port: </label>
                                 <input class="server-nat-address-input" id="input{{ type }}ServerNatAddress" name="input{{ type }}ServerNatAddress" type="text"> :
                                 <input class="server-nat-port-input inputPort" id="input{{ type }}ServerNatPort" name="input{{ type }}ServerNatPort"
                                        placeholder="" type="text">
@@ -121,7 +121,7 @@
                                    placeholder="127.0.0.52/29"> :
                             <input class="server-port-input inputPort" id="inputBorderRouterPort" name="inputBorderRouterPort"
                                placeholder="2048" type="text">
-                            <button class="btn btn-success btn-add pull-right" type="button" style="margin-right: 1.2em;"
+                            <button id="addBorderRouterButton" class="btn btn-success btn-add pull-right" type="button"
                                     onclick="toggleInput(this);">
                                 <span class="glyphicon glyphicon-plus"></span>
                             </button>
@@ -241,7 +241,7 @@
                                placeholder="127.0.0.54"> :
                         <input class="server-port-input inputPort" id="inputSibraServerPort" name="inputSibraServerPort"
                                placeholder="2048" type="text">
-                        <label class="server-nat-address-label m-l-3" for="input{{ type }}ServerNatAddress" style="margin-left: 2em;">NAT address & port: </label>
+                        <label class="server-nat-address-label m-l-3" for="input{{ type }}ServerNatAddress">NAT address & port: </label>
                         <input class="server-nat-address-input" id="input{{ type }}ServerNatAddress" name="input{{ type }}ServerNatAddress" type="text"> :
                         <input class="server-nat-port-input inputPort" id="input{{ type }}ServerNatPort" name="input{{ type }}ServerNatPort"
                                placeholder="" type="text">
@@ -290,12 +290,8 @@
         </div>
 
         <div class="control-group well">
-            <div style="display: inline-block;">
-                <span>
-                    <h4 style="float: left;">Select here which cloud provider to use for each IP (enables cloud provider specific setups for Ansible host files)</h4>
-                    <button style="margin-left: 2em;" type="button" onclick="gatherIPsforCloudEngines();">Update IP address list</button>
-                </span>
-            </div>
+            <h4 id="titleIPList">Select here which cloud provider to use for each IP (enables cloud provider specific setups for Ansible host files): </h4>
+            <button id="updateIPListButton" type="button" onclick="gatherIPsforCloudEngines();">Update IP address list</button>
             <div class="controls hidden cloudEngineItemModel">
                 <br/>
                 <label class="control-label col-sm-2 server-cloud-address-label" for="inputCloudAddress">IP address: </label>
@@ -317,7 +313,7 @@
         <br/>
         <div class="control-group">
             <button id="submitButton" type="button" class="btn" onclick="checkFreshness({{ isd_id }}, {{ as_id }});">Save to topology file</button>
-            <div id="forceSubmitDiv" class="hidden" style="display: inline-block; margin-left: 2em;">
+            <div id="forceSubmitDiv" class="hidden">
                 <label class="control-label" for="forceSubmit">Force submit: </label>
                 <input id="forceSubmit" name="forceSubmit" type="checkbox" value="false"/>
             </div>
@@ -325,3 +321,46 @@
     </form>
 
 </div>
+
+<style>
+    #addBorderRouterButton {
+        margin-right: 1.2em;
+    }
+
+    #titleIPList {
+        float: left;
+    }
+
+    #updateIPListButton {
+        margin-left: 2em;
+    }
+
+    #forceSubmitDiv {
+        display: inline-block; margin-left: 2em;
+    }
+
+    .server-nat-address-label {
+      margin-left: 2em;
+    }
+
+    .chevron:before {
+        /* symbol for "opening" panels */
+        font-family: 'Glyphicons Halflings';  /* essential for enabling glyphicon */
+        content: "\e114";    /* adjust as needed, taken from bootstrap.css */
+        color: grey;         /* adjust as needed */
+        float: left;
+    }
+    .chevron.collapsed:before {
+        /* symbol for "collapsed" panels */
+        content: "\e080";    /* adjust as needed, taken from bootstrap.css */
+    }
+
+    .sectionTitle{
+        font-weight: bold;
+        margin-left: 10px;
+    }
+
+    .inputPort {
+        width: 4em;
+    }
+</style>

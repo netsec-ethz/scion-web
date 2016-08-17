@@ -57,10 +57,6 @@ div.status-text:hover {
 }
 
 /* Connection request form */
-a.download-package {
-    font-size: 24px;
-    margin-left: 4px;
-}
 
 /* Network graph */
 .link {
@@ -78,6 +74,32 @@ a.download-package {
 text {
   font: 10px sans-serif;
   pointer-events: none;
+}
+
+.disp-inline-block {
+    display: inline-block;
+}
+
+.floor-align-text {
+    vertical-align: sub;
+}
+
+.page-overlay {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.3);
+}
+
+.page-overlay-message-box {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    background-color: white;
+    padding: 4em;
+    width: 600px;
+    margin-left: -300px;
 }
 
 /* Node assign */

@@ -1,6 +1,6 @@
 <div class="status-block">
   <div class="row">
-    <div class="status-text col-md-8" style="text-align: center;" data-element-id="{{ element.id_str }}" data-log-url="{% url 'read_log' element.ad.id element.id_str %}">
+    <div class="status-text col-md-8" class="text-center" data-element-id="{{ element.id_str }}" data-log-url="{% url 'read_log' element.ad.id element.id_str %}">
       ???
     </div>
     {% if user_has_perm %}

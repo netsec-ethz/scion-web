@@ -47,10 +47,6 @@
             <button type="submit" class="btn btn-danger btn-sm click-confirm" name="_decline_request">
               Decline
             </button>
-
-            {% if request.is_approved %}
-              <a href="{% url 'download_request_package' request.id %}" class="download-package glyphicon glyphicon-download-alt" title="Download package"></a>
-            {% endif %}
           </form>
         </td>
       </tr>
