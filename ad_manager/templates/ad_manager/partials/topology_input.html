@@ -2,7 +2,7 @@
 <div>
     <h1>AS TOPOLOGY</h1>
     Define topology file for AS:
-    You only define the logical topology of the AS, i.e. you only need to specify the links for the edge routers.
+    You only define the logical topology of the AS, i.e. you only need to specify the links for the border routers.
     Endhosts are not specified.
     <br/>
     <br/>
@@ -20,7 +20,7 @@
                            data-placement='right'
                            data-original-title="Is core checkbox: True, False (is of importance for Beacon, Certificate,
                             Path server; stored as single entry in topo file).
-                            Enables the link type ROUTING for edge routers when checked">
+                            Enables the link type ROUTING for border routers when checked">
                 </div>
             </div>
             <br/>
@@ -104,22 +104,22 @@
 
         <div class="control-group well">
             <div class="chevron collapsed" data-toggle="collapse" href="#routerAccordion"><span
-                    class="sectionTitle">Edge routers: </span></div>
+                    class="sectionTitle">Border routers: </span></div>
             <div id="routerAccordion" class="accordion collapse" aria-expanded="true">
                 <br/>
                 <div class="routerItem item" id="routerItem-1">
                     <div class="form-group">
-                        <label class="control-label col-sm-2 server-name-label" for="inputEdgeRouterName">Server name: </label>
+                        <label class="control-label col-sm-2 server-name-label" for="inputBorderRouterName">Server name: </label>
                         <div class="controls">
-                            <input class="server-name-input" type="text" id="inputEdgeRouterName" name="inputEdgeRouterName" value="er-1" placeholder="er{{ isd_id }}-{{ as_id }}er1-19">
+                            <input class="server-name-input" type="text" id="inputBorderRouterName" name="inputBorderRouterName" value="br{{ isd_id }}-{{ as_id }}-1" placeholder="br{{ isd_id }}-{{ as_id }}-1">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-2 server-address-label" for="inputEdgeRouterAddress">Address & port: </label>
+                        <label class="control-label col-sm-2 server-address-label" for="inputBorderRouterAddress">Address & port: </label>
                         <div class="controls">
-                            <input class="server-address-input" type="text" id="inputEdgeRouterAddress" name="inputEdgeRouterAddress"
+                            <input class="server-address-input" type="text" id="inputBorderRouterAddress" name="inputBorderRouterAddress"
                                    placeholder="127.0.0.52/29"> :
-                            <input class="server-port-input inputPort" id="inputEdgeRouterPort" name="inputEdgeRouterPort"
+                            <input class="server-port-input inputPort" id="inputBorderRouterPort" name="inputBorderRouterPort"
                                placeholder="2048" type="text">
                             <button class="btn btn-success btn-add pull-right" type="button" style="margin-right: 1.2em;"
                                     onclick="toggleInput(this);">
@@ -149,7 +149,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="control-label col-sm-2" for="inputInterfaceIFID">Address: </label>
+                            <label class="control-label col-sm-2" for="inputInterfaceIFID">Interface ID (IFID): </label>
                             <div class="controls">
                                 <input type="text" id="inputInterfaceIFID" name="inputInterfaceIFID" placeholder="1">
                             </div>
@@ -206,7 +206,7 @@
                         <br/>
 
                         <div class="form-group">
-                            <label class="control-label col-sm-2" for="inputInterfaceOwnPort">Edge router port from which
+                            <label class="control-label col-sm-2" for="inputInterfaceOwnPort">Border router port from which
                                 the link connects: </label>
                             <div class="controls">
                                 <input type="text" id="inputInterfaceOwnPort" name="inputInterfaceOwnPort"

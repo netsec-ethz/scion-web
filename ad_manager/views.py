@@ -94,7 +94,7 @@ PATH_EXECUTABLE = "path_server"
 SIBRA_EXECUTABLE = "sibra_server"
 # Scion domain name server
 DNS_EXECUTABLE = "dns_server"
-# Scion edge router
+# Scion border router
 ROUTER_EXECUTABLE = "router"
 # Zookeeper executable
 ZOOKEEPER_EXECUTABLE = "zookeeper.jar"
@@ -852,9 +852,9 @@ def name_entry_dict(name_list, address_list, port_list):
 def name_entry_dict_router(tp):
     ret_dict = {}
 
-    name_list = tp.getlist('inputEdgeRouterName')
-    address_list = tp.getlist('inputEdgeRouterAddress')
-    port_list = tp.getlist('inputEdgeRouterPort')
+    name_list = tp.getlist('inputBorderRouterName')
+    address_list = tp.getlist('inputBorderRouterAddress')
+    port_list = tp.getlist('inputBorderRouterPort')
     interface_list = tp.getlist('inputInterfaceAddr')
     bandwidth_list = tp.getlist('inputInterfaceBandwidth')
     if_id_list = tp.getlist('inputInterfaceIFID')
@@ -913,7 +913,7 @@ def generate_topology(request):
                             )
 
     mockup_dicts['DnsDomain'] = tp['inputDnsDomain']
-    mockup_dicts['EdgeRouters'] = name_entry_dict_router(tp)
+    mockup_dicts['BorderRouters'] = name_entry_dict_router(tp)
     mockup_dicts['ISD_AS'] = tp['inputISD_AS']
     mockup_dicts['MTU'] = st_int(tp['inputMTU'], DEFAULT_MTU)
 
@@ -1124,7 +1124,7 @@ def create_local_gen(isd_as, tp):
              'sibra_server', 'zookeeper_service']  # 'domain_server', # tmp fix
     # until the discovery replaces it
 
-    dict_keys = ['BeaconServers', 'CertificateServers', 'EdgeRouters',
+    dict_keys = ['BeaconServers', 'CertificateServers', 'BorderRouters',
                  'PathServers', 'SibraServers', 'Zookeepers']
 
     types_keys = zip(types, dict_keys)

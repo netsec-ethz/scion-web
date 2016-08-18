@@ -106,7 +106,7 @@ def generate_ansible_hostfile(topology_params, mockup_dict, isd_as):
                               ('CertificateServer', 'cert_server'),
                               #  ('DomainServer', 'dns_server'), # tmp fix
                               # until the discovery replaces it
-                              ('EdgeRouter', 'router'),
+                              ('BorderRouter', 'router'),
                               ('PathServer', 'path_server'),
                               ('SibraServer', 'sibra_server'),
                               ('Zookeeper', 'zookeeper_service')]:
@@ -122,7 +122,7 @@ def generate_ansible_hostfile(topology_params, mockup_dict, isd_as):
         elif service_type == 'router':
             interfaces = get_section_attr(mockup_dict, key+'s', 'Interface')
             remote_isd_as = [x['ISD_AS'] for x in interfaces]
-            section_name = 'edge_routers'
+            section_name = 'border_routers'
             tags = 'isd={} as={} '.format(isd_id,
                                           as_id)
             fill_router_section(config, section_name, val, remote_isd_as,
