@@ -1219,9 +1219,9 @@ def update_hash_var(isd_id, as_id, commit_hash):
         return
 
     for option in config['scion_nodes:vars']:  # remove obsolete entries
-        if option.startswith('git_commit_hash'):
+        if option.startswith('scion_version'):
             config.remove_option('scion_nodes:vars', option)
-    config.set('scion_nodes:vars', 'git_commit_hash={}'.format(commit_hash))
+    config.set('scion_nodes:vars', 'scion_version={}'.format(commit_hash))
 
     with open(host_file_path, 'w') as configfile:
         config.write(configfile, space_around_delimiters=False)

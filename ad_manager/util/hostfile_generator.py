@@ -147,7 +147,7 @@ def generate_ansible_hostfile(topology_params, mockup_dict, isd_as):
     add_new_section(config, 'scion_nodes:vars')
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
     config.set('scion_nodes:vars', 'local_gen={}'.format(local_gen_path))
-    config.set('scion_nodes:vars', 'git_commit_hash={}'.format(''))
+    config.set('scion_nodes:vars', 'scion_version={}'.format(''))
 
     with open(host_file_path, 'w') as configfile:
         config.write(configfile, space_around_delimiters=False)
