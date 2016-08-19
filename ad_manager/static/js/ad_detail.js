@@ -233,3 +233,35 @@ $(document).ready(function() {
     // Display log files
     displayLogs();
 });
+
+
+// Query github for the last Hashes
+function queryForHashes() {
+    var gitBaseUrl = "https://api.github.com/repos";
+    var organisation = "/netsec-ethz";
+    var repo = "/scion-web/"; // set this to the main scion repo aka /scion/ once it is public
+
+    $('#queriedHashes').children().slice(1).remove(); // remove previous entries
+
+    var lastWeek = new Date();
+    var weekLength = 7; // 7 days per week
+    var weekCount = 2; // by default, if no userSetWeekCount set or invalid
+    var userSetWeekCount = $('#backLog').val();
+    if (userSetWeekCount != '' && !isNaN(userSetWeekCount)) { // failsafe invalid values
+        weekCount = Number(userSetWeekCount);
+    }
+
+    lastWeek.setDate(new Date().getDate() - (weekCount*weekLength));  //  set date for x weeks ago
+    var sinceDate = lastWeek.toISOString();  // get ISO 8601 representation
+    var query = "commits?page=1&since=" + sinceDate;  // get all commits since x weeks ago
+
+    var url = gitBaseUrl + organisation + repo + query;
+
+    $.getJSON(url, function( data ) {
+        $.each( data, function( key, val) {
+            var sha = val['sha'];
+            var comment = val['commit']['message'].substr(0,25);
+            $('#queriedHashes').append('<option value="' + sha + ' |      ' + comment +'..."></option>');
+        });
+    });
+}
