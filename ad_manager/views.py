@@ -7,7 +7,6 @@ from collections import deque
 from shutil import rmtree
 
 # External packages
-import dictdiffer
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
@@ -23,12 +22,12 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView, DetailView, FormView
 
-from datetime import datetime
 import yaml
 import tarfile
 import configparser
 import xmlrpc.client
 import socket
+from copy import deepcopy
 
 # SCION
 from guardian.shortcuts import assign_perm
@@ -588,13 +587,15 @@ def st_int(s, default):
     return int(s) if not s == '' else default
 
 
-def name_entry_dict(name_list, address_list, port_list):
+def name_entry_dict(name_l, address_l, port_l, addr_int_l, port_int_l):
     ret_dict = {}
-    for i in range(len(name_list)):
-        ret_dict[name_list[i]] = {'Addr': address_list[i],
-                                  'Port': st_int(port_list[i],
-                                                 SCION_UDP_EH_DATA_PORT)}
-        # add NAT settings here
+    for i in range(len(name_l)):
+        ret_dict[name_l[i]] = {'Addr': address_l[i],
+                               'Port': st_int(port_l[i],
+                                              SCION_UDP_EH_DATA_PORT),
+                               'AddrInternal': addr_int_l[i],
+                               'PortInternal': st_int(port_int_l[i], None)
+                               }
     return ret_dict
 
 
@@ -650,15 +651,22 @@ def generate_topology(request):
 
     service_types = ['BeaconServer', 'CertificateServer',
                      'PathServer', 'SibraServer']  # 'DomainServer', tmp fix
-    # until the discovery replaces it
-    mockup_dicts['DNSServers'] = {'1': {'Addr': '127.0.0.1', 'Port': -1}}
+    # DNSServer placeholder until the discovery service replaces it
+    mockup_dicts['DNSServers'] = {'1': {'Addr': '127.0.0.1',
+                                        'Port': -1,
+                                        'AddrInternal': '127.0.0.2',
+                                        'PortInternal': -1
+                                        }
+                                  }
 
     for s_type in service_types:
         section_name = s_type+'s' if s_type != 'DomainServer' else 'DNSServers'
         mockup_dicts[section_name] = \
             name_entry_dict(tp.getlist('input{}Name'.format(s_type)),
                             tp.getlist('input{}Address'.format(s_type)),
-                            tp.getlist('input{}Port'.format(s_type))
+                            tp.getlist('input{}Port'.format(s_type)),
+                            tp.getlist('input{}InternalAddress'.format(s_type)),
+                            tp.getlist('input{}InternalPort'.format(s_type)),
                             )
 
     mockup_dicts['DnsDomain'] = tp['inputDnsDomain']
@@ -670,7 +678,10 @@ def generate_topology(request):
     s_type = 'ZookeeperServer'
     zk_dict = name_entry_dict(tp.getlist('input{}Name'.format(s_type)),
                               tp.getlist('input{}Address'.format(s_type)),
-                              tp.getlist('input{}Port'.format(s_type))
+                              tp.getlist('input{}Port'.format(s_type)),
+                              tp.getlist(
+                                  'input{}InternalAddress'.format(s_type)),
+                              tp.getlist('input{}InternalPort'.format(s_type)),
                               )
     named_keys = list(zk_dict.keys())  # copy 'named' keys
     int_key = 1  # dict keys get replaced with numeric keys, 1 based
@@ -826,7 +837,7 @@ def create_local_gen(isd_as, tp):
     ready for Ansible deployment
     Args:
         isd_as: isd-as string
-        tp: the topology file as a dict of dicts
+        tp: the topology parameter file as a dict of dicts
 
     """
     # looks up the name of the executable for the service,
@@ -940,17 +951,44 @@ def create_local_gen(isd_as, tp):
                 config.write(configfile)
 
             # copy AS topology.yml file into node
-            copy(yaml_topo_path, node_path)
+            one_of_topology_path = os.path.join(node_path, 'topology.yml')
+            one_of_topology = particular_topo_instance(tp, type_key)
+            with open(one_of_topology_path, 'w') as file:
+                yaml.dump(one_of_topology, file, default_flow_style=False)
+            # copy(yaml_topo_path, node_path)  # Do not share global topology
+            # as each node get its own topology file
+
             # Generating only the needed intermediate parts
             # not used as for now we generator.py all certs and keys resources
 
-    # git issue "Scion-web should create endhost folder #1"
     # Add endhost folder for all ASes
     node_path = 'ISD{}/AS{}/{}'.format(isd_id, as_id, 'endhost')
     node_path = os.path.join(local_gen_path, node_path)
     if not os.path.exists(node_path):
         copytree(os.path.join(shared_files_path), node_path)
     copy(yaml_topo_path, node_path)
+
+
+def particular_topo_instance(tp, type_key):
+    #  Little trow away logic handling the NATed case until topo represents
+    # internal and external addresses
+
+    singular_topo = deepcopy(tp)
+
+    for server_type in singular_topo.keys():  # services know only internal
+        if server_type.endswith("Servers") or server_type == 'Zookeepers':
+            for entry in singular_topo[server_type]:
+                internal_address = singular_topo[server_type][entry].pop(
+                    'AddrInternal')
+                internal_port = singular_topo[server_type][entry].pop(
+                    'PortInternal')
+                if type_key == 'BorderRouters':
+                    continue  # Border routers only know about external
+                if internal_address != '':
+                    singular_topo[server_type][entry]['Addr'] = internal_address
+                if internal_port is not None:
+                    singular_topo[server_type][entry]['Port'] = internal_port
+    return singular_topo
 
 
 def update_hash_var(isd_id, as_id, commit_hash):

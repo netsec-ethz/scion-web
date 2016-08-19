@@ -1,6 +1,5 @@
 # External packages
 from django import forms
-from django.forms import ModelChoiceField
 
 # SCION
 from ad_manager.models import ConnectionRequest, AD

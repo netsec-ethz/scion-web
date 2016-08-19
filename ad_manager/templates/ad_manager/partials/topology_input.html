@@ -87,9 +87,9 @@
                                        placeholder="127.0.0.{{ forloop.counter0|add:49 }}" value=""> :
                                 <input class="server-port-input inputPort" id="input{{ type }}ServerPort" name="input{{ type }}ServerPort"
                                        placeholder="{{ forloop.counter0|add:1025 }}" type="text">
-                                <label class="server-nat-address-label m-l-3" for="input{{ type }}ServerNatAddress">NAT address & port: </label>
-                                <input class="server-nat-address-input" id="input{{ type }}ServerNatAddress" name="input{{ type }}ServerNatAddress" type="text"> :
-                                <input class="server-nat-port-input inputPort" id="input{{ type }}ServerNatPort" name="input{{ type }}ServerNatPort"
+                                <label class="server-internal-address-label m-l-3" for="input{{ type }}ServerInternalAddress">Internal address & port: </label>
+                                <input class="server-internal-address-input" id="input{{ type }}ServerInternalAddress" name="input{{ type }}ServerInternalAddress" type="text"> :
+                                <input class="server-internal-port-input inputPort" id="input{{ type }}ServerInternalPort" name="input{{ type }}ServerInternalPort"
                                        placeholder="" type="text">
                                 <button class="btn btn-success btn-add pull-right" type="button"
                                         onclick="toggleInput(this);">
@@ -241,9 +241,9 @@
                                placeholder="127.0.0.54"> :
                         <input class="server-port-input inputPort" id="inputSibraServerPort" name="inputSibraServerPort"
                                placeholder="2048" type="text">
-                        <label class="server-nat-address-label m-l-3" for="input{{ type }}ServerNatAddress">NAT address & port: </label>
-                        <input class="server-nat-address-input" id="input{{ type }}ServerNatAddress" name="input{{ type }}ServerNatAddress" type="text"> :
-                        <input class="server-nat-port-input inputPort" id="input{{ type }}ServerNatPort" name="input{{ type }}ServerNatPort"
+                        <label class="server-internal-address-label m-l-3" for="inputSibraServerInternalAddress">Internal address & port: </label>
+                        <input class="server-internal-address-input" id="inputSibraServerInternalAddress" name="inputSibraServerInternalAddress" type="text"> :
+                        <input class="server-internal-port-input inputPort" id="inputSibraServerInternalPort" name="inputSibraServerInternalPort"
                                placeholder="" type="text">
                         <button class="btn btn-success btn-add pull-right" type="button"
                                 onclick="toggleInput(this);">
@@ -284,6 +284,12 @@
                     <div class="controls">
                         <input class="server-port-input inputPort" type="text" id="inputZookeeperServerPort" name="inputZookeeperServerPort"
                                placeholder="2181">
+                    </div>
+                    <div class="hidden">
+                        <label class="server-internal-address-label m-l-3" for="inputZookeeperServerInternalAddress">Internal address & port: </label>
+                        <input class="server-internal-address-input" id="inputZookeeperServerInternalAddress" name="inputZookeeperServerInternalAddress" type="text"> :
+                        <input class="server-internal-port-input inputPort" id="inputZookeeperServerInternalPort" name="inputZookeeperServerInternalPort"
+                               placeholder="" type="text">
                     </div>
                 </div>
             </div>
@@ -339,7 +345,7 @@
         display: inline-block; margin-left: 2em;
     }
 
-    .server-nat-address-label {
+    .server-internal-address-label {
       margin-left: 2em;
     }
 

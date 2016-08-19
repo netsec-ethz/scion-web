@@ -1,10 +1,6 @@
 # Stdlib
 import copy
-import glob
-import json
 import logging
-import os
-import tarfile
 
 # External packages
 import jsonfield
@@ -148,6 +144,8 @@ class AD(models.Model):
 
                 RouterWeb.objects.update_or_create(
                     addr=router["Addr"], ad=self,
+                    addr_internal='',
+                    port_internal=None,
                     name=name, neighbor_ad=neighbor_ad,
                     neighbor_type=interface["LinkType"],
                     interface_addr=interface["Addr"],
@@ -158,29 +156,44 @@ class AD(models.Model):
                 )
 
             for name, bs in beacon_servers.items():
-                BeaconServerWeb.objects.update_or_create(addr=bs["Addr"],
-                                                         name=name,
-                                                         ad=self)
+                BeaconServerWeb.objects.\
+                    update_or_create(addr=bs["Addr"],
+                                     addr_internal=bs["AddrInternal"],
+                                     port_internal=bs["PortInternal"],
+                                     name=name,
+                                     ad=self)
 
             for name, cs in certificate_servers.items():
-                CertificateServerWeb.objects.update_or_create(addr=cs["Addr"],
-                                                              name=name,
-                                                              ad=self)
+                CertificateServerWeb.objects.\
+                    update_or_create(addr=cs["Addr"],
+                                     addr_internal=cs["AddrInternal"],
+                                     port_internal=cs["PortInternal"],
+                                     name=name,
+                                     ad=self)
 
             for name, ps in path_servers.items():
-                PathServerWeb.objects.update_or_create(addr=ps["Addr"],
-                                                       name=name,
-                                                       ad=self)
+                PathServerWeb.objects.\
+                    update_or_create(addr=ps["Addr"],
+                                     addr_internal=ps["AddrInternal"],
+                                     port_internal=ps["PortInternal"],
+                                     name=name,
+                                     ad=self)
 
             for name, ds in dns_servers.items():
-                DnsServerWeb.objects.update_or_create(addr=str(ds["Addr"]),
-                                                      name=name,
-                                                      ad=self)
+                DnsServerWeb.objects.\
+                    update_or_create(addr=str(ds["Addr"]),
+                                     addr_internal=ds["AddrInternal"],
+                                     port_internal=ds["PortInternal"],
+                                     name=name,
+                                     ad=self)
 
             for name, sb in sibra_servers.items():
-                SibraServerWeb.objects.update_or_create(addr=sb["Addr"],
-                                                        name=name,
-                                                        ad=self)
+                SibraServerWeb.objects.\
+                    update_or_create(addr=sb["Addr"],
+                                     addr_internal=sb["AddrInternal"],
+                                     port_internal=sb["PortInternal"],
+                                     name=name,
+                                     ad=self)
         except IntegrityError:
             logging.warning("Integrity error in AD.fill_from_topology(): "
                             "ignoring")
@@ -206,6 +219,8 @@ class AD(models.Model):
 
 class SCIONWebElement(models.Model):
     addr = models.GenericIPAddressField()
+    addr_internal = models.GenericIPAddressField(default=None, null=True)
+    port_internal = models.IntegerField(default=None, null=True)
     ad = models.ForeignKey(AD)
     name = models.CharField(max_length=20, null=True)
 
