@@ -21,6 +21,13 @@ PORT = 50000
 PACKAGE_DIR_PATH = 'gen'
 
 
+class OrganisationAdmin(models.Model):
+    user = models.OneToOneField(User)
+    is_org_admin = models.BooleanField(default=False)
+    key = models.CharField(max_length=260, null=False, blank=True)
+    secret = models.CharField(max_length=260, null=False, blank=True)
+
+
 class SelectRelatedModelManager(models.Manager):
     """
     Model manager that also selects related objects from the database,

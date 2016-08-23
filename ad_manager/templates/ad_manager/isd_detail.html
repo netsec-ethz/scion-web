@@ -31,7 +31,9 @@
             <div class="form-group">
                 <label class="control-label" class="floor-align-text" for="inputASname">new AS name:</label>
                 <input class="hidden" id="inputISDname" name="inputISDname" title="ISD name" type="text" value="{{ object.id }}">
-                <input id="inputASname" name="inputASname" type="text">
+                <input id="inputASname" name="inputASname" list="new_as_id_field" type="text" onfocus="if ($('#new_as_id_field').children().length == 0) {queryForAsId({{ object.id }});}">
+                <datalist id="new_as_id_field" class="selectpicker" data-show-subtext="true">
+                </datalist>
                 <button type="submit" class="btn">Create AS</button>
             </div>
         </div>
@@ -76,6 +78,18 @@
     function delayedUpload(uploadInput, id) {
         $(uploadInput).find('#id_file').click();
         document.getElementById(id).submit();
+    }
+
+    function queryForAsId(isd) {
+        $.ajaxSetup({
+            headers:
+            { 'X-CSRFToken': $("input[name='csrfmiddlewaretoken']").val() }
+        });
+
+        var url = "../../api/v1/internal/get_new_as_id/isd/" + isd + "/";
+        $.post( url, function( data ) {
+          $('#new_as_id_field').append('<option value="' + data['isdas'] + '"></option>');
+        });
     }
   </script>
 

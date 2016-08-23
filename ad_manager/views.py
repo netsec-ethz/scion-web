@@ -1,13 +1,16 @@
 # Stdlib
-import json
-import tempfile
-import os
 import hashlib
+import json
+import os
+import tempfile
 from collections import deque
 from shutil import rmtree
 
 # External packages
-from django.contrib.auth.decorators import login_required
+from urllib.parse import urljoin
+from functools import reduce
+
+from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.db import transaction
@@ -29,6 +32,8 @@ import xmlrpc.client
 import socket
 from copy import deepcopy
 
+import requests
+
 # SCION
 from guardian.shortcuts import assign_perm
 from ad_manager.util.response_handling import (
@@ -36,12 +41,25 @@ from ad_manager.util.response_handling import (
     get_success_data,
     is_success,
 )
+from ad_manager.util.util import to_b64
+from ad_manager.util.defines import (
+    COORD_SERVICE_URI,
+    UPLOAD_JOIN_REQUEST_SVC,
+    UPLOAD_JOIN_REPLIES_SVC,
+    POLL_JOIN_REPLY_SVC,
+    UPLOAD_CONN_REQUESTS_SVC,
+    UPLOAD_CONN_REPLIES_SVC,
+    POLL_CONN_REPLIES_SVC,
+    POLL_EVENTS_SVC
+)
 from ad_manager.forms import (
     ConnectionRequestForm,
+    CoordinationServiceSettingsForm,
     NewLinkForm,
     UploadFileForm
 )
-from ad_manager.models import AD, ISD, ConnectionRequest
+from ad_manager.models import AD, ISD, ConnectionRequest,\
+    OrganisationAdmin, User
 from ad_manager.util.ad_connect import (
     create_new_ad_files,
     find_last_router,
@@ -49,8 +67,13 @@ from ad_manager.util.ad_connect import (
 )
 from ad_manager.util.errors import HttpResponseUnavailable
 from lib.util import write_file
-from topology.generator import ConfigGenerator  # , DEFAULT_PATH_POLICY_FILE,
-# DEFAULT_ZK_CONFIG
+from topology.generator import ConfigGenerator
+from lib.crypto.certificate import Certificate
+
+from lib.crypto.asymcrypto import (
+    generate_sign_keypair,
+    generate_enc_keypair
+)
 
 from lib.defines import (BEACON_SERVICE,
                          CERTIFICATE_SERVICE,
@@ -155,6 +178,80 @@ def add_as(request):
     as_obj.save()
     ad_page = reverse('ad_detail', args=[new_as_id])
     return redirect(ad_page + '#!nodes')
+
+
+def accept_join_request(request_id):
+    coord_settings = get_object_or_404(OrganisationAdmin, id=1)
+    key = coord_settings.key + "/"
+    secret = coord_settings.secret
+
+    sig_pub_keys = b'public_signing_key_of_new_as'
+    enc_pub_keys = b'public_encryption_key_of_new_as'
+    core_as_id = "1-2"
+    core_as_sig_priv_key = b'private_signing_key_of_core_as__'
+    INITIAL_CERT_VERSION = 0
+
+    certificate = Certificate.from_values(
+            request_id, sig_pub_keys, enc_pub_keys, core_as_id,
+            core_as_sig_priv_key, INITIAL_CERT_VERSION,
+        )
+
+    accept_join_dict = {"isdas": core_as_id,
+                        "replies": [{
+                            "request_id": request_id,
+                            "isdas": core_as_id,
+                            "certificate": str(certificate),
+                            "trc": "trc_123"}]
+                        }
+    base_url = COORD_SERVICE_URI
+    accept_join_url = UPLOAD_JOIN_REPLIES_SVC
+    request_url = reduce(urljoin, [base_url, accept_join_url, key, secret])
+    headers = {'content-type': 'application/json'}
+    r = requests.post(request_url, json=accept_join_dict, headers=headers)
+    answer = r.json()
+    print(answer)
+
+
+@require_POST
+def new_as_id(request, isd_id):
+    coord_settings = get_object_or_404(OrganisationAdmin, id=1)
+    key = coord_settings.key + "/"
+    secret = coord_settings.secret
+
+    base_url = COORD_SERVICE_URI
+    join_request_url = UPLOAD_JOIN_REQUEST_SVC
+
+    private_key_sign, public_key_sign = generate_sign_keypair()
+    public_key_encr, private_key_encr = generate_enc_keypair()
+    some_core_as_of_isd_id = "1-2"
+    join_request_dict = {"isd_to_join": int(isd_id),
+                         "as_to_query": some_core_as_of_isd_id,
+                         "sigkey": to_b64(public_key_sign),
+                         "enckey": to_b64(public_key_encr)
+                         }
+
+    request_url = reduce(urljoin, [base_url, join_request_url, key, secret])
+    headers = {'content-type': 'application/json'}
+    r = requests.post(request_url, json=join_request_dict, headers=headers)
+    answer = r.json()
+    print(answer)
+
+    accept_join_request(answer['id'])
+
+    join_poll_url = POLL_JOIN_REPLY_SVC
+    request_url = reduce(urljoin, [base_url, join_poll_url, key, secret])
+    join_poll_dict = {'request_id': answer['id']}
+    r = requests.post(request_url, json=join_poll_dict, headers=headers)
+
+    response_dict = {}
+
+    if r.status_code == 200:
+        try:
+            response_dict = r.json()  # watch out for deserialization vulns
+        except json.JSONDecodeError:
+            response_dict = {}
+
+    return JsonResponse(response_dict)
 
 
 class ADDetailView(DetailView):
@@ -269,6 +366,33 @@ def read_log(request, pk, proc_id):
         return HttpResponseUnavailable(get_failure_errors(response))
 
 
+def accept_connection_request(request_id):
+    coord_settings = get_object_or_404(OrganisationAdmin, id=1)
+    key = coord_settings.key + "/"
+    secret = coord_settings.secret
+    replying_as = "1-2"
+    requester_isdas = "1-2"
+    accept_conn_dict = {"isdas": replying_as,
+                        "certificate": "accepting_as_certificate",
+                        "replies": [{
+                            "request_id": request_id,
+                            "requester_isdas": requester_isdas,
+                            "certificate": "requester_certificate",
+                            "ip": "127.0.0.1",
+                            "port": "1234",
+                            "mtu": "1234",
+                            "bandwidth": "1234",
+                            }]
+                        }
+    base_url = COORD_SERVICE_URI
+    accept_conn_url = UPLOAD_CONN_REPLIES_SVC
+    request_url = reduce(urljoin, [base_url, accept_conn_url, key, secret])
+    headers = {'content-type': 'application/json'}
+    r = requests.post(request_url, json=accept_conn_dict, headers=headers)
+    answer = r.json()
+    print(answer)
+
+
 class ConnectionRequestView(FormView):
     form_class = ConnectionRequestForm
     template_name = 'ad_manager/new_connection_request.html'
@@ -307,6 +431,34 @@ class ConnectionRequestView(FormView):
         con_request.router_public_ip = posted_data['router_public_ip']
         con_request.router_public_port = posted_data['router_public_port']
         con_request.save()
+
+        # Talk to SCION coordination service, post connection request
+        coord_settings = get_object_or_404(OrganisationAdmin, id=1)
+        key = coord_settings.key + "/"
+        secret = coord_settings.secret
+        connection_request_dict = {"isdas": "1-2",
+                                   "Certificate": "testcert",
+                                   "requests": [
+                                       {"isdas": "1-2",
+                                        "ip": "127.0.0.47",
+                                        "port": 33087,
+                                        "mtu": 1400,
+                                        "bandwidth": 2000,
+                                        "linktype": "PARENT"}
+                                   ]
+                                   }
+        base_url = COORD_SERVICE_URI
+        poll_request_url = UPLOAD_CONN_REQUESTS_SVC
+        request_url = reduce(urljoin, [base_url, poll_request_url, key, secret])
+        headers = {'content-type': 'application/json'}
+        r = requests.post(request_url,
+                          json=connection_request_dict,
+                          headers=headers
+                          )
+        response = r.json()
+        print(response)
+
+        accept_connection_request(response['ids'][0])
 
         self.success_url = reverse('sent_requests')
         return super().form_valid(form)
@@ -456,8 +608,84 @@ def list_sent_requests(request):
     """
     user = request.user
     sent_requests = user.connectionrequest_set.all()
+
+    coord_settings = get_object_or_404(OrganisationAdmin, id=1)
+    key = coord_settings.key + "/"
+    secret = coord_settings.secret
+    poll_reply_dict = {
+                        "isdas": "1-2"
+                      }
+    base_url = COORD_SERVICE_URI
+    poll_request_url = POLL_CONN_REPLIES_SVC
+    request_url = reduce(urljoin, [base_url, poll_request_url, key, secret])
+    headers = {'content-type': 'application/json'}
+    r = requests.post(request_url, json=poll_reply_dict, headers=headers)
+    received_replies = r.json()
+
+    if 'replies' in received_replies and len(received_replies['replies']) > 0:
+        received_replies = received_replies['replies'][0]
+
+        received_replies['id'] = received_replies.pop('request_id')
+        received_replies['status'] = 'PENDING'
+        received_replies['connect_to'] = received_replies.pop('requester_isdas')
+        received_replies['created_by_id'] = user.id
+        received_replies['info'] = 'Some info text'
+        received_replies['new_ad'] = '1-1'
+        received_replies['package_path'] = ''
+        received_replies['router_public_ip'] = received_replies.pop('ip')
+        received_replies['router_public_port'] = received_replies.pop('port')
+
+        isd_id, as_id = received_replies['connect_to'].split('-')
+        connect_to = AD.objects.get(id=as_id,
+                                    isd=isd_id)
+        #  insert new connection replies retrieved
+        con_request = ConnectionRequest()
+        con_request.connect_to = connect_to
+        con_request.created_by = User.objects.get(
+            id=received_replies['created_by_id']
+        )
+        con_request.status = 'ACCEPTED'
+        con_request.info = received_replies['info']
+        con_request.router_public_ip = received_replies['router_public_ip']
+        con_request.router_public_port = received_replies['router_public_port']
+        con_request.save()
+
+        received_replies = [received_replies]
+    else:
+        received_replies = []
+
     return render(request, 'ad_manager/sent_requests.html',
-                  {'sent_requests': sent_requests})
+                  {'sent_requests': sent_requests,
+                   'received_replies': received_replies
+                   }
+                  )
+
+
+@permission_required('ad_manager.change_organisationadmin', login_url='/login/')
+def coord_service(request):
+    """
+    Show coordination service related setting to organisation admin
+    """
+    user = request.user
+    form = CoordinationServiceSettingsForm(user_id=user.id)
+
+    return render(request, 'ad_manager/coord_service.html',
+                  {'settings_form': form})
+
+
+@require_POST
+@permission_required('ad_manager.change_organisationadmin', login_url='/login/')
+def coord_service_update(request):
+    current_page = request.META.get('HTTP_REFERER')
+    user = request.user
+    form = CoordinationServiceSettingsForm(request.POST, user_id=user.id)
+    if form.is_valid():
+        OrganisationAdmin.\
+            objects.update_or_create(key=form.cleaned_data['key'],
+                                     secret=form.cleaned_data['secret'],
+                                     is_org_admin=True,
+                                     user_id=request.user.id)
+    return redirect(current_page)
 
 
 def _get_partial_graph(pov_ad, rank=1):
