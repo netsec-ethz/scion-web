@@ -16,7 +16,8 @@
 from django import forms
 
 # SCION
-from ad_manager.models import ConnectionRequest, AD
+from ad_manager.models import ConnectionRequest, AD, \
+    OrganisationAdmin
 
 from django.shortcuts import get_object_or_404
 
@@ -25,6 +26,33 @@ from django.shortcuts import get_object_or_404
 class UploadFileForm(forms.Form):
     file = forms.FileField()
     # filename = forms.CharField(max_length=25)  # additional field to rename f
+
+
+class CoordinationServiceSettingsForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        user_id = kwargs.pop('user_id')
+        super().__init__(*args, **kwargs)
+
+        try:
+            coord_settings = OrganisationAdmin.objects.get(user_id=user_id)
+        except OrganisationAdmin.DoesNotExist:
+            coord_settings = OrganisationAdmin()
+            coord_settings.key = 'Not set'
+            coord_settings.secret = 'Not set'
+
+        self.fields['key'] = forms.CharField(widget=forms.TextInput(
+            attrs={'class': 'input-field-coord-key',
+                   'value': coord_settings.key})
+        )
+        self.fields['secret'] = forms.CharField(widget=forms.TextInput(
+            attrs={'class': 'input-field-coord-secret',
+                   'value': coord_settings.secret})
+        )
+
+    class Meta:
+        model = OrganisationAdmin
+        fields = ('key', 'secret')
+        labels = {'Key': 'Secret'}
 
 
 class ConnectionRequestForm(forms.ModelForm):
