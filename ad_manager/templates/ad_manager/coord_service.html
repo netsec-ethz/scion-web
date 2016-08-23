@@ -1,0 +1,31 @@
+{% extends "ad_manager/base.html" %}
+{% load bootstrap3 %}
+
+{% block content %}
+  <h2>Showing settings for user <i>{{ user.username }}</i></h2>
+  <br />
+  <br />
+  <br />
+  <form action="{% url 'coord_service_update' %}" method="POST">
+    {% csrf_token %}
+    <div class="form-horizontal">
+        {% bootstrap_form settings_form layout='horizontal' %}
+        <input class="btn btn-info submit-settings" type="submit" value="Update settings" />
+    </div>
+  </form>
+
+  <style>
+    .input-field-coord-key {
+        width: 25em;
+    }
+    .input-field-coord-secret {
+        width: 40em;
+    }
+    .form-group {
+        float: left;
+    }
+    .submit-settings {
+        margin-left: 4em;
+    }
+  </style>
+{% endblock %}
