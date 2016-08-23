@@ -195,8 +195,8 @@ class TestUsersAndPermissions(BasicWebTestUsers):
         res = self.app.post(control_url, expect_errors=True)
         self.assertEqual(res.status_code, 403)
 
-    @patch("ad_manager.util.management_client.control_process")
-    def test_priv_user_control(self, control_process):
+    @patch("ad_manager.views.run_remote_command")
+    def test_priv_user_control(self, run_remote_command):
         ad = self.ads[1]
         bs = ad.beaconserverweb_set.first()
         ad_detail = self._get_ad_detail(ad, user=self.admin_user)
@@ -209,7 +209,7 @@ class TestUsersAndPermissions(BasicWebTestUsers):
                                                     args=[ad.id, bs.id_str()])
 
         # Press the "start" button
-        control_process.return_value = response_success('ok')
+        run_remote_command.return_value = response_success('ok')
         res = bs_control_form.submit('_start_process')
         self.assertTrue(res.json)
 
@@ -307,10 +307,6 @@ class TestConnectionRequests(BasicWebTestUsers):
         sent_requests = self.app.get(sent_requests_page, user=self.user)
         self.assertContains(sent_requests, 'DECLINED')
 
-        # Check that it's impossible to download the package
-        download_url = reverse('download_request_package', args=[request.id])
-        resp = self.app.get(download_url, expect_errors=True)
-        self.assertEqual(resp.status_int, 403)
         self.assertIsNone(request.package_path)
 
 

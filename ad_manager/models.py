@@ -13,8 +13,6 @@ from django.core.urlresolvers import reverse
 from django.db import models, IntegrityError
 
 # SCION
-from ad_manager.util.response_handling import get_success_data, is_success
-from ad_manager.util import management_client
 from ad_manager.util.common import empty_dict
 from lib.defines import (
     BEACON_SERVICE,
@@ -63,33 +61,11 @@ class AD(models.Model):
     is_core_ad = models.BooleanField(default=False)
     is_open = models.BooleanField(default=True)
     dns_domain = models.CharField(max_length=100, null=True, blank=True)
-    md_host = models.IPAddressField(default='127.0.0.1')
+    md_host = models.GenericIPAddressField(default='127.0.0.1')
     original_topology = jsonfield.JSONField(default=empty_dict)
 
     # Use custom model manager with select_related()
     objects = SelectRelatedModelManager()
-
-    def query_ad_status(self):
-        """
-        Return AS status information, which includes servers/routers statuses
-        """
-        return management_client.get_ad_info(self.md_host, self.isd_id, self.id)
-
-    def get_remote_topology(self):
-        """
-        Get the corresponding remote topology as a Python dictionary.
-        """
-        topology_response = management_client.get_topology(self.md_host,
-                                                           self.isd.id, self.id)
-        if not is_success(topology_response):
-            return None
-
-        topology_str = get_success_data(topology_response)
-        try:
-            topology_dict = json.loads(topology_str)
-            return topology_dict
-        except (ValueError, TypeError):
-            return None
 
     def generate_topology_dict(self):
         """
@@ -330,53 +306,6 @@ class SibraServerWeb(SCIONWebElement):
         unique_together = (("ad", "addr"),)
 
 
-class PackageVersion(models.Model):
-    name = models.CharField(max_length=50, null=False)
-    date_created = models.DateTimeField(null=False)
-    size = models.IntegerField(null=False)
-    # TODO(rev112) change to FilePathField?
-    filepath = models.CharField(max_length=400, null=False)
-
-    @staticmethod
-    def discover_packages(clear=True):
-        if clear:
-            PackageVersion.objects.all().delete()
-
-        glob_string = os.path.join('gen',
-                                   '*.tar')  # os.path.join(PACKAGE_DIR_PATH,
-        #  '*.tar') TODO: replace ad_management functionality
-        tar_files = glob.glob(glob_string)
-        for filename in tar_files:
-            with tarfile.open(filename, 'r') as tar_fh:
-                try:
-                    # Check metadata
-                    metadata_tarinfo = tar_fh.getmember('META')
-                    metadata_file = tar_fh.extractfile(metadata_tarinfo)
-                    metadata_string = str(metadata_file.read(), 'utf8')
-                    metadata = json.loads(metadata_string)
-                    package_name = os.path.basename(filename)
-                    package_path = os.path.abspath(filename)
-                    package_version = PackageVersion(
-                        name=package_name,
-                        date_created=metadata['date'],
-                        size=os.path.getsize(filename),
-                        filepath=package_path,
-                    )
-                    package_version.save()
-
-                except (KeyError, ValueError):
-                    pass
-
-    def exists(self):
-        return os.path.isfile(self.filepath)
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        verbose_name = 'Package version'
-
-
 class ConnectionRequest(models.Model):
     STATUS_OPTIONS = ['NONE', 'SENT', 'APPROVED', 'DECLINED']
 
@@ -397,18 +326,3 @@ class ConnectionRequest(models.Model):
 
     def is_approved(self):
         return self.status == 'APPROVED'
-
-
-class Node(models.Model):
-    uuid = models.CharField(primary_key=True, max_length=100, null=False,
-                            blank=False)
-    name = models.CharField(max_length=50, null=False, blank=False)
-    last_seen = models.DateTimeField(null=False)
-    IP = models.IPAddressField(default='127.0.0.1')
-    ISD = models.CharField(max_length=10, null=False, blank=False)
-    AS = models.CharField(max_length=10, null=False, blank=False)
-
-    # dns_domain = models.CharField(max_length=100, null=True, blank=True)
-
-    def __str__(self):
-        return 'UUID: ' + str(self.id) + ', last seen: ' + str(self.last_seen)

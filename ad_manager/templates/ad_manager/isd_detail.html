@@ -23,20 +23,20 @@
     {% endfor %}
   </ul>
 
-  <div style="display: inline-block;">
-      <form method="POST" action="/ad_manager/ads/add_as" style="display: inline-block;">
+  <div class="disp-inline-block">
+      <form method="POST" action="/ad_manager/ads/add_as" class="disp-inline-block">
         {% csrf_token %}
         <div class="control-group">
             <br/>
             <div class="form-group">
-                <label class="control-label" style="vertical-align: sub;" for="inputASname">new AS name:</label>
+                <label class="control-label" class="floor-align-text" for="inputASname">new AS name:</label>
                 <input class="hidden" id="inputISDname" name="inputISDname" title="ISD name" type="text" value="{{ object.id }}">
                 <input id="inputASname" name="inputASname" type="text">
                 <button type="submit" class="btn">Create AS</button>
             </div>
         </div>
       </form>
-      <form id="createASByFile" method="POST" enctype="multipart/form-data" action="{% url 'upload_file_ref' %}" style="display: inline-block;">
+      <form id="createASByFile" method="POST" enctype="multipart/form-data" action="{% url 'upload_file_ref' %}" class="disp-inline-block">
         {% csrf_token %}
         <div class="hidden" id="topoInitUpload">
             {% bootstrap_form upload_form %}

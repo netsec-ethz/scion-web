@@ -1,7 +1,6 @@
 # Stdlib
 import json
 import tempfile
-import time
 import os
 import hashlib
 from collections import deque
@@ -9,7 +8,6 @@ from shutil import rmtree
 
 # External packages
 import dictdiffer
-from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
@@ -38,16 +36,13 @@ from ad_manager.util.response_handling import (
     get_failure_errors,
     get_success_data,
     is_success,
-    response_failure,
 )
 from ad_manager.forms import (
     ConnectionRequestForm,
     NewLinkForm,
-    PackageVersionSelectForm,
     UploadFileForm
 )
-from ad_manager.models import AD, ISD, PackageVersion, ConnectionRequest, Node
-from ad_manager.util import management_client
+from ad_manager.models import AD, ISD, ConnectionRequest
 from ad_manager.util.ad_connect import (
     create_new_ad_files,
     find_last_router,
@@ -191,7 +186,6 @@ class ADDetailView(DetailView):
         context['dns_servers'] = ad.dnsserverweb_set.all()
         context['sibra_servers'] = ad.sibraserverweb_set.all()
 
-        context['nodes'] = Node.objects.all()
         context['management_interface_ip'] = get_own_local_ip()
         context['reloaded_topology'] = ad.original_topology
         flat_string = json.dumps(ad.original_topology, sort_keys=True)
@@ -211,29 +205,12 @@ class ADDetailView(DetailView):
                 key=lambda el: el.name if el.name is not None else -1
             )
 
-        # Update tab
-        context['choose_version_form'] = PackageVersionSelectForm()
-
         # Connection requests tab
         context['received_requests'] = ad.received_requests.all()
 
         # Permissions
         context['user_has_perm'] = self.request.user.has_perm('change_ad', ad)
         return context
-
-
-def get_ad_status(request, pk):
-    """
-    Send a query to the corresponding management daemon, asking for the status
-    of AS servers.
-    """
-    ad = get_object_or_404(AD, id=pk)
-    ad_info_list_response = ad.query_ad_status()
-    if is_success(ad_info_list_response):
-        return JsonResponse({'data': get_success_data(ad_info_list_response)})
-    else:
-        error = get_failure_errors(ad_info_list_response)
-        return HttpResponseUnavailable(error)
 
 
 def as_topo_hash(request, isd_id, as_id):
@@ -246,199 +223,6 @@ def as_topo_hash(request, isd_id, as_id):
         return JsonResponse({'topo_hash': topo_hash})
     except AD.DoesNotExist:
         return JsonResponse({'topo_hash': -1})
-
-
-def get_group_master(request, pk):
-    """
-    Get the server group master (the one, who holds the lock in ZK).
-    """
-    ad = get_object_or_404(AD, id=pk)
-    server_type = request.GET.get('server_type', '')
-    fetch_server_types = [BEACON_SERVICE, DNS_SERVICE]
-    if server_type not in fetch_server_types:
-        return HttpResponseNotFound('Invalid server type')
-
-    response = management_client.get_master_id(ad.md_host, ad.isd.id, ad.id,
-                                               server_type)
-    if is_success(response):
-        master_id = get_success_data(response)
-        return JsonResponse({'server_type': server_type,
-                             'server_id': master_id})
-    else:
-        return HttpResponseUnavailable(get_failure_errors(response))
-
-
-def _get_changes(current_topology, remote_topology):
-    current_topology = copy.deepcopy(current_topology)
-    remote_topology = copy.deepcopy(remote_topology)
-
-    exclude_key_list = ['Zookeepers']
-    for exclude_key in exclude_key_list:
-        current_topology.pop(exclude_key, None)
-        remote_topology.pop(exclude_key, None)
-
-    diff_changes = list(dictdiffer.diff(current_topology, remote_topology))
-    processed_changes = []
-    for change in diff_changes:
-        change_type, element, changes = list(change)
-        change = 'Local -> remote: {}, element: {}, changes: {}'.format(
-            change_type, str(element), str(changes)
-        )
-        processed_changes.append(change)
-    return processed_changes
-
-
-def compare_remote_topology(request, pk):
-    """
-    Retrieve the remote topology and compare it with the one stored in the
-    database.
-    """
-    ad = get_object_or_404(AD, id=pk)
-    remote_topology = ad.get_remote_topology()
-    if not remote_topology:
-        return HttpResponseUnavailable('Cannot get the topology')
-
-    current_topology = ad.generate_topology_dict()
-
-    changes = _get_changes(current_topology, remote_topology)
-    if changes:
-        state = 'CHANGED'
-    else:
-        state = 'OK'
-    return JsonResponse({'state': state, 'changes': changes})
-
-
-@require_POST
-@transaction.atomic
-def update_topology(request, pk):
-    """
-    Update topology action: either push or pull the topology.
-    """
-    ad = get_object_or_404(AD, id=pk)
-    _check_user_permissions(request, ad)
-
-    ad_page = reverse('ad_detail', args=[ad.id])
-    if '_pull_topology' in request.POST:
-        return _update_from_remote_topology(request, ad)
-    elif '_push_topology' in request.POST:
-        return _push_local_topology(request, ad)
-    return redirect(ad_page)
-
-
-def _push_local_topology(request, ad):
-    local_topo = ad.generate_topology_dict()
-    # TODO move to model?
-    response = management_client.push_topology(ad.md_host, str(ad.isd.id),
-                                               str(ad.id), local_topo)
-    topology_tag = 'topology'
-    if is_success(response):
-        messages.success(request, 'OK', extra_tags=topology_tag)
-    else:
-        messages.error(request, get_failure_errors(response),
-                       extra_tags=topology_tag)
-    # Wait until supervisor is restarting
-    time.sleep(1)
-    return redirect(reverse('ad_detail_topology', args=[ad.id]))
-
-
-def _update_from_remote_topology(request, ad):
-    """
-    Atomically retrieve the remote topology and update the stored topology
-    for the given AD.
-    """
-    remote_topology_dict = ad.get_remote_topology()
-    ad.fill_from_topology(remote_topology_dict, clear=True)
-    return redirect(reverse('ad_detail_topology', args=[ad.id]))
-
-
-def _send_update(request, ad, package):
-    """
-    Send the update package and initiate the update process.
-    """
-    # TODO move to model?
-    if package.exists():
-        result = management_client.send_update(ad.md_host, ad.isd_id, ad.id,
-                                               package.filepath)
-    else:
-        result = response_failure('Package not found')
-
-    update_tag = 'updates'
-    if is_success(result):
-        messages.success(request, 'Update started', extra_tags=update_tag)
-    else:
-        error = get_failure_errors(result)
-        messages.error(request, error, extra_tags=update_tag)
-    return redirect(reverse('ad_detail_updates', args=[ad.id]))
-
-
-def _download_update(request, package):
-    """
-    Download the update package straight from the web panel.
-    """
-    if not package.exists():
-        return HttpResponseNotFound('Package not found')
-    return _download_file_response(package.filepath)
-
-
-@require_POST
-def software_update_action(request, pk):
-    ad = get_object_or_404(AD, id=pk)
-    _check_user_permissions(request, ad)
-
-    ad_page = reverse('ad_detail', args=[ad.id])
-    form = PackageVersionSelectForm(request.POST)
-    if form.is_valid():
-        package = form.cleaned_data['selected_version']
-        if '_download_update' in request.POST:
-            return _download_update(request, package)
-        elif '_install_update' in request.POST:
-            return _send_update(request, ad, package)
-    return redirect(ad_page)
-
-
-@require_POST
-def refresh_versions(request, pk):
-    """
-    Refresh version choice form element.
-    """
-    ad = get_object_or_404(AD, id=pk)
-    PackageVersion.discover_packages()
-    updates_page = reverse('ad_detail_updates', args=[ad.id])
-    return redirect(updates_page)
-
-
-def _download_file_response(file_path, file_name=None, content_type=None):
-    if file_name is None:
-        file_name = os.path.basename(file_path)
-    if content_type is None:
-        content_type = 'application/x-gzip'
-    with open(file_path, 'rb') as file_fh:
-        response = HttpResponse(file_fh.read(), content_type=content_type)
-        response['Content-Length'] = file_fh.tell()
-    response['Content-Disposition'] = ('attachment; '
-                                       'filename={}'.format(file_name))
-    return response
-
-
-def _connect_new_ad(request, ad):
-    # TODO(rev112): Remove or move to approve_request()
-    topology_page = reverse('ad_detail_topology', args=[ad.id])
-
-    # Chech that remote topology exists
-    remote_topology = ad.get_remote_topology()
-    topology_tag = 'topology'
-    if not remote_topology:
-        messages.error(request, 'Cannot get the remote topology',
-                       extra_tags=topology_tag)
-        return redirect(topology_page)
-
-    # Find if there are differences
-    local_topology = ad.generate_topology_dict()
-    if _get_changes(local_topology, remote_topology):
-        messages.error(request, 'Topologies are inconsistent, '
-                                'please push or pull the topology',
-                       extra_tags=topology_tag)
-        return redirect(topology_page)
 
 
 def _check_user_permissions(request, ad):
@@ -466,8 +250,8 @@ def control_process(request, pk, proc_id):
     else:
         return HttpResponseNotFound('Command not found')
 
-    response = management_client.control_process(ad.md_host, ad.isd.id, ad.id,
-                                                 proc_id, command)
+    response = run_remote_command(ad.md_host, proc_id, command,
+                                  use_ansible=False)
     if is_success(response):
         return JsonResponse({'status': True})
     else:
@@ -484,7 +268,8 @@ def read_log(request, pk, proc_id):
         return HttpResponseNotFound('Element not found')
     proc_id = ad.get_full_process_name(proc_id)
 
-    response = management_client.read_log(ad.md_host, proc_id)
+    response = run_remote_command(ad.md_host, proc_id, 'STATUS',
+                                  use_ansible=False)
     if is_success(response):
         log_data = get_success_data(response)[0]
         if '\n' in log_data:  # Don't show first line of output, why?
@@ -586,14 +371,6 @@ class NewLinkView(FormView):
 
         self.success_url = reverse('ad_detail', args=[this_ad.id])
         return super().form_valid(form)
-
-
-def download_approved_package(request, req_id):
-    ad_request = get_object_or_404(ConnectionRequest, id=req_id)
-    _check_user_permissions(request, ad_request.new_ad)
-    if not ad_request.is_approved():
-        raise PermissionDenied('Request is not approved')
-    return _download_file_response(ad_request.package_path)
 
 
 def approve_request(ad, ad_request):
@@ -796,35 +573,6 @@ def network_view(request):
     return render(request, 'ad_manager/network_view.html', {'data': graph})
 
 
-def register_node(request):
-    node_values = request.POST
-    node_name = node_values['inputNodeName']
-    last_seen = datetime.now()
-    node_ip = node_values['inputNodeIP']
-    node_isd = node_values['inputNodeISD']
-    node_as = node_values['inputNodeAS']
-
-    management_interface_ip = node_values['inputManagementInterfaceIP']
-
-    result = run_rpc_command(node_ip, None, management_interface_ip, 'register',
-                             node_isd, node_as)
-    uuid = result['uuid']
-
-    new_node, created = Node.objects. \
-        get_or_create(uuid=uuid,
-                      defaults={'name': node_name,
-                                'last_seen': last_seen,
-                                'IP': node_ip,
-                                'ISD': node_isd,
-                                'AS': node_as})
-    if not created:
-        new_node.last_seen = datetime.now
-        new_node.save()
-
-    current_page = request.META.get('HTTP_REFERER')
-    return redirect(current_page)
-
-
 def wrong_api_call(request):
     print('Wrong API call')
     return JsonResponse({'data': 'Failure'})
@@ -836,6 +584,7 @@ yaml_topo_path = os.path.join(static_tmp_path, 'topology.yml')
 
 def st_int(s, default):
     s = s.strip()
+
     return int(s) if not s == '' else default
 
 
@@ -1245,23 +994,23 @@ def run_remote_command(ip, process_name, command, use_ansible=True):
     if not use_ansible:
         server = xmlrpc.client.ServerProxy('http://{}:9011'.format(ip))
         wait_for_result = True
-        succeeded = False
+        result = False
         if command == 'retrieve_tar':
-            succeeded = server.supervisor.startProcess(process_name,
-                                                       wait_for_result)
+            result = server.supervisor.startProcess(process_name,
+                                                    wait_for_result)
 
         if command == 'STOP':
-            succeeded = server.supervisor.stopProcess(process_name,
-                                                      wait_for_result)
+            result = server.supervisor.stopProcess(process_name,
+                                                   wait_for_result)
         if command == 'START':
-            succeeded = server.supervisor.startProcess(process_name,
-                                                       wait_for_result)
+            result = server.supervisor.startProcess(process_name,
+                                                    wait_for_result)
         if command == 'STATUS':
             offset = 0
             length = 4000
-            succeeded = server.supervisor.tailProcessStdoutLog(process_name,
-                                                               offset, length)
-        print('Remote operation {} completed: {}'.format(command, succeeded))
+            result = server.supervisor.tailProcessStdoutLog(process_name,
+                                                            offset, length)
+        print('Remote operation {} completed: {}'.format(command, result))
     else:
         # using the ansibleCLI instead of
         # duplicating code to use the PlaybookExecutor
@@ -1274,7 +1023,7 @@ def run_remote_command(ip, process_name, command, use_ansible=True):
                                            cwd=PROJECT_ROOT)
         except subprocess.CalledProcessError:
             print(result)
-    return 0
+    return result
 
 
 def run_rpc_command(ip, uuid, management_interface_ip, command, isd_id, as_id):

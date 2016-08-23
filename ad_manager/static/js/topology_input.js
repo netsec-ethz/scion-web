@@ -1,10 +1,9 @@
-
 function checkFreshness(isd_id, as_id) {
     var csrftoken = $("input[name='csrfmiddlewaretoken']").attr('value');
     var xmlhttp = new XMLHttpRequest();
     var url = "../../api/v1/internal/isd/" + isd_id + "/as/" + as_id + "/topo_hash";
     var submit = false;
-    xmlhttp.onreadystatechange = function() {
+    xmlhttp.onreadystatechange = function () {
         // check if XMLHttpRequest is ready and HTTP status code is 200
         if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
             var response = xmlhttp.responseText;
@@ -39,14 +38,15 @@ function checkFreshness(isd_id, as_id) {
 function overlayAlert(message, duration) {
     var pageOverlay = document.createElement("div");
     var bodyHeight = document.body.scrollHeight;
-    pageOverlay.setAttribute("style", "position: absolute; top: 0px; left: 0px; width: 100%; background-color: rgba(0, 0, 0, 0.3); height: " + bodyHeight + "px;");
+    pageOverlay.setAttribute("class", "page-overlay");
+    pageOverlay.setAttribute("style", "height: " + bodyHeight + "px;");
     var messageBox = document.createElement("div");
     messageBox.innerHTML = message;
-    messageBox.setAttribute("style", "position: fixed; top: 50%; left: 50%; background-color: white; padding: 4em; width: 600px; margin-left: -300px;");
+    messageBox.setAttribute("class", "page-overlay-message-box");
     pageOverlay.appendChild(messageBox);
-    setTimeout(function(){
-      pageOverlay.parentNode.removeChild(pageOverlay);
-     },duration);
+    setTimeout(function () {
+        pageOverlay.parentNode.removeChild(pageOverlay);
+    }, duration);
     document.body.appendChild(pageOverlay);
 }
 
@@ -64,150 +64,112 @@ function parseTopology(reloadedTopology) {
 }
 
 function toggleInput(elem) {
-        var accordion = $(elem).parents('.accordion');
-        var currentClass = $(elem).children(':first').attr('class'); // either glyphicon glyphicon-{plus|minus}
-        if (currentClass === 'glyphicon glyphicon-plus') {
-            var clone = $(elem).parents('.item').clone();
-            // update clone id
-            var oldId = clone.attr('id').split('-');
-            var idName = oldId[0];
-            var newIdNo = parseInt(oldId[1]) + 1;
-            $(clone).attr('id', idName + '-' + newIdNo.toString());
-            // increment current name for next field
-            var currentName = $(clone).find( '.server-name-input' ).attr('value');
-            var nameParts = currentName.split('-');
-            nameParts[nameParts.length-1]++;
-            var newName = nameParts.join('-');
-            $(clone).find('.server-name-input').attr('value', newName);
-            // reset IP
-            $(clone).find( '.server-address-input' ).val('');
-            // append the cloned and cleaned item
-            accordion.append(clone);
-            //var test = $(clone).children(':first').prop('tagName');
-            if ($(clone).children(':first').attr('class') !== 'doc-hr') {
-                // add separator
-                $(clone).prepend('<div class="doc-hr"></div>');
-            }
-            $(elem).removeClass('btn-success').addClass('btn-danger');
-            $(elem).children(':first').removeClass('glyphicon glyphicon-plus').addClass('glyphicon glyphicon-minus');
-        } else {
-            var sibling = $(elem).parents('.item').next();
-            var firstItem = accordion.children(':nth-child(2)');
-            var selfItem = $(elem).parents('.item');
-            if (firstItem.is(selfItem)) {
-                $(sibling).children(':first').remove();
-            }
-            selfItem.remove();
+    // Add or removes a section from the input form when corresponding icon is clicked
+
+    var accordion = $(elem).parents('.accordion');
+    var currentClass = $(elem).children(':first').attr('class'); // either glyphicon glyphicon-{plus|minus}
+    if (currentClass === 'glyphicon glyphicon-plus') {
+        var clone = $(elem).parents('.item').clone();
+        // update clone id
+        var oldId = clone.attr('id').split('-');
+        var idName = oldId[0];
+        var newIdNo = parseInt(oldId[1]) + 1;
+        $(clone).attr('id', idName + '-' + newIdNo.toString());
+        // increment current name for next field
+        var currentName = $(clone).find('.server-name-input').attr('value');
+        var nameParts = currentName.split('-');
+        nameParts[nameParts.length - 1]++;
+        var newName = nameParts.join('-');
+        $(clone).find('.server-name-input').attr('value', newName);
+        // reset IP
+        $(clone).find('.server-address-input').val('');
+        // append the cloned and cleaned item
+        accordion.append(clone);
+        //var test = $(clone).children(':first').prop('tagName');
+        if ($(clone).children(':first').attr('class') !== 'doc-hr') {
+            // add separator
+            $(clone).prepend('<div class="doc-hr"></div>');
         }
+        $(elem).removeClass('btn-success').addClass('btn-danger');
+        $(elem).children(':first').removeClass('glyphicon glyphicon-plus').addClass('glyphicon glyphicon-minus');
+    } else {
+        var sibling = $(elem).parents('.item').next();
+        var firstItem = accordion.children(':nth-child(2)');
+        var selfItem = $(elem).parents('.item');
+        if (firstItem.is(selfItem)) {
+            $(sibling).children(':first').remove();
+        }
+        selfItem.remove();
     }
+}
 
 function setLoadedTopology(reloadedTopology) {
     var isCore = reloadedTopology['Core'] == 'True';
     $('#inputIsCore.shownCheckbox').prop('checked', isCore);
     delete reloadedTopology['Core'];
+
     var dnsDomain = reloadedTopology['DnsDomain'];
     $('#inputDnsDomain').attr('value', dnsDomain);
     delete reloadedTopology['DnsDomain'];
+
     var mtu = reloadedTopology['MTU'];
     $('#inputMTU').attr('value', mtu);
     delete reloadedTopology['MTU'];
-    var isd_as = reloadedTopology['ISD_AS'];
-    delete reloadedTopology['ISD_AS'];
 
+    delete reloadedTopology['ISD_AS']; // set by template
+
+    for (var entryKey in reloadedTopology) {
+        if (entryKey.endsWith("Servers")) {
+            reloadServerSection(reloadedTopology, entryKey);
+            delete reloadedTopology[entryKey]; // remove entry
+        }
+    }
+
+    reloadRouterSection(reloadedTopology);
+    delete reloadedTopology['BorderRouters'];
+
+    var zookeepers = reloadedTopology['Zookeepers'];
+    reloadZookeeperSection(zookeepers);
+}
+
+function reloadServerSection(reloadedTopology, entryKey) {
+    var names;
     var name;
+
     var server;
     var address;
     var port;
 
-    for (var entryKey in reloadedTopology) {
-        if (entryKey.endsWith("Servers")) {
-            var entry = reloadedTopology[entryKey];
-            var type = entryKey.slice(0,-7); // remove the 'Server' part
-            if (type == 'DNS') {
-                type = 'Domain';
-            }
-            //var typeValue = type.toLowerCase() + '_server';
-            //$('#input'+type+'ServerType').attr('value', typeValue); // typeValue already set in template
-            var names = Object.keys(entry); // get a list of keys
-
-            for (var i in names) {
-                name = names[i];
-                if (i > 0) {
-                    // if more than one entry, create additional form input
-                    $('.' + type + 'Item'+':last').find('.btn-success').click()
-                }
-                // fill form values
-                var itemSelector = '#' + type + 'Item-' + (parseInt(i) + 1).toString();
-                $(itemSelector + ' #input'+type+'ServerName').val(name);
-                server = entry[name];
-                address = server['Addr'];
-                $(itemSelector + ' #input'+type+'ServerAddress').val(address);
-                port = server['Port'];
-                $(itemSelector + ' #input'+type+'ServerPort').val(port);  // add NAT reloading here
-            }
-
-            // remove entry
-            delete reloadedTopology[entryKey]
-        }
+    var entry = reloadedTopology[entryKey];
+    var type = entryKey.slice(0, -7); // remove the 'Server' part
+    if (type == 'DNS') {
+        type = 'Domain';
     }
+    //var typeValue = type.toLowerCase() + '_server';
+    //$('#input'+type+'ServerType').attr('value', typeValue); // typeValue already set in template
+    names = Object.keys(entry); // get a list of keys
 
-    var borderRouterIndex = 0;
-    type = 'router';
-    for (var borderRouterKey in reloadedTopology['BorderRouters']) {
-        var borderRouter = reloadedTopology['BorderRouters'][borderRouterKey];
-        name = borderRouterKey;
-        if (borderRouterIndex > 0) {
+    for (var i in names) {
+        name = names[i];
+        if (i > 0) {
             // if more than one entry, create additional form input
-            $('.' + type + 'Item'+':last').find('.btn-success').click()
+            $('.' + type + 'Item' + ':last').find('.btn-success').click()
         }
-        itemSelector = '#' + type + 'Item-' + (parseInt(borderRouterIndex) + 1).toString() + ' ';
-        $(itemSelector + '#inputBorderRouterName').attr('value', name);
-        address = borderRouter['Addr'];
-        $(itemSelector + '#inputBorderRouterAddress').attr('value', address);
-        $(itemSelector + '#inputBorderRouterAddress').val(address);
-        port = borderRouter['Port'];
-        $(itemSelector + '#inputBorderRouterPort').attr('value', port);
-
-        var interface_obj = borderRouter['Interface'];
-        for (var interfaceKey in interface_obj) {
-            var value = interface_obj[interfaceKey];
-            switch(interfaceKey) {
-                case 'ISD_AS':
-                    $(itemSelector + '#inputInterfaceRemoteName').attr('value', value);
-                    break;
-                case 'LinkType':
-                    var linkType = $(itemSelector + '#inputInterfaceType');
-                    $(linkType).attr('value', value);
-                    // we need to test if the AS is core, so that in case the link type is routing, the option gets added 
-                    checkShowCoreOption();
-                    // remove all previous selected options for this select
-                    $(linkType).find("option").removeAttr("selected");
-                    // set selected option
-                    $(linkType).find('option[value="' + value + '"]').attr('selected', 'selected');
-                    break;
-                case 'MTU':
-                    $(itemSelector + '#inputLinkMTU').attr('value', value);
-                    break;
-                case 'ToAddr':
-                    $(itemSelector + '#inputInterfaceRemoteAddress').attr('value', value);
-                    break;
-                case 'ToUdpPort':
-                    $(itemSelector + '#inputInterfaceRemotePort').attr('value', value);
-                    break;
-                case 'UdpPort':
-                    $(itemSelector + '#inputInterfaceOwnPort').attr('value', value);
-                    break;
-                default: // Addr, Bandwidth, IFID
-                    $(itemSelector + '#inputInterface'+interfaceKey).attr('value', value);
-            }
-        }
-
-        borderRouterIndex++;
+        // fill form values
+        var itemSelector = '#' + type + 'Item-' + (parseInt(i) + 1).toString(); // get a 1 based selector
+        $(itemSelector + ' #input' + type + 'ServerName').val(name);
+        server = entry[name];
+        address = server['Addr'];
+        $(itemSelector + ' #input' + type + 'ServerAddress').val(address);
+        port = server['Port'];
+        $(itemSelector + ' #input' + type + 'ServerPort').val(port);  // add NAT reloading here
     }
+}
 
-    delete reloadedTopology['BorderRouters'];
-
-    var zookeepers = reloadedTopology['Zookeepers'];
+function reloadZookeeperSection(zookeepers) {
+    var server;
+    var address;
+    var port;
 
     for (var zkKey in zookeepers) {
         server = zookeepers[zkKey]; //inputZookeeperServerType
@@ -219,20 +181,89 @@ function setLoadedTopology(reloadedTopology) {
     }
 }
 
+function reloadRouterSection(reloadedTopology) {
+    var borderRouterIndex = 0;
+    var type = 'router';
+
+    var itemSelector;
+    var address;
+    var port;
+
+    for (var borderRouterKey in reloadedTopology['BorderRouters']) {
+        var borderRouter = reloadedTopology['BorderRouters'][borderRouterKey];
+        var name = borderRouterKey;
+        if (borderRouterIndex > 0) {
+            // if more than one entry, create additional form input
+            $('.' + type + 'Item' + ':last').find('.btn-success').click()
+        }
+        itemSelector = '#' + type + 'Item-' + (parseInt(borderRouterIndex) + 1).toString() + ' ';
+        $(itemSelector + '#inputBorderRouterName').attr('value', name);
+        address = borderRouter['Addr'];
+        $(itemSelector + '#inputBorderRouterAddress').attr('value', address);
+        $(itemSelector + '#inputBorderRouterAddress').val(address);
+        port = borderRouter['Port'];
+        $(itemSelector + '#inputBorderRouterPort').attr('value', port);
+
+        var interface_obj = borderRouter['Interface'];
+        reloadRouterInterfaceSection(interface_obj, itemSelector);
+
+        borderRouterIndex++;
+    }
+}
+
+function reloadRouterInterfaceSection(interface_obj, itemSelector) {
+    for (var interfaceKey in interface_obj) {
+        var value = interface_obj[interfaceKey];
+        switch (interfaceKey) {
+            case 'ISD_AS':
+                $(itemSelector + '#inputInterfaceRemoteName').attr('value', value);
+                break;
+            case 'LinkType':
+                var linkType = $(itemSelector + '#inputInterfaceType');
+                $(linkType).attr('value', value);
+                // we need to test if the AS is core, so that in case the link type is routing, the option gets added
+                checkShowCoreOption();
+                // remove all previous selected options for this select
+                $(linkType).find("option").removeAttr("selected");
+                // set selected option
+                $(linkType).find('option[value="' + value + '"]').attr('selected', 'selected');
+                break;
+            case 'MTU':
+                $(itemSelector + '#inputLinkMTU').attr('value', value);
+                break;
+            case 'ToAddr':
+                $(itemSelector + '#inputInterfaceRemoteAddress').attr('value', value);
+                break;
+            case 'ToUdpPort':
+                $(itemSelector + '#inputInterfaceRemotePort').attr('value', value);
+                break;
+            case 'UdpPort':
+                $(itemSelector + '#inputInterfaceOwnPort').attr('value', value);
+                break;
+            default: // Addr, Bandwidth, IFID
+                $(itemSelector + '#inputInterface' + interfaceKey).attr('value', value);
+        }
+    }
+}
+
+
 function gatherIPsforCloudEngines() {
     var ipList = [];
     var parent = $('.cloudEngineItemList');
-    $(".server-address-input").each(function() {
-        var value = $(this).val();
-        value = value.split('/')[0];
-        var unique = $.inArray(value, ipList) == -1;
+
+    $(".server-address-input").each(function () {
+        var ipAddress = $(this).val();
+        ipAddress = ipAddress.split('/')[0];
+        var unique = $.inArray(ipAddress, ipList) == -1;
         if (unique) {
-            ipList.push(value);
+            ipList.push(ipAddress);
         }
     });
 
     //clear previous list
     $(parent).empty();
+
+    //fill new list
     for (var i = 0; i < ipList.length; i++) {
         var clone = $('.cloudEngineItemModel').clone();
         $(clone).children('.server-cloud-address-input').val(ipList[i]);
