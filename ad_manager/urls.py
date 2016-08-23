@@ -22,6 +22,10 @@ api_patterns_internal = patterns(
     '',
     url(r'^api/v1/internal/isd/(?P<isd_id>\d+)/as/(?P<as_id>\d+)/topo_hash$',
         views.as_topo_hash, name='topo_hash'),
+    url(r'^api/v1/internal/get_new_as_id/isd/(?P<isd_id>\d+)/$',
+        views.new_as_id, name='new_as_id'),
+    url(r'^api/v1/internal/update_coord_settings/$',
+        views.coord_service_update, name='coord_service_update'),
     url(r'^api/v1/internal/.*$',
         views.wrong_api_call, name='wrong_api_call'),
 )
@@ -91,6 +95,8 @@ misc = patterns(
         views.network_view, name='network_view'),
     url(r'^network/(?P<pk>\d+)/$',
         views.network_view_neighbors, name='network_view_ad'),
+    url(r'^coord_service/',
+        views.coord_service, name='coord_service'),
 )
 
 urlpatterns = api_patterns_internal + isd_patterns + ad_patterns + \

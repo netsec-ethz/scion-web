@@ -35,6 +35,13 @@ PORT = 50000
 PACKAGE_DIR_PATH = 'gen'
 
 
+class OrganisationAdmin(models.Model):
+    user = models.OneToOneField(User)
+    is_org_admin = models.BooleanField(default=False)
+    key = models.CharField(max_length=260, null=False, blank=True)
+    secret = models.CharField(max_length=260, null=False, blank=True)
+
+
 class SelectRelatedModelManager(models.Manager):
     """
     Model manager that also selects related objects from the database,
@@ -71,6 +78,11 @@ class AD(models.Model):
     is_open = models.BooleanField(default=True)
     md_host = models.GenericIPAddressField(default='127.0.0.1')
     original_topology = jsonfield.JSONField(default=empty_dict)
+    sig_pub_key = models.CharField(max_length=100, null=True, blank=True)
+    sig_priv_key = models.CharField(max_length=100, null=True, blank=True)
+    enc_pub_key = models.CharField(max_length=100, null=True, blank=True)
+    enc_priv_key = models.CharField(max_length=100, null=True, blank=True)
+    certificate = models.CharField(max_length=500, null=True, blank=True)
 
     # Use custom model manager with select_related()
     objects = SelectRelatedModelManager()
