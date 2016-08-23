@@ -54,13 +54,11 @@ from topology.generator import ConfigGenerator  # , DEFAULT_PATH_POLICY_FILE,
 
 from lib.defines import (BEACON_SERVICE,
                          CERTIFICATE_SERVICE,
-                         DNS_SERVICE,
                          PATH_SERVICE,
                          ROUTER_SERVICE,
                          SIBRA_SERVICE)
 from lib.defines import (  # SCION_UDP_PORT,
                          SCION_UDP_EH_DATA_PORT,
-                         # SCION_DNS_PORT,
                          SCION_ROUTER_PORT,
                          DEFAULT_MTU,
                          # SCION_MIN_MTU
@@ -86,8 +84,6 @@ CERTIFICATE_EXECUTABLE = "cert_server"
 PATH_EXECUTABLE = "path_server"
 # Scion sibra server
 SIBRA_EXECUTABLE = "sibra_server"
-# Scion domain name server
-DNS_EXECUTABLE = "dns_server"
 # Scion border router
 ROUTER_EXECUTABLE = "router"
 # Zookeeper executable
@@ -98,7 +94,6 @@ ZOOKEEPER_EXECUTABLE = "zookeeper.jar"
 SERVICE_EXECUTABLES = (
     BEACON_EXECUTABLE,
     CERTIFICATE_EXECUTABLE,
-    DNS_EXECUTABLE,
     PATH_EXECUTABLE,
     ROUTER_EXECUTABLE,
     SIBRA_EXECUTABLE,
@@ -160,7 +155,6 @@ def add_as(request):
     isd = get_object_or_404(ISD, id=int(current_isd))
     as_obj = AD.objects.create(id=new_as_id, isd=isd,
                                is_core_ad=0,
-                               dns_domain='',
                                is_open=False)
     as_obj.save()
     ad_page = reverse('ad_detail', args=[new_as_id])
@@ -182,7 +176,6 @@ class ADDetailView(DetailView):
         context['path_servers'] = ad.pathserverweb_set.all()
         context['certificate_servers'] = ad.certificateserverweb_set.all()
         context['beacon_servers'] = ad.beaconserverweb_set.all()
-        context['dns_servers'] = ad.dnsserverweb_set.all()
         context['sibra_servers'] = ad.sibraserverweb_set.all()
 
         context['management_interface_ip'] = get_own_local_ip()
@@ -197,7 +190,7 @@ class ADDetailView(DetailView):
         # Sort by name numerically
         lists_to_sort = ['routers', 'path_servers',
                          'certificate_servers', 'beacon_servers',
-                         'dns_servers', 'sibra_servers']
+                         'sibra_servers']
         for list_name in lists_to_sort:
             context[list_name] = sorted(
                 context[list_name],
@@ -650,17 +643,10 @@ def generate_topology(request):
     mockup_dicts['Core'] = True if (tp['inputIsCore'] == 'on') else False
 
     service_types = ['BeaconServer', 'CertificateServer',
-                     'PathServer', 'SibraServer']  # 'DomainServer', tmp fix
-    # DNSServer placeholder until the discovery service replaces it
-    mockup_dicts['DNSServers'] = {'1': {'Addr': '127.0.0.1',
-                                        'Port': -1,
-                                        'AddrInternal': '127.0.0.2',
-                                        'PortInternal': -1
-                                        }
-                                  }
+                     'PathServer', 'SibraServer']
 
     for s_type in service_types:
-        section_name = s_type+'s' if s_type != 'DomainServer' else 'DNSServers'
+        section_name = s_type+'s'
         mockup_dicts[section_name] = \
             name_entry_dict(tp.getlist('input{}Name'.format(s_type)),
                             tp.getlist('input{}Address'.format(s_type)),
@@ -669,7 +655,6 @@ def generate_topology(request):
                             tp.getlist('input{}InternalPort'.format(s_type)),
                             )
 
-    mockup_dicts['DnsDomain'] = tp['inputDnsDomain']
     mockup_dicts['BorderRouters'] = name_entry_dict_router(tp)
     mockup_dicts['ISD_AS'] = tp['inputISD_AS']
     mockup_dicts['MTU'] = st_int(tp['inputMTU'], DEFAULT_MTU)
@@ -693,7 +678,7 @@ def generate_topology(request):
 
     # IP:port uniqueness in AS check
     all_ip_port_pairs = []
-    for r in ['BeaconServers', 'CertificateServers',  # 'DNSServers', tmp fix
+    for r in ['BeaconServers', 'CertificateServers',
               'PathServers', 'SibraServers', 'Zookeepers']:
         servers_of_type_r = mockup_dicts[r]
         for server in servers_of_type_r:
@@ -705,14 +690,10 @@ def generate_topology(request):
             {'data': 'IP:port combinations not unique within AS'})
 
     os.makedirs(static_tmp_path, exist_ok=True)
-    # tmp fix DNSServer
-    mask_dns = mockup_dicts.pop('DNSServers')
     with open(yaml_topo_path, 'w') as file:
         yaml.dump(mockup_dicts, file, default_flow_style=False)
 
     create_local_gen(isd_as, mockup_dicts)
-    # tmp fix DNSServer
-    mockup_dicts['DNSServers'] = mask_dns
     generate_ansible_hostfile(topology_params, mockup_dicts, isd_as)
 
     curr_as = get_object_or_404(AD, id=as_id)
@@ -816,7 +797,6 @@ def lookup_dict_services_prefixes():
             'beacon_server': BEACON_SERVICE,
             'path_server': PATH_SERVICE,
             'certificate_server': CERTIFICATE_SERVICE,
-            'domain_server': DNS_SERVICE,
             'sibra_server': SIBRA_SERVICE,
             'zookeeper_service': ZOOKEEPER_SERVICE}
 
@@ -826,7 +806,6 @@ def lookup_dict_executables():
             'beacon_server': BEACON_EXECUTABLE,
             'path_server': PATH_EXECUTABLE,
             'certificate_server': CERTIFICATE_EXECUTABLE,
-            'domain_server': DNS_EXECUTABLE,
             'sibra_server': SIBRA_EXECUTABLE,
             'zookeeper_service': ZOOKEEPER_EXECUTABLE}
 

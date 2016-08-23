@@ -4,7 +4,6 @@ import os
 
 from lib.defines import (BEACON_SERVICE,
                          CERTIFICATE_SERVICE,
-                         DNS_SERVICE,
                          PATH_SERVICE,
                          ROUTER_SERVICE,
                          SIBRA_SERVICE,
@@ -104,8 +103,6 @@ def generate_ansible_hostfile(topology_params, mockup_dict, isd_as):
     scion_nodes = []  # entries for the scion_node section
     for key, service_type in [('BeaconServer', 'beacon_server'),
                               ('CertificateServer', 'cert_server'),
-                              #  ('DomainServer', 'dns_server'), # tmp fix
-                              # until the discovery replaces it
                               ('BorderRouter', 'router'),
                               ('PathServer', 'path_server'),
                               ('SibraServer', 'sibra_server'),
@@ -162,6 +159,5 @@ def lookup_dict_services_prefixes():
             'beacon_server': BEACON_SERVICE,
             'path_server': PATH_SERVICE,
             'cert_server': CERTIFICATE_SERVICE,
-            'dns_server': DNS_SERVICE,
             'sibra_server': SIBRA_SERVICE,
             'zookeeper_service': ZOOKEEPER_SERVICE}
