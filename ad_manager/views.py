@@ -776,7 +776,11 @@ def create_global_gen(topo_path):
     # ./scion.sh topology -c '/../scion/topology/Switzerland.topo'
     # we reuse the generation facility provided by scion.sh
     scion_sh_path = os.path.join(PROJECT_ROOT, 'scion.sh')
-    result = subprocess.check_call([scion_sh_path, 'topology', '-c', topo_path],
+    result = subprocess.check_call([scion_sh_path, 'topology',
+                                    '-c', topo_path,
+                                    '-o', os.path.join(PROJECT_ROOT,
+                                                       'deploy-gen')
+                                    ],
                                    cwd=PROJECT_ROOT)
     return result
 
@@ -850,7 +854,7 @@ def create_local_gen(isd_as, tp):
 
     dispatcher_folder_path = os.path.join(local_gen_path, 'dispatcher')
     if not os.path.exists(dispatcher_folder_path):
-        copytree(os.path.join(PROJECT_ROOT, 'gen', 'dispatcher'),
+        copytree(os.path.join(PROJECT_ROOT, 'deploy-gen', 'dispatcher'),
                  dispatcher_folder_path)
 
     # TODO: Cert distribution needs integration with scion-coord,
@@ -862,7 +866,8 @@ def create_local_gen(isd_as, tp):
     rmtree(os.path.join(shared_files_path), True)  # rm shared_files & content
     # populate the shared_files folder with the relevant files for this AS
     certgen_path = os.path.join(PROJECT_ROOT,
-                                'gen/ISD{}/AS{}/endhost/'.format(isd_id, as_id))
+                                'deploy-gen/ISD{}/AS{}/endhost/'.format(isd_id,
+                                                                        as_id))
     copytree(certgen_path, shared_files_path)
     # remove files that are not shared
     try:
