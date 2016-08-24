@@ -54,6 +54,7 @@ function sanitize(loadenString) {
     loadenString = loadenString.replace(/&#39;/g, '"');
     loadenString = loadenString.replace(/True/g, '"True"');
     loadenString = loadenString.replace(/False/g, '"False"');
+    loadenString = loadenString.replace(/None/g, '""');
     return loadenString;
 }
 
@@ -139,6 +140,8 @@ function reloadServerSection(reloadedTopology, entryKey) {
     var server;
     var address;
     var port;
+    var addressInternal;
+    var portInternal;
 
     var entry = reloadedTopology[entryKey];
     var type = entryKey.slice(0, -7); // remove the 'Server' part
@@ -162,7 +165,11 @@ function reloadServerSection(reloadedTopology, entryKey) {
         address = server['Addr'];
         $(itemSelector + ' #input' + type + 'ServerAddress').val(address);
         port = server['Port'];
-        $(itemSelector + ' #input' + type + 'ServerPort').val(port);  // add NAT reloading here
+        $(itemSelector + ' #input' + type + 'ServerPort').val(port);
+        addressInternal = server['AddrInternal'];
+        $(itemSelector + ' #input' + type + 'ServerInternalAddress').val(addressInternal);
+        portInternal = server['PortInternal'];
+        $(itemSelector + ' #input' + type + 'ServerInternalPort').val(portInternal);
     }
 }
 
