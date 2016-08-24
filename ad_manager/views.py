@@ -690,7 +690,13 @@ def generate_topology(request):
         yaml.dump(mockup_dicts, file, default_flow_style=False)
 
     create_local_gen(isd_as, mockup_dicts)
-    generate_ansible_hostfile(topology_params, mockup_dicts, isd_as)
+    commit_hash = tp['commitHash']
+    # sanitize commit hash from comments, take first part up to |, strip spaces
+    commit_hash = (commit_hash.split('|'))[0].strip()
+    generate_ansible_hostfile(topology_params,
+                              mockup_dicts,
+                              isd_as,
+                              commit_hash)
 
     curr_as = get_object_or_404(AD, id=as_id)
     # load as usual model (for persistance and display in overview)
@@ -967,8 +973,7 @@ def particular_topo_instance(tp, type_key):
 
 
 def update_hash_var(isd_id, as_id, commit_hash):
-    commit_hash, _ = commit_hash.split('|')  # remove comment
-    commit_hash = commit_hash.replace(' ', '')  # remove space
+    commit_hash = (commit_hash.split('|'))[0].strip()  # sanitize hash
     host_file_path = os.path.join(WEB_ROOT, 'gen',
                                   'ISD' + str(isd_id), 'AS' + str(as_id),
                                   'host.{}-{}'.format(isd_id, as_id))

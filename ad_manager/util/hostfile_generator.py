@@ -84,7 +84,7 @@ def get_section_attr(mockup_dict, section_name, attr):
     return [server[attr] for server in mockup_dict[section_name].values()]
 
 
-def generate_ansible_hostfile(topology_params, mockup_dict, isd_as):
+def generate_ansible_hostfile(topology_params, mockup_dict, isd_as,commit_hash):
     """
     Generate the host file for Ansible
     The hostfile is per AS and can have the same IP in multiple roles
@@ -144,7 +144,7 @@ def generate_ansible_hostfile(topology_params, mockup_dict, isd_as):
     add_new_section(config, 'scion_nodes:vars')
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
     config.set('scion_nodes:vars', 'local_gen={}'.format(local_gen_path))
-    config.set('scion_nodes:vars', 'scion_version={}'.format(''))
+    config.set('scion_nodes:vars', 'scion_version={}'.format(commit_hash))
 
     with open(host_file_path, 'w') as configfile:
         config.write(configfile, space_around_delimiters=False)

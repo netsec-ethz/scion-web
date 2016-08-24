@@ -131,12 +131,12 @@ $(document).ready(function () {
 
 
 // Query github for the last Hashes
-function queryForHashes() {
+function queryForHashes(datalistId) {
     var gitBaseUrl = "https://api.github.com/repos";
     var organisation = "/netsec-ethz";
     var repo = "/scion-web/"; // set this to the main scion repo aka /scion/ once it is public
 
-    $('#queriedHashes').children().slice(1).remove(); // remove previous entries
+    $(datalistId).children().slice(1).remove(); // remove previous entries
 
     var lastWeek = new Date();
     var weekLength = 7; // 7 days per week
@@ -156,7 +156,7 @@ function queryForHashes() {
         $.each(data, function (key, val) {
             var sha = val['sha'];
             var comment = val['commit']['message'].substr(0, 25);
-            $('#queriedHashes').append('<option value="' + sha + ' |      ' + comment + '..."></option>');
+            $(datalistId).append('<option value="' + sha + ' |      ' + comment + '..."></option>');
         });
     });
 }
