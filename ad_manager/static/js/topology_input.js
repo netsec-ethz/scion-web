@@ -109,10 +109,6 @@ function setLoadedTopology(reloadedTopology) {
     $('#inputIsCore.shownCheckbox').prop('checked', isCore);
     delete reloadedTopology['Core'];
 
-    var dnsDomain = reloadedTopology['DnsDomain'];
-    $('#inputDnsDomain').attr('value', dnsDomain);
-    delete reloadedTopology['DnsDomain'];
-
     var mtu = reloadedTopology['MTU'];
     $('#inputMTU').attr('value', mtu);
     delete reloadedTopology['MTU'];
@@ -145,9 +141,6 @@ function reloadServerSection(reloadedTopology, entryKey) {
 
     var entry = reloadedTopology[entryKey];
     var type = entryKey.slice(0, -7); // remove the 'Server' part
-    if (type == 'DNS') {
-        type = 'Domain';
-    }
     //var typeValue = type.toLowerCase() + '_server';
     //$('#input'+type+'ServerType').attr('value', typeValue); // typeValue already set in template
     names = Object.keys(entry); // get a list of keys

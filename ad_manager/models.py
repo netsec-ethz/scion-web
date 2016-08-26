@@ -13,7 +13,6 @@ from ad_manager.util.common import empty_dict
 from lib.defines import (
     BEACON_SERVICE,
     CERTIFICATE_SERVICE,
-    DNS_SERVICE,
     PATH_SERVICE,
     SIBRA_SERVICE
 )
@@ -56,7 +55,6 @@ class AD(models.Model):
     isd = models.ForeignKey('ISD')
     is_core_ad = models.BooleanField(default=False)
     is_open = models.BooleanField(default=True)
-    dns_domain = models.CharField(max_length=100, null=True, blank=True)
     md_host = models.GenericIPAddressField(default='127.0.0.1')
     original_topology = jsonfield.JSONField(default=empty_dict)
 
@@ -71,9 +69,9 @@ class AD(models.Model):
         out_dict = copy.deepcopy(self.original_topology)
         out_dict.update({
             'ISDID': int(self.isd_id), 'ADID': int(self.id),
-            'Core': int(self.is_core_ad), 'DnsDomain': self.dns_domain,
+            'Core': int(self.is_core_ad),
             'BorderRouters': {}, 'PathServers': {}, 'BeaconServers': {},
-            'CertificateServers': {}, 'DNSServers': {}, 'SibraServers': {},
+            'CertificateServers': {}, 'SibraServers': {},
         })
         for router in self.routerweb_set.all():
             out_dict['BorderRouters'][str(router.name)] = router.get_dict()
@@ -83,8 +81,6 @@ class AD(models.Model):
             out_dict['BeaconServers'][str(bs.name)] = bs.get_dict()
         for cs in self.certificateserverweb_set.all():
             out_dict['CertificateServers'][str(cs.name)] = cs.get_dict()
-        for ds in self.dnsserverweb_set.all():
-            out_dict['DNSServers'][str(ds.name)] = ds.get_dict()
         for sb in self.sibraserverweb_set.all():
             out_dict['SibraServers'][str(sb.name)] = sb.get_dict()
         return out_dict
@@ -94,7 +90,6 @@ class AD(models.Model):
                     self.pathserverweb_set.all(),
                     self.beaconserverweb_set.all(),
                     self.certificateserverweb_set.all(),
-                    self.dnsserverweb_set.all(),
                     self.sibraserverweb_set.all()]
         for element_group in elements:
             for element in element_group:
@@ -117,19 +112,16 @@ class AD(models.Model):
             self.pathserverweb_set.all().delete()
             self.certificateserverweb_set.all().delete()
             self.beaconserverweb_set.all().delete()
-            self.dnsserverweb_set.all().delete()
             self.sibraserverweb_set.all().delete()
 
         self.original_topology = topology_dict
         self.is_core_ad = (topology_dict['Core'] == 1)
-        self.dns_domain = topology_dict['DnsDomain']
         self.save()
 
         routers = topology_dict["BorderRouters"]
         beacon_servers = topology_dict["BeaconServers"]
         certificate_servers = topology_dict["CertificateServers"]
         path_servers = topology_dict["PathServers"]
-        dns_servers = topology_dict["DNSServers"]
         sibra_servers = topology_dict["SibraServers"]
 
         try:
@@ -176,14 +168,6 @@ class AD(models.Model):
                     update_or_create(addr=ps["Addr"],
                                      addr_internal=ps["AddrInternal"],
                                      port_internal=ps["PortInternal"],
-                                     name=name,
-                                     ad=self)
-
-            for name, ds in dns_servers.items():
-                DnsServerWeb.objects.\
-                    update_or_create(addr=str(ds["Addr"]),
-                                     addr_internal=ds["AddrInternal"],
-                                     port_internal=ds["PortInternal"],
                                      name=name,
                                      ad=self)
 
@@ -261,14 +245,6 @@ class PathServerWeb(SCIONWebElement):
 
     class Meta:
         verbose_name = 'Path server'
-        unique_together = (("ad", "addr"),)
-
-
-class DnsServerWeb(SCIONWebElement):
-    prefix = DNS_SERVICE
-
-    class Meta:
-        verbose_name = 'DNS server'
         unique_together = (("ad", "addr"),)
 
 

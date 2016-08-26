@@ -105,12 +105,10 @@ class TestAdDetail(BasicWebTest):
         beacon_servers = html.find(id="beacon-servers-table")
         certificate_servers = html.find(id="certificate-servers-table")
         path_servers = html.find(id="path-servers-table")
-        # dns_servers = html.find(id="dns-servers-table")
         routers = html.find(id="routers-table")
 
         # Test that tables are not empty
-        tables = [beacon_servers, certificate_servers, path_servers,
-                  routers]  # dns_servers, # tmp fix until discov service exists
+        tables = [beacon_servers, certificate_servers, path_servers, routers]
         for table in tables:
             assert table, 'No table found'
             self.assertFalse('No servers' in str(table), "Table is empty")

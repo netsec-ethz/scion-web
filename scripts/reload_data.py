@@ -11,7 +11,7 @@ import sys
 from os.path import dirname as d
 
 sys.path.insert(0, d(d(os.path.abspath(__file__))))  # noqa
-sys.path.insert(0, d(d(d(d(d(os.path.abspath(__file__)))))))  # noqa
+sys.path.insert(0, d(d(d(d(os.path.abspath(__file__))))))  # noqa
 
 # Set up the Django environment
 os.environ['DJANGO_SETTINGS_MODULE'] = 'web_scion.settings.private'  # noqa
@@ -132,8 +132,7 @@ def reload_data_from_files(topology_files):
             print("{}%".format(report_ranges[i]))
         AD.objects.update_or_create(id=as_topo.isd_as[1],
                                     isd=isds[as_topo.isd_as[0]],
-                                    is_core_ad=as_topo.is_core_as,
-                                    dns_domain=as_topo.dns_domain)
+                                    is_core_ad=as_topo.is_core_as)
     transaction.commit()
     print("> ASes instances were added")
 
@@ -159,7 +158,7 @@ def reload_data():
     yaml_path = os.path.join(GEN_PATH, 'ISD*', 'AS*', 'endhost', 'topology.yml')
     topology_files = glob.glob(yaml_path)
 
-    reload_data_from_files([topology_files])
+    reload_data_from_files(topology_files)
 
 
 if __name__ == "__main__":

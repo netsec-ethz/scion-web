@@ -15,7 +15,6 @@ from ad_manager.models import (
     BeaconServerWeb,
     CertificateServerWeb,
     ConnectionRequest,
-    DnsServerWeb,
     ISD,
     PathServerWeb,
     RouterWeb,
@@ -81,7 +80,6 @@ class SortRelatedAdmin(PrivilegedChangeAdmin):
 @admin.register(BeaconServerWeb,
                 CertificateServerWeb,
                 PathServerWeb,
-                DnsServerWeb,
                 SibraServerWeb,
                 site=admin_site)
 class ServerAdmin(PrivilegedChangeAdmin):
