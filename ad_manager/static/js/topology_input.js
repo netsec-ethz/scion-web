@@ -13,12 +13,16 @@ function checkFreshness(isd_id, as_id) {
                 var changes = res['topo_hash'] != reloadedTopologyHash;
                 // check if force submitting is enabled
                 var forceSubmit = $('#forceSubmit:checked').length > 0;
+                
                 if (changes && !forceSubmit) {
                     overlayAlert("The data has changed, please reload the page or force submit.", 3000);
                     $('#forceSubmitDiv').removeClass('hidden');
                     $('#submitButton')[0].innerHTML = "Save to topology file";
                     // abort POST
                     submit = false;
+                } else if (!ifidUnique()) {
+                    overlayAlert("Your IFIDs are not unique within this AS. Please have a different IFID for each border router.", 3000);
+                    $('#submitButton')[0].innerHTML = "Save to topology file";
                 } else {
                     overlayAlert("Data submitted", 1000);
                     submit = true;
@@ -48,6 +52,22 @@ function overlayAlert(message, duration) {
         pageOverlay.parentNode.removeChild(pageOverlay);
     }, duration);
     document.body.appendChild(pageOverlay);
+}
+
+function ifidUnique() {
+    // checks that IFIDs are unique within AS
+    var ifidUnique = true;
+    var ifidList = [];
+    $(".ifid-input").each(function () {
+        var ifid = $(this).val();
+        var unique = $.inArray(ifid, ifidList) == -1;
+        ifidList.push(ifid);
+        if (!unique) {
+            ifidUnique = false;
+            return false; // break the for each loop
+        }
+    });
+    return ifidUnique;
 }
 
 function sanitize(loadenString) {
@@ -84,6 +104,14 @@ function toggleInput(elem) {
         $(clone).find('.server-name-input').attr('value', newName);
         // reset IP
         $(clone).find('.server-address-input').val('');
+        
+        // Auto-increment IFID if it is router element
+        if (clone.attr('class').indexOf('routerItem') > -1) {
+            var currentIFID = $(clone).find('.ifid-input').attr('value');
+            var newIFID = parseInt(currentIFID) + 1;
+            $(clone).find('.ifid-input').attr('value', newIFID);
+        }
+        
         // append the cloned and cleaned item
         accordion.append(clone);
         //var test = $(clone).children(':first').prop('tagName');
