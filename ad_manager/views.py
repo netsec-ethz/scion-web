@@ -57,12 +57,7 @@ from lib.defines import (BEACON_SERVICE,
                          PATH_SERVICE,
                          ROUTER_SERVICE,
                          SIBRA_SERVICE)
-from lib.defines import (  # SCION_UDP_PORT,
-                         SCION_UDP_EH_DATA_PORT,
-                         SCION_ROUTER_PORT,
-                         DEFAULT_MTU,
-                         # SCION_MIN_MTU
-                         )
+from lib.defines import DEFAULT_MTU
 from lib.defines import GEN_PATH, PROJECT_ROOT
 
 from ad_manager.util.hostfile_generator import generate_ansible_hostfile
@@ -72,6 +67,7 @@ import subprocess
 from shutil import copy, copytree
 
 DEFAULT_BANDWIDTH = 1000
+SCION_SUGGESTED_PORT = 31000
 
 GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
 WEB_ROOT = os.path.join(PROJECT_ROOT, 'sub', 'web')  # TODO:fix import all paths
@@ -585,7 +581,7 @@ def name_entry_dict(name_l, address_l, port_l, addr_int_l, port_int_l):
     for i in range(len(name_l)):
         ret_dict[name_l[i]] = {'Addr': address_l[i],
                                'Port': st_int(port_l[i],
-                                              SCION_UDP_EH_DATA_PORT),
+                                              SCION_SUGGESTED_PORT),
                                'AddrInternal': addr_int_l[i],
                                'PortInternal': st_int(port_int_l[i], None)
                                }
@@ -610,7 +606,7 @@ def name_entry_dict_router(tp):
     for i in range(len(name_list)):
         ret_dict[name_list[i]] = {'Addr': address_list[i],
                                   'Port': st_int(port_list[i],
-                                                 SCION_ROUTER_PORT),
+                                                 SCION_SUGGESTED_PORT),
                                   'Interface':
                                       {'Addr': interface_list[i],
                                        'Bandwidth': st_int(bandwidth_list[i],
@@ -623,9 +619,9 @@ def name_entry_dict_router(tp):
                                        'ToAddr': remote_address_list[i],
                                        'ToUdpPort':
                                        st_int(remote_port_list[i],
-                                              SCION_ROUTER_PORT),
+                                              SCION_SUGGESTED_PORT),
                                        'UdpPort': st_int(own_port_list[i],
-                                                         SCION_ROUTER_PORT)}
+                                                         SCION_SUGGESTED_PORT)}
                                   }
     return ret_dict
 
