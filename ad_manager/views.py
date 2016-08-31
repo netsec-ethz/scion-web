@@ -779,8 +779,10 @@ def upload_file(request):
                 path = handle_uploaded_file(request.FILES['file'])
                 create_global_gen(path)  # to get the trc file
             elif '_upload_init_topo' in request.POST:
-                path = handle_uploaded_file(request.FILES['file'])
-                reload_data_from_files([path])
+                path = []
+                for topo_file in request.FILES.getlist('file'):
+                    path.append(handle_uploaded_file(topo_file))
+                reload_data_from_files(path, on_the_fly_refs=True)
         return redirect(current_page)
     else:
         return redirect(current_page)
