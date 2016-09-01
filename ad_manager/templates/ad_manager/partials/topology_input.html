@@ -289,7 +289,7 @@
         </div>
 
         <div class="control-group well">
-            <h4 id="titleIPList">Select here which cloud provider to use for each IP (enables cloud provider specific setups for Ansible host files): </h4>
+            <span class="sectionTitle" id="titleIPList">Optional Ansible related settings: Select here cloud provider specific setups and git version to deploy</span>
             <button id="updateIPListButton" type="button" onclick="gatherIPsforCloudEngines();">Update IP address list</button>
             <div class="controls hidden cloudEngineItemModel">
                 <br/>
@@ -307,6 +307,17 @@
             </div>
             <div class="form-group cloudEngineItemList">
             </div>
+
+            <br/>
+            <br/>
+            <label for="backLog" style="font-weight: normal;">Show commit hashes for last <input id="backLog" type="text" size="1" placeholder="2"> weeks</label>
+            <br/>
+            <label for="commitHash1" >Version to deploy from Github:</label>
+            <input id="commitHash1" name="commitHash" list="queriedHashes1" type="text" size="72" placeholder="df9d702d9e77a503b475c501df035d95e5152ee9 |      Latest compatible commit" class="selectpicker" data-show-subtext="true"
+                 onfocus="queryForHashes('#queriedHashes1');">
+                <datalist id="queriedHashes1" class="selectpicker" data-show-subtext="true">
+                <option data-subtext="Latest compatible" value="df9d702d9e77a503b475c501df035d95e5152ee9 |      Latest compatible commit"></option>
+            </datalist>
         </div>
 
         <br/>
@@ -319,6 +330,26 @@
         </div>
     </form>
 
+    <br />
+    <br />
+    <br />
+    <div class="well">
+      <form method="POST" action="../../api/v1/internal/isd/{{ isd_id }}/as/{{ as_id }}/deploy">
+          {% csrf_token %}
+          Deploy the saved configuration with Ansible:
+          <br/>
+            <br/>
+            <label for="backLog" style="font-weight: normal;">Show commit hashes for last <input id="backLog" type="text" size="1" placeholder="2"> weeks</label>
+            <br/>
+            <label for="commitHash2" >Version to deploy from Github:</label>
+            <input id="commitHash2" name="commitHash" list="queriedHashes2" type="text" size="72" placeholder="df9d702d9e77a503b475c501df035d95e5152ee9 |      Latest compatible commit" class="selectpicker" data-show-subtext="true"
+                 onfocus="queryForHashes('#queriedHashes2');">
+                <datalist id="queriedHashes2" class="selectpicker" data-show-subtext="true">
+                <option data-subtext="Latest compatible" value="df9d702d9e77a503b475c501df035d95e5152ee9 |      Latest compatible commit"></option>
+            </datalist>
+          <button type="submit">Deploy</button>
+      </form>
+    </div>
 </div>
 
 <style>
@@ -361,5 +392,9 @@
 
     .inputPort {
         width: 4em;
+    }
+
+    .bold {
+        font-weight: bold;
     }
 </style>
