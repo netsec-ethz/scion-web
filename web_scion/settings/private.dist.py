@@ -35,10 +35,6 @@ INSTALLED_APPS += (
     # 'debug_toolbar',
 )
 
-# Login authentication key and secret
-LOGIN_KEY = 'e4937b98-37d4-4077-ba7f-4db10ba0aba9'
-LOGIN_SECRET = '432c7c7261540cb3f7af22183ec1db527d1da6879fed594de2179adfb2a6467d'
-
 # Two factor authlentication
 TWO_FACTOR_SMS_GATEWAY = 'two_factor.gateways.fake.Fake'
 # TWO_FACTOR_SMS_GATEWAY = 'two_factor.gateways.twilio.gateway.Twilio'
