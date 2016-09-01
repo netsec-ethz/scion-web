@@ -22,7 +22,6 @@ from django.http import HttpResponseRedirect
 # SCION
 from ad_manager.admin import admin_site
 
-
 # Basic URLs
 urlpatterns = patterns(
     '',
