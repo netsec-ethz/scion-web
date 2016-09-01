@@ -40,9 +40,12 @@ def fill_router_section(config, section_name, val, remote_isd_as,
                         base_tags, prefix, hostname_lookup):
     server_index = 0
     add_new_section(config, section_name)
-    remote_isd, remote_as = zip(
-        *map(lambda ip: ip.split('-'), remote_isd_as)
-    )
+    remote_isd = []
+    remote_as = []
+    if remote_isd_as:
+        remote_isd, remote_as = zip(
+            *map(lambda ip: ip.split('-'), remote_isd_as)
+        )
     for entry in val:
         tags = base_tags + 'to_isd={}' ' to_as={} {}'.format(
             remote_isd[server_index],

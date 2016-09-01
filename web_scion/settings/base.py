@@ -72,6 +72,17 @@ TEMPLATE_CONTEXT_PROCESSORS = TCP + (
     'ad_manager.context_processors.account_urls',
 )
 
+# SCION-Coord API urls
+SCION_COORD_BASE_URL = 'http://localhost:8080'
+UPLOAD_JOIN_REQUEST_SVC = 'api/as/uploadJoinRequest'
+UPLOAD_JOIN_REPLIES_SVC = 'api/as/uploadJoinReplies'
+POLL_JOIN_REPLY_SVC = 'api/as/pollJoinReply'
+UPLOAD_CONN_REQUESTS_SVC = 'api/as/uploadConnRequests'
+UPLOAD_CONN_REPLIES_SVC = 'api/as/uploadConnReplies'
+POLL_CONN_REPLIES_SVC = 'api/as/pollConnReplies'
+POLL_EVENTS_SVC = 'api/as/pollEvents'
+POLL_INTERVAL = 10
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.7/topics/i18n/

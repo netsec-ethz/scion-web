@@ -68,13 +68,13 @@ from ad_manager.util.ad_connect import (
 from ad_manager.util.errors import HttpResponseUnavailable
 from lib.util import write_file
 from topology.generator import ConfigGenerator
-from lib.crypto.certificate import Certificate
 
 from lib.crypto.asymcrypto import (
     generate_sign_keypair,
     generate_enc_keypair
 )
 
+from lib.crypto.certificate import Certificate
 from lib.defines import (BEACON_SERVICE,
                          CERTIFICATE_SERVICE,
                          PATH_SERVICE,
@@ -1051,6 +1051,7 @@ def create_local_gen(isd_as, tp):
 
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
 
+    # Add the dispatcher folder in sub/web/gen/ if not already there
     dispatcher_folder_path = os.path.join(local_gen_path, 'dispatcher')
     if not os.path.exists(dispatcher_folder_path):
         copytree(os.path.join(PROJECT_ROOT, 'gen', 'dispatcher'),

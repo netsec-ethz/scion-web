@@ -64,6 +64,11 @@ class AD(models.Model):
     is_open = models.BooleanField(default=True)
     md_host = models.GenericIPAddressField(default='127.0.0.1')
     original_topology = jsonfield.JSONField(default=empty_dict)
+    sig_pub_key = models.CharField(max_length=100, null=True, blank=True)
+    sig_priv_key = models.CharField(max_length=100, null=True, blank=True)
+    enc_pub_key = models.CharField(max_length=100, null=True, blank=True)
+    enc_priv_key = models.CharField(max_length=100, null=True, blank=True)
+    certificate = models.CharField(max_length=100, null=True, blank=True)
 
     # Use custom model manager with select_related()
     objects = SelectRelatedModelManager()
