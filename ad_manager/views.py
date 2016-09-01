@@ -87,7 +87,6 @@ from lib.util import (
 )
 from topology.generator import ConfigGenerator  # , DEFAULT_PATH_POLICY_FILE,
 # DEFAULT_ZK_CONFIG
-
 from lib.crypto.certificate import Certificate
 from lib.crypto.asymcrypto import (
     generate_sign_keypair,
@@ -1085,6 +1084,7 @@ def create_local_gen(isd_as, tp):
 
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
 
+    # Add the dispatcher folder in sub/web/gen/ if not already there
     dispatcher_folder_path = os.path.join(local_gen_path, 'dispatcher')
     if not os.path.exists(dispatcher_folder_path):
         copytree(os.path.join(PROJECT_ROOT, 'deploy-gen', 'dispatcher'),
