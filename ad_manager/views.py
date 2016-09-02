@@ -59,7 +59,7 @@ from ad_manager.forms import (
     UploadFileForm
 )
 from ad_manager.models import AD, ISD, ConnectionRequest,\
-    OrganisationAdmin, User
+    OrganisationAdmin, User, JoinRequest
 from ad_manager.util.ad_connect import (
     create_new_ad_files,
     find_last_router,
@@ -165,18 +165,43 @@ class ISDDetailView(ListView):
 
 @require_POST
 def add_as(request):
-    new_as_id = request.POST['inputASname']
+    isd_as = request.POST['inputASname']
+
     try:
-        new_as_id = int(new_as_id)
-    except ValueError:
-        return JsonResponse({'data': 'Invalid AS id'})
-    current_isd = request.POST['inputISDname']
-    isd = get_object_or_404(ISD, id=int(current_isd))
-    as_obj = AD.objects.create(id=new_as_id, isd=isd,
-                               is_core_ad=0,
-                               is_open=False)
-    as_obj.save()
-    ad_page = reverse('ad_detail', args=[new_as_id])
+        request_id = int(request.POST['inputRequestID'])
+        jr = JoinRequest.objects.get(request_id=request_id)
+
+        isd_id, as_id = isd_as.split('-')
+        AD.objects.update_or_create(
+            as_id=int(as_id),
+            isd=ISD.objects.get(id=int(isd_id)),
+            is_core_ad=False,
+            is_open=False,
+            sig_pub_key=jr.sig_pub_key,
+            sig_priv_key=jr.sig_priv_key,
+            enc_pub_key=jr.enc_pub_key,
+            enc_priv_key=jr.enc_priv_key,
+            certificate=jr.certificate,
+            trc=jr.trc
+        )
+    except (JoinRequest.DoesNotExist, ValueError):
+        # no valid JoinRequest with this id, handle manually set id
+        if '-' in isd_as:
+            _, as_id = isd_as.split('-')
+
+        try:
+            as_id = int(as_id)
+        except ValueError:
+            return JsonResponse({'data': 'Invalid AS id'})
+        current_isd = request.POST['inputISDname']
+        isd = get_object_or_404(ISD, id=int(current_isd))
+        # create AS from manually set id
+        as_obj = AD.objects.create(as_id=as_id, isd=isd,
+                                   is_core_ad=0,
+                                   is_open=False)
+        as_obj.save()
+    as_obj = AD.objects.get(as_id=as_id, isd=isd)
+    ad_page = reverse('ad_detail', args=[as_obj.id])
     return redirect(ad_page + '#!nodes')
 
 
@@ -223,6 +248,7 @@ def new_as_id(request, isd_id):
 
     private_key_sign, public_key_sign = generate_sign_keypair()
     public_key_encr, private_key_encr = generate_enc_keypair()
+
     some_core_as_of_isd_id = "1-2"
     join_request_dict = {"isd_to_join": int(isd_id),
                          "as_to_query": some_core_as_of_isd_id,
@@ -234,9 +260,22 @@ def new_as_id(request, isd_id):
     headers = {'content-type': 'application/json'}
     r = requests.post(request_url, json=join_request_dict, headers=headers)
     answer = r.json()
+    request_id = answer['id']
     print(answer)
 
-    accept_join_request(answer['id'])
+    JoinRequest.objects.update_or_create(
+        request_id=request_id,
+        created_by=request.user,
+        join_isd=ISD.objects.get(id=int(isd_id)),
+        core_as_signing=some_core_as_of_isd_id,
+        status='SENT',
+        sig_pub_key=to_b64(public_key_sign),
+        sig_priv_key=to_b64(private_key_sign),
+        enc_pub_key=to_b64(public_key_encr),
+        enc_priv_key=to_b64(private_key_encr)
+    )
+
+    accept_join_request(request_id)
 
     join_poll_url = POLL_JOIN_REPLY_SVC
     request_url = reduce(urljoin, [base_url, join_poll_url, key, secret])
@@ -248,6 +287,13 @@ def new_as_id(request, isd_id):
     if r.status_code == 200:
         try:
             response_dict = r.json()  # watch out for deserialization vulns
+            response_dict['request_id'] = answer['id']
+            if 'isdas' in response_dict.keys():
+                jr = JoinRequest.objects.get(request_id=request_id)
+                jr.status = 'ACCEPTED'
+                jr.certificate = response_dict['certificate']
+                jr.trc = response_dict['trc']
+                jr.save()
         except json.JSONDecodeError:
             response_dict = {}
 
@@ -300,7 +346,7 @@ class ADDetailView(DetailView):
 
 def as_topo_hash(request, isd_id, as_id):
     try:
-        ad = AD.objects.get(id=as_id,
+        ad = AD.objects.get(as_id=as_id,
                             isd=isd_id)
         flat_string = json.dumps(ad.original_topology, sort_keys=True)
         # hash for non cryptographic purpose (state comparison for user warning)
@@ -321,7 +367,7 @@ def control_process(request, pk, proc_id):
     """
     Send a control command to an AS element instance.
     """
-    ad = get_object_or_404(AD, id=pk)
+    ad = get_object_or_404(AD, id=pk)  # load by as_id
     _check_user_permissions(request, ad)
 
     ad_elements = ad.get_all_element_ids()
@@ -345,7 +391,7 @@ def control_process(request, pk, proc_id):
 
 def read_log(request, pk, proc_id):
     # FIXME(rev112): minor duplication, see control_process()
-    ad = get_object_or_404(AD, id=pk)
+    ad = get_object_or_404(AD, id=pk)  # TODO: query by as_id
     _check_user_permissions(request, ad)
 
     ad_elements = ad.get_all_element_ids()
@@ -476,7 +522,7 @@ class NewLinkView(FormView):
 
     def _get_ad(self):
         if not hasattr(self, 'ad'):
-            self.ad = get_object_or_404(AD, id=self.kwargs['pk'])
+            self.ad = get_object_or_404(AD, id=self.kwargs['pk'])  # query as_id
         return self.ad
 
     def dispatch(self, request, *args, **kwargs):
@@ -516,7 +562,7 @@ class NewLinkView(FormView):
 def approve_request(ad, ad_request):
     # Create the new AD
     new_id = AD.objects.latest('id').id + 1
-    new_ad = AD.objects.create(id=new_id, isd=ad.isd,
+    new_ad = AD.objects.create(as_id=new_id, isd=ad.isd,
                                md_host=ad_request.router_public_ip)
     parent_topo_dict = ad.generate_topology_dict()
 
@@ -636,7 +682,7 @@ def list_sent_requests(request):
         received_replies['router_public_port'] = received_replies.pop('port')
 
         isd_id, as_id = received_replies['connect_to'].split('-')
-        connect_to = AD.objects.get(id=as_id,
+        connect_to = AD.objects.get(as_id=as_id,
                                     isd=isd_id)
         #  insert new connection replies retrieved
         con_request = ConnectionRequest()
@@ -719,7 +765,7 @@ def _get_node_object(ad):
 
 
 def network_view_neighbors(request, pk):
-    pov_ad = get_object_or_404(AD, id=pk)
+    pov_ad = get_object_or_404(AD, id=pk)  # query by as_id
     rank = 2
 
     partial_graph = _get_partial_graph(pov_ad, rank)
@@ -920,7 +966,7 @@ def generate_topology(request):
     create_local_gen(isd_as, mockup_dicts)
     generate_ansible_hostfile(topology_params, mockup_dicts, isd_as)
 
-    curr_as = get_object_or_404(AD, id=as_id)
+    curr_as = get_object_or_404(AD, as_id=as_id, isd=isd_id)
     # load as usual model (for persistance and display in overview)
     # TODO : hash displayed queryset and curr_as query set and compare
     # allow the user to write back the new configuration only if it hasn't
