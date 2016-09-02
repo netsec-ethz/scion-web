@@ -143,7 +143,7 @@ def reload_data_from_files(topology_files, on_the_fly_refs=False):
     for i, as_topo in enumerate(as_topos, start=1):
         if i in report_ranges:
             print("{}%".format(report_ranges[i]))
-        AD.objects.update_or_create(id=as_topo.isd_as[1],
+        AD.objects.update_or_create(as_id=as_topo.isd_as[1],
                                     isd=isds[as_topo.isd_as[0]],
                                     is_core_ad=as_topo.is_core_as)
     transaction.commit()
