@@ -72,7 +72,7 @@ class ISD(models.Model):
 
 
 class AD(models.Model):
-    id = models.AutoField(primary_key=True)
+    as_id = models.IntegerField()
     isd = models.ForeignKey('ISD')
     is_core_ad = models.BooleanField(default=False)
     is_open = models.BooleanField(default=True)
@@ -82,10 +82,16 @@ class AD(models.Model):
     sig_priv_key = models.CharField(max_length=100, null=True, blank=True)
     enc_pub_key = models.CharField(max_length=100, null=True, blank=True)
     enc_priv_key = models.CharField(max_length=100, null=True, blank=True)
-    certificate = models.CharField(max_length=500, null=True, blank=True)
+    certificate = models.CharField(max_length=1000, null=True, blank=True)
+    trc = models.CharField(max_length=500, null=True, blank=True)
 
     # Use custom model manager with select_related()
     objects = SelectRelatedModelManager()
+
+    class Meta:
+        unique_together = (("id", "isd"),)
+        verbose_name = 'AD'
+        ordering = ['id']
 
     def generate_topology_dict(self):
         """
@@ -157,7 +163,6 @@ class AD(models.Model):
                 isd_as_split = interface["ISD_AS"].split('-')
                 isd_str = isd_as_split[0]
                 as_str = isd_as_split[1]
-
                 try:
                     neighbor_ad = AD.objects.get(id=as_str,
                                                  isd=isd_str)
@@ -242,10 +247,6 @@ class AD(models.Model):
 
     def __str__(self):
         return '{}-{}'.format(self.isd.id, self.id)
-
-    class Meta:
-        verbose_name = 'AD'
-        ordering = ['id']
 
 
 class SCIONWebElement(models.Model):
@@ -342,6 +343,29 @@ class SibraServerWeb(SCIONWebElement):
     class Meta:
         verbose_name = 'SIBRA server'
         unique_together = (("ad", "addr"),)
+
+
+class JoinRequest(models.Model):
+    STATUS_OPTIONS = ['NONE', 'SENT', 'ACCEPTED', 'DECLINED']
+    request_id = models.IntegerField(primary_key=True)
+    created_by = models.ForeignKey(User)
+
+    join_isd = models.ForeignKey(ISD)
+    core_as_signing = models.CharField(max_length=10, null=True)
+    status = models.CharField(max_length=20,
+                              choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
+                              default='NONE')
+
+    sig_pub_key = models.CharField(max_length=100, null=True, blank=True)
+    sig_priv_key = models.CharField(max_length=100, null=True, blank=True)
+    enc_pub_key = models.CharField(max_length=100, null=True, blank=True)
+    enc_priv_key = models.CharField(max_length=100, null=True, blank=True)
+
+    certificate = models.CharField(max_length=1000, null=True, blank=True)
+    trc = models.CharField(max_length=500, null=True, blank=True)
+
+    def is_accepted(self):
+        return self.status == 'ACCEPTED'
 
 
 class ConnectionRequest(models.Model):

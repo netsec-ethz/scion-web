@@ -60,7 +60,7 @@ class ConnectionRequestForm(forms.ModelForm):
         current_as_id = kwargs.pop('pk')
         super(ConnectionRequestForm, self).__init__(*args, **kwargs)
 
-        ad = get_object_or_404(AD, id=current_as_id)
+        ad = get_object_or_404(AD, id=current_as_id)  # TODO: request by as_id
         remote_ip_choices = []
 
         if 'BorderRouters' in ad.original_topology.keys():
@@ -94,5 +94,6 @@ class NewLinkForm(forms.Form):
         self.from_ad = kwargs.pop('from_ad')
         assert isinstance(self.from_ad, AD)
         end_point_field = self.base_fields['end_point']
-        end_point_field.queryset = AD.objects.exclude(id=self.from_ad.id)
+        end_point_field.queryset = AD.objects.exclude(as_id=self.from_ad.as_id,
+                                                      isd=self.from_ad.isd)
         super().__init__(*args, **kwargs)
