@@ -68,7 +68,7 @@ class AD(models.Model):
     sig_priv_key = models.CharField(max_length=100, null=True, blank=True)
     enc_pub_key = models.CharField(max_length=100, null=True, blank=True)
     enc_priv_key = models.CharField(max_length=100, null=True, blank=True)
-    certificate = models.CharField(max_length=500, null=True, blank=True)
+    certificate = models.CharField(max_length=1000, null=True, blank=True)
     trc = models.CharField(max_length=500, null=True, blank=True)
 
     # Use custom model manager with select_related()
@@ -329,11 +329,11 @@ class JoinRequest(models.Model):
     enc_pub_key = models.CharField(max_length=100, null=True, blank=True)
     enc_priv_key = models.CharField(max_length=100, null=True, blank=True)
 
-    certificate = models.CharField(max_length=500, null=True, blank=True)
+    certificate = models.CharField(max_length=1000, null=True, blank=True)
     trc = models.CharField(max_length=500, null=True, blank=True)
 
-    def is_approved(self):
-        return self.status == 'APPROVED'
+    def is_accepted(self):
+        return self.status == 'ACCEPTED'
 
 
 class ConnectionRequest(models.Model):

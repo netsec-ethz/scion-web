@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import random
 import tempfile
 from collections import deque
 from shutil import rmtree
@@ -166,6 +167,7 @@ class ISDDetailView(ListView):
 @require_POST
 def add_as(request):
     isd_as = request.POST['inputASname']
+    current_isd = request.POST['inputISDname']
 
     try:
         request_id = int(request.POST['inputRequestID'])
@@ -193,14 +195,13 @@ def add_as(request):
             as_id = int(as_id)
         except ValueError:
             return JsonResponse({'data': 'Invalid AS id'})
-        current_isd = request.POST['inputISDname']
         isd = get_object_or_404(ISD, id=int(current_isd))
         # create AS from manually set id
         as_obj = AD.objects.create(as_id=as_id, isd=isd,
                                    is_core_ad=0,
                                    is_open=False)
         as_obj.save()
-    as_obj = AD.objects.get(as_id=as_id, isd=isd)
+    as_obj = AD.objects.get(as_id=as_id, isd=current_isd)
     ad_page = reverse('ad_detail', args=[as_obj.id])
     return redirect(ad_page + '#!nodes')
 
@@ -238,20 +239,34 @@ def accept_join_request(request_id):
 
 
 @require_POST
+@login_required
 def new_as_id(request, isd_id):
     coord_settings = get_object_or_404(OrganisationAdmin, id=1)
     key = coord_settings.key + "/"
     secret = coord_settings.secret
 
     base_url = COORD_SERVICE_URI
+
+    query_core_ases_url = "/api/as/queryCoreASes/"
+
+    request_url = reduce(urljoin, [base_url, query_core_ases_url, key, secret])
+    headers = {'content-type': 'application/json'}
+    r = requests.post(request_url,
+                      json={'isd_id': int(isd_id)},
+                      headers=headers
+                      )
+    answer = r.json()
+    core_as_list = answer['coreASes']
+    chosen_core_as_index = random.randint(0, len(answer['coreASes'])-1)
+    core_as_to_query = core_as_list[chosen_core_as_index]
+
     join_request_url = UPLOAD_JOIN_REQUEST_SVC
 
     private_key_sign, public_key_sign = generate_sign_keypair()
     public_key_encr, private_key_encr = generate_enc_keypair()
 
-    some_core_as_of_isd_id = "1-2"
     join_request_dict = {"isd_to_join": int(isd_id),
-                         "as_to_query": some_core_as_of_isd_id,
+                         "as_to_query": core_as_to_query,
                          "sigkey": to_b64(public_key_sign),
                          "enckey": to_b64(public_key_encr)
                          }
@@ -267,7 +282,7 @@ def new_as_id(request, isd_id):
         request_id=request_id,
         created_by=request.user,
         join_isd=ISD.objects.get(id=int(isd_id)),
-        core_as_signing=some_core_as_of_isd_id,
+        core_as_signing=core_as_to_query,
         status='SENT',
         sig_pub_key=to_b64(public_key_sign),
         sig_priv_key=to_b64(private_key_sign),
