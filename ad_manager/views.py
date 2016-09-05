@@ -1,4 +1,5 @@
 # Stdlib
+import base64
 import hashlib
 import json
 import os
@@ -207,7 +208,45 @@ def add_as(request):
     return redirect(ad_page + '#!nodes')
 
 
-def accept_join_request(request_id):
+@permission_required('ad_manager.change_organisationadmin', login_url='/login/')
+def accept_join_request(request, isd_as, request_id):
+    coord_settings = get_object_or_404(OrganisationAdmin, id=1)
+    key = coord_settings.key + "/"
+    secret = coord_settings.secret
+
+    sig_pub_keys = base64.b64decode(request.POST['sig_pub_key'])
+    enc_pub_keys = base64.b64decode(request.POST['enc_pub_key'])
+    core_as_id = isd_as
+    core_as = AD.objects.get(as_id=isd_as.split('-')[1], isd=isd_as.split('-')[0])
+    core_as_sig_priv_key = base64.b64decode(core_as.sig_priv_key)
+    core_as_trc = str(core_as.trc)
+
+    certificate = Certificate.from_values(
+        request_id, sig_pub_keys, enc_pub_keys, core_as_id,
+        core_as_sig_priv_key, INITIAL_CERT_VERSION,
+    )
+
+    accept_join_dict = {"isdas": core_as_id,
+                        "replies": [
+                            {
+                                "request_id": int(request_id),
+                                "isdas": core_as_id,
+                                "certificate": str(certificate),
+                                "trc": core_as_trc
+                            }
+                        ]
+                        }
+    base_url = COORD_SERVICE_URI
+    accept_join_url = UPLOAD_JOIN_REPLIES_SVC
+    request_url = reduce(urljoin, [base_url, accept_join_url, key, secret])
+    headers = {'content-type': 'application/json'}
+    r = requests.post(request_url, json=accept_join_dict, headers=headers)
+    answer = r.json()
+    print(answer)
+    return
+
+
+def accept_join_request_auto(request_id):
     coord_settings = get_object_or_404(OrganisationAdmin, id=1)
     key = coord_settings.key + "/"
     secret = coord_settings.secret
@@ -290,7 +329,7 @@ def new_as_id(request, isd_id):
         enc_priv_key=to_b64(private_key_encr)
     )
 
-    accept_join_request(request_id)
+    accept_join_request_auto(request_id)
 
     join_poll_url = POLL_JOIN_REPLY_SVC
     request_url = reduce(urljoin, [base_url, join_poll_url, key, secret])
@@ -340,6 +379,8 @@ class ADDetailView(DetailView):
             hashlib.md5(flat_string.encode('utf-8')).hexdigest()
         context['as_id'] = ad.as_id
         context['isd_id'] = ad.isd_id
+        isdas = '-'.join([str(ad.isd_id), str(ad.as_id)])
+        context['isdas'] = isdas
 
         # Sort by name numerically
         lists_to_sort = ['routers', 'path_servers',
@@ -358,7 +399,6 @@ class ADDetailView(DetailView):
         coord_settings = get_object_or_404(OrganisationAdmin, id=1)
         key = coord_settings.key + "/"
         secret = coord_settings.secret
-        isdas = '-'.join([str(ad.isd_id), str(ad.as_id)])
 
         base_url = COORD_SERVICE_URI
         get_all_requests = POLL_EVENTS_SVC

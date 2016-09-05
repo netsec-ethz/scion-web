@@ -23,8 +23,10 @@
           <pre>{{ request.sigkey }}</pre>
         </td>
         <td>
-          <form method="POST" action="{% url 'wrong_api_call' %}" class="request-approve-form">
+          <form method="POST" action="{% url 'accept_join' isd_as=isdas request_id=request.id %}" class="request-approve-form">
             {% csrf_token %}
+            <input type="text" name="sig_pub_key" value="{{ request.sigkey }}" class="hidden">
+            <input type="text" name="enc_pub_key" value="{{ request.enckey }}" class="hidden">
             <button type="submit" class="btn btn-success btn-sm click-confirm" name="_approve_request">
               Approve
             </button>
