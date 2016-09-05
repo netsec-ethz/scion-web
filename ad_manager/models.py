@@ -76,6 +76,8 @@ class AD(models.Model):
 
     class Meta:
         unique_together = (("id", "isd"),)
+        verbose_name = 'AD'
+        ordering = ['id']
 
     def generate_topology_dict(self):
         """
@@ -211,10 +213,6 @@ class AD(models.Model):
 
     def __str__(self):
         return '{}-{}'.format(self.isd.id, self.id)
-
-    class Meta:
-        verbose_name = 'AD'
-        ordering = ['id']
 
 
 class SCIONWebElement(models.Model):

@@ -51,7 +51,8 @@ from ad_manager.util.defines import (
     UPLOAD_CONN_REQUESTS_SVC,
     UPLOAD_CONN_REPLIES_SVC,
     POLL_CONN_REPLIES_SVC,
-    POLL_EVENTS_SVC
+    POLL_EVENTS_SVC,
+    INITIAL_CERT_VERSION
 )
 from ad_manager.forms import (
     ConnectionRequestForm,
@@ -215,7 +216,6 @@ def accept_join_request(request_id):
     enc_pub_keys = b'public_encryption_key_of_new_as'
     core_as_id = "1-2"
     core_as_sig_priv_key = b'private_signing_key_of_core_as__'
-    INITIAL_CERT_VERSION = 0
 
     certificate = Certificate.from_values(
             request_id, sig_pub_keys, enc_pub_keys, core_as_id,
