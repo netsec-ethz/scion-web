@@ -8,9 +8,9 @@
   <table class="table" id="sent-requests-tbl">
     <thead>
     <tr>
-      <th class="col-md-1">AD</th>
-      <th>Info</th>
-      <th class="col-md-2">Router</th>
+      <th class="col-md-1">AS</th>
+      <th class="col-md-3">Info</th>
+      <th class="col-md-3">Router</th>
       <th class="col-md-1">Status</th>
       <th class="col-md-1">Actions</th>
     </tr>
@@ -25,9 +25,11 @@
           {% comment %}
             FIXME(rev112): duplicated code, see connection_requests.html
           {% endcomment %}
+        </td>
+        <td>
           <div class="collapse" id="info-{{ request.id }}">
             <div class="well">
-              <b>Public socket</b> {{ request.router_public_ip }} : {{ request.router_public_port }} <br />
+              <b>Remote border router</b> {{ request.router_public_ip }} : {{ request.router_public_port }} <br />
               {% if request.new_ad %}
                 New AS: <a href="{{ request.new_ad.get_absolute_url }}">{{ request.new_ad }}</a>
               {% endif %}
@@ -41,7 +43,7 @@
         </td>
         <td>
           {% if request.is_approved %}
-            <a href="{% url 'download_request_package' request.id %}">Download</a>
+            <a href="{% url 'wrong_api_call' %}">Add to topology</a>
           {% endif %}
         </td>
       </tr>
@@ -64,7 +66,7 @@
           {% endcomment %}
           <div class="collapse" id="info-{{ request.id }}">
             <div class="well">
-              <b>Public socket</b> {{ request.router_public_ip }} : {{ request.router_public_port }} <br />
+              <b>Remote border router</b> {{ request.router_public_ip }} : {{ request.router_public_port }} <br />
               {% if request.new_ad %}
                 New AS: <a href="{{ request.new_ad.get_absolute_url }}">{{ request.new_ad }}</a>
               {% endif %}
@@ -78,7 +80,7 @@
         </td>
         <td>
           {% if request.is_approved %}
-            <a href="{% url 'download_request_package' request.id %}">Download</a>
+            <a href="{% url 'wrong_api_call' %}">Add to topology</a>
           {% endif %}
         </td>
       </tr>
