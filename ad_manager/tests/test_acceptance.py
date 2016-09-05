@@ -290,7 +290,8 @@ class TestConnectionRequests(BasicWebTestUsers):
         ad_requests_admin = self.app.get(requests_page, user=self.admin_user)
         ad_requests_user = self.app.get(requests_page, user=self.user)
         for response in [ad_requests_admin, ad_requests_user]:
-            received_table = response.html.find(id="received-requests-tbl")
+            received_table = response.html.\
+                find(id="received-connection-requests-tbl")
             for s in ['127.0.0.20', 'test info', 'SENT', 'admin']:
                 self.assertIn(str(s), str(received_table))
 
