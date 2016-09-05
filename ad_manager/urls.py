@@ -26,6 +26,8 @@ api_patterns_internal = patterns(
         views.new_as_id, name='new_as_id'),
     url(r'^api/v1/internal/update_coord_settings/$',
         views.coord_service_update, name='coord_service_update'),
+    url(r'^api/v1/internal/acceptJoin/isd-as/(?P<isd_as>\S+)/request/(?P<request_id>\d+)/$',
+        views.accept_join_request, name='accept_join'),
     url(r'^api/v1/internal/.*$',
         views.wrong_api_call, name='wrong_api_call'),
 )
