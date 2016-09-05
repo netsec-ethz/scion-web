@@ -12,3 +12,5 @@ UPLOAD_CONN_REQUESTS_SVC = "/api/as/uploadConnRequests/"
 UPLOAD_CONN_REPLIES_SVC = "/api/as/uploadConnReplies/"
 POLL_CONN_REPLIES_SVC = "/api/as/pollConnReplies/"
 POLL_EVENTS_SVC = "/api/as/pollEvents/"
+
+INITIAL_CERT_VERSION = 0
