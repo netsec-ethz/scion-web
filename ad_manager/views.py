@@ -338,7 +338,7 @@ class ADDetailView(DetailView):
         # hash for non cryptographic purpose (state comparison for user warning)
         context['reloaded_topology_hash'] = \
             hashlib.md5(flat_string.encode('utf-8')).hexdigest()
-        context['as_id'] = ad.id
+        context['as_id'] = ad.as_id
         context['isd_id'] = ad.isd_id
 
         # Sort by name numerically
@@ -353,6 +353,21 @@ class ADDetailView(DetailView):
 
         # Connection requests tab
         context['received_requests'] = ad.received_requests.all()
+
+        # Join requests: received ISD join requests (only for Core ASes)
+        coord_settings = get_object_or_404(OrganisationAdmin, id=1)
+        key = coord_settings.key + "/"
+        secret = coord_settings.secret
+        isdas = '-'.join([str(ad.isd_id), str(ad.as_id)])
+
+        base_url = COORD_SERVICE_URI
+        get_all_requests = POLL_EVENTS_SVC
+        request_url = reduce(urljoin, [base_url, get_all_requests, key, secret])
+        headers = {'content-type': 'application/json'}
+        r = requests.post(request_url, json={'isdas': isdas}, headers=headers)
+        if r.status_code == 200:
+            answer = r.json()
+            context['join_requests'] = answer['join_requests']
 
         # Permissions
         context['user_has_perm'] = self.request.user.has_perm('change_ad', ad)

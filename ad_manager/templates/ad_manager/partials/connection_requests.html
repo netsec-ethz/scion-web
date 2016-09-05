@@ -5,14 +5,47 @@
 
 {% if user_has_perm %}
   <hr />
-  <h2>Received requests</h2>
+  <h2>Received ISD join requests</h2>
 
-  <table class="table" id="received-requests-tbl">
+  <table class="table" id="received-connection-requests-tbl">
+    <thead>
+    <tr>
+      <th class="col-md-2">Signing key</th>
+      <th class="col-md-3">Encryption key</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    {% for request in join_requests %}
+      <tr>
+        <td>{{ request.enckey }}</td>
+        <td>
+          <pre>{{ request.sigkey }}</pre>
+        </td>
+        <td>
+          <form method="POST" action="{% url 'wrong_api_call' %}" class="request-approve-form">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success btn-sm click-confirm" name="_approve_request">
+              Approve
+            </button>
+            <button type="submit" class="btn btn-danger btn-sm click-confirm" name="_decline_request">
+              Decline
+            </button>
+          </form>
+        </td>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <hr />
+  <h2>Received connection requests</h2>
+
+  <table class="table" id="received-connection-requests-tbl">
     <thead>
     <tr>
       <th class="col-md-2">Created by</th>
-      <th>Info</th>
-      <th class="col-md-1">Router IP</th>
+      <th class="col-md-3">Info</th>
+      <th class="col-md-3">Router IP</th>
       <th class="col-md-1">Status</th>
       <th class="col-md-2">Actions</th>
     </tr>
@@ -24,9 +57,11 @@
         <td>{{ request.created_by }}</td>
         <td>
           <pre>{{ request.info }}</pre>
+        </td>
+        <td>
           <div class="collapse" id="info-{{ request.id }}">
             <div class="well">
-              <b>Public socket</b> {{ request.router_public_ip }} : {{ request.router_public_port }} <br />
+              <b>Remote border router</b> {{ request.router_public_ip }} : {{ request.router_public_port }} <br />
               {% if request.new_ad %}
                 New AS: <a href="{% url 'ad_detail' request.new_ad.id %}">{{ request.new_ad }}</a>
               {% endif %}

@@ -32,7 +32,7 @@
                 <label class="control-label" class="floor-align-text" for="inputASname">new AS name:</label>
                 <input class="hidden" id="inputISDname" name="inputISDname" title="ISD name" type="text" value="{{ object.id }}">
                 <input class="hidden" id="inputRequestID" name="inputRequestID" title="Join request ID" type="text" value="">
-                <input id="inputASname" name="inputASname" list="new_as_id_field" type="text" onfocus="if ($('#new_as_id_field').children().length == 0) {queryForAsId({{ object.id }});}" autocomplete="off">
+                <input id="inputASname" name="inputASname" list="new_as_id_field" type="text" onfocus="if ($('#new_as_id_field').children().length == 0) {queryForAsId({{ object.id }});}" autocomplete="off" placeholder="Select provided AS id or setup local AS" style="width: 20em;">
                 <datalist id="new_as_id_field" class="selectpicker" data-show-subtext="true">
                 </datalist>
                 <button type="button" class="btn" onclick="setRequestIDnSubmit();">Create AS</button>
