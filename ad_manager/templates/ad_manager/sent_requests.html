@@ -19,7 +19,7 @@
     <tbody>
     {% for request in sent_requests %}
       <tr>
-        <td><a href="{{ request.connect_to.get_absolute_url }}">{{ request.connect_to }}</a></td>
+        <td><a href="{{ request.connect_to }}">{{ request.connect_to }}</a></td>
         <td>
           <pre>{{ request.info }}</pre>
           {% comment %}

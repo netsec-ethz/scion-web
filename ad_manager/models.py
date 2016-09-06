@@ -17,7 +17,7 @@ from lib.defines import (
     SIBRA_SERVICE
 )
 
-PORT = 50000
+PORT = 31000
 PACKAGE_DIR_PATH = 'gen'
 
 
@@ -336,20 +336,24 @@ class JoinRequest(models.Model):
 
 class ConnectionRequest(models.Model):
     STATUS_OPTIONS = ['NONE', 'SENT', 'APPROVED', 'DECLINED']
+    LINK_TYPE = ['PARENT', 'CHILD', 'PEER', 'ROUTING']
 
     created_by = models.ForeignKey(User)
-    connect_to = models.ForeignKey(AD, related_name='received_requests')
+    connect_to = models.CharField(max_length=100, null=True, blank=True)
     new_ad = models.ForeignKey(AD, blank=True, null=True)
     info = models.TextField()
     router_public_ip = models.GenericIPAddressField()
     router_public_port = models.IntegerField(default=int(PORT))
+    mtu = models.IntegerField(null=True, default=1400)
+    bandwidth = models.IntegerField(null=True, default=1000)
+    link_type = models.CharField(max_length=20,
+                                 choices=zip(LINK_TYPE, LINK_TYPE),
+                                 default='CHILD')
     status = models.CharField(max_length=20,
                               choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
                               default='NONE')
-    # TODO(rev112) change to FilePathField?
-    package_path = models.CharField(max_length=1000, blank=True, null=True)
 
-    related_fields = ('new_ad__isd', 'connect_to__isd', 'created_by')
+    related_fields = ('new_ad__isd', 'created_by')
     objects = SelectRelatedModelManager()
 
     def is_approved(self):
