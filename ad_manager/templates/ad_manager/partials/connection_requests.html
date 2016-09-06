@@ -11,7 +11,8 @@
     <thead>
     <tr>
       <th class="col-md-2">Signing key</th>
-      <th class="col-md-3">Encryption key</th>
+      <th class="col-md-2">Encryption key</th>
+      <th class="col-md-3">Info</th>
     </tr>
     </thead>
 
@@ -19,10 +20,11 @@
     {% for request in join_requests %}
       <tr>
         <td>{{ request.enckey }}</td>
+        <td>{{ request.sigkey }}</td>
         <td>
-          <pre>{{ request.sigkey }}</pre>
+          <pre>{{ request.info }}</pre>
         </td>
-        <td>
+        <td class="col-md-2">
           <form method="POST" action="{% url 'accept_join' isd_as=isdas request_id=request.id %}" class="request-approve-form">
             {% csrf_token %}
             <input type="text" name="sig_pub_key" value="{{ request.sigkey }}" class="hidden">
