@@ -28,6 +28,8 @@ api_patterns_internal = patterns(
         views.coord_service_update, name='coord_service_update'),
     url(r'^api/v1/internal/acceptJoin/isd-as/(?P<isd_as>\S+)/request/(?P<request_id>\d+)/$',
         views.accept_join_request, name='accept_join'),
+    url(r'^api/v1/internal/acceptConnection/isd-as/(?P<isd_as>\S+)/request/(?P<request_id>\d+)/$',
+        views.accept_connection_request, name='accept_connection'),
     url(r'^api/v1/internal/.*$',
         views.wrong_api_call, name='wrong_api_call'),
 )
@@ -67,6 +69,8 @@ ad_patterns = patterns(
         views.ADDetailView.as_view(), name='ad_detail'),
     url(r'^ads/(?P<pk>\d+)/#!topology$',
         views.ADDetailView.as_view(), name='ad_detail_topology'),
+    url(r'^ads/(?P<pk>\d+)/#!topology&expanded_routers$',
+        views.ADDetailView.as_view(), name='ad_detail_topology_routers'),
     url(r'^ads/(?P<pk>\d+)/#!updates$',
         views.ADDetailView.as_view(), name='ad_detail_updates'),
     url(r'^ads/(?P<pk>\d+)/#!requests$',

@@ -28,10 +28,16 @@ from lib.defines import (
     BEACON_SERVICE,
     CERTIFICATE_SERVICE,
     PATH_SERVICE,
-    SIBRA_SERVICE
+    SIBRA_SERVICE,
+    DEFAULT_MTU
 )
 
-PORT = 50000
+from ad_manager.util.defines import (
+    DEFAULT_BANDWIDTH,
+    SCION_SUGGESTED_PORT,
+)
+
+PORT = SCION_SUGGESTED_PORT
 PACKAGE_DIR_PATH = 'gen'
 
 
@@ -72,7 +78,7 @@ class ISD(models.Model):
 
 
 class AD(models.Model):
-    as_id = models.IntegerField()
+    as_id = models.IntegerField(default=-1)
     isd = models.ForeignKey('ISD')
     is_core_ad = models.BooleanField(default=False)
     is_open = models.BooleanField(default=True)
@@ -370,20 +376,27 @@ class JoinRequest(models.Model):
 
 class ConnectionRequest(models.Model):
     STATUS_OPTIONS = ['NONE', 'SENT', 'APPROVED', 'DECLINED']
+    LINK_TYPE = ['PARENT', 'CHILD', 'PEER', 'ROUTING']
+
+    # request_id assigned by the coordination service
+    request_id = models.IntegerField(null=True)
 
     created_by = models.ForeignKey(User)
-    connect_to = models.ForeignKey(AD, related_name='received_requests')
-    new_ad = models.ForeignKey(AD, blank=True, null=True)
+    connect_to = models.CharField(max_length=100, null=True, blank=True)
+    connect_from = models.ForeignKey(AD, blank=True, null=True)
     info = models.TextField()
     router_public_ip = models.GenericIPAddressField()
     router_public_port = models.IntegerField(default=int(PORT))
+    mtu = models.IntegerField(null=True, default=DEFAULT_MTU)
+    bandwidth = models.IntegerField(null=True, default=DEFAULT_BANDWIDTH)
+    link_type = models.CharField(max_length=20,
+                                 choices=zip(LINK_TYPE, LINK_TYPE),
+                                 default='CHILD')
     status = models.CharField(max_length=20,
                               choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
                               default='NONE')
-    # TODO(rev112) change to FilePathField?
-    package_path = models.CharField(max_length=1000, blank=True, null=True)
 
-    related_fields = ('new_ad__isd', 'connect_to__isd', 'created_by')
+    related_fields = ('connect_from__isd', 'created_by')
     objects = SelectRelatedModelManager()
 
     def is_approved(self):

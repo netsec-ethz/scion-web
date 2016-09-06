@@ -63,6 +63,14 @@ class ConnectionRequestForm(forms.ModelForm):
         ad = get_object_or_404(AD, id=current_as_id)  # TODO: request by as_id
         remote_ip_choices = []
 
+        self.fields['connect_from'] = forms.CharField(
+            widget=forms.HiddenInput(attrs={'value': current_as_id})
+        )
+        self.fields['connect_to'] = forms.CharField(
+            widget=forms.TextInput(attrs={'placeholder':
+                                          'ISD-AS of the AS to connect to'})
+        )
+
         if 'BorderRouters' in ad.original_topology.keys():
             for border_router in ad.original_topology['BorderRouters'].values():
                 val = border_router['Interface']['ToAddr']
@@ -74,10 +82,14 @@ class ConnectionRequestForm(forms.ModelForm):
 
     class Meta:
         model = ConnectionRequest
-        fields = ('info', 'router_public_ip', 'router_public_port')
+        fields = ('connect_to', 'info', 'router_public_ip', 'router_public_port', 'mtu',
+                  'bandwidth', 'link_type')
         # 'router_bound_ip','router_bound_port',
-        labels = {'router_public_ip': 'Router external IP',
-                  'router_public_port': 'Router external port'}
+        labels = {'connect_to': 'Connect to',
+                  'router_public_ip': 'Router external IP',
+                  'router_public_port': 'Router external port',
+                  'mtu': 'MTU',
+                  'link_type': 'link type'}
         # 'router_bound_ip': 'Router bound IP',
 
 
