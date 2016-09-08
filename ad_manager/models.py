@@ -100,7 +100,7 @@ class AD(models.Model):
         element_ids = [element.id_str() for element in all_elements]
         return element_ids
 
-    def fill_from_topology(self, topology_dict, clear=False):
+    def fill_from_topology(self, topology_dict, clear=False, auto_refs=False):
         """
         Add infrastructure elements (servers, routers) to the AD, extracted
         from the topology dictionary.
@@ -131,8 +131,29 @@ class AD(models.Model):
                 isd_as_split = interface["ISD_AS"].split('-')
                 isd_str = isd_as_split[0]
                 as_str = isd_as_split[1]
-                neighbor_ad = AD.objects.get(id=as_str,
-                                             isd=isd_str)
+
+                try:
+                    neighbor_ad = AD.objects.get(id=as_str,
+                                                 isd=isd_str)
+                except AD.DoesNotExist:
+                    if auto_refs:
+                        # Handles missing references
+                        # breaks circular dependencies by creating empty ASes
+                        # as needed
+                        try:
+                            isd = ISD.objects.get(id=isd_str)
+                        except ISD.DoesNotExist:
+                            isd = ISD(id=isd_str)
+                            isd.save()
+                        as_obj = AD.objects.create(id=as_str, isd=isd,
+                                                   is_core_ad=0,
+                                                   is_open=False)
+                        as_obj.save()
+
+                        neighbor_ad = AD.objects.get(id=as_str,
+                                                     isd=isd_str)
+                    else:
+                        raise
 
                 RouterWeb.objects.update_or_create(
                     addr=router["Addr"], ad=self,

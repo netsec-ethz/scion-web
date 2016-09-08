@@ -36,7 +36,7 @@
             </div>
         </div>
       </form>
-      <form id="createASByFile" method="POST" enctype="multipart/form-data" action="{% url 'upload_file_ref' %}" class="disp-inline-block">
+      <form id="createASByFile" method="POST" enctype="multipart/form-data" action="{% url 'upload_file_ref' %}" class="disp-inline-block topofile-form">
         {% csrf_token %}
         <div class="hidden" id="topoInitUpload">
             {% bootstrap_form upload_form %}
@@ -54,7 +54,7 @@
       Select the .topo file you want to use to create the trc for this ISD.
       <span class="text-success">You are currently using the following certificate file: </span>
       <span id="certfileName">no file</span>
-      <form class="form-inline" method="POST" enctype="multipart/form-data" action="{% url 'upload_file_ref' %}">
+      <form class="form-inline certfile-form" method="POST" enctype="multipart/form-data" action="{% url 'upload_file_ref' %}">
         {% csrf_token %}
         {% bootstrap_form upload_form %}
         <button type="submit" class="btn btn-default click-confirm" id="upload-topo-btn" name="_upload_topo">
@@ -65,17 +65,20 @@
 
   <script>
     if (sessionStorage.getItem("certFileInUse")) {
-        document.getElementById('certfileName').innerHTML = sessionStorage.getItem("certFileInUse");
+        $('#certfileName').innerHTML = sessionStorage.getItem("certFileInUse");
     }
-    document.getElementById('id_file').onchange = function () {
-        var certFileName = $('#id_file')[0].value;
+    $('.certfile-form').find('#id_file').change(function () {
+        var certFileName = $('.certfile-form').find('#id_file')[0].value;
         sessionStorage.certFileInUse = certFileName;
-        document.getElementById('certfileName').innerHTML = sessionStorage.getItem("certFileInUse");
-    }
+        $('#certfileName').html(sessionStorage.getItem("certFileInUse"));
+    });
 
     function delayedUpload(uploadInput, id) {
+        $(uploadInput).find('#id_file').attr('multiple', 'multiple');
         $(uploadInput).find('#id_file').click();
-        document.getElementById(id).submit();
+        $(uploadInput).find('#id_file').change(function (){
+            document.getElementById(id).submit();
+        });
     }
   </script>
 

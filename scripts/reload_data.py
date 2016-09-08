@@ -76,7 +76,7 @@ def get_topology(file):
             return []  # TODO: give user feedback
 
 
-def reload_data_from_files(topology_files):
+def reload_data_from_files(topology_files, on_the_fly_refs=False):
     ad_num = len(topology_files)
     print("> {} yaml topology files found".format(ad_num))
 
@@ -141,7 +141,7 @@ def reload_data_from_files(topology_files):
         ad = AD.objects.get(id=as_topo.isd_as[1], isd=isds[
             as_topo.isd_as[0]])  # getitem[0] = self._isd, [1] = self._as
         topo_dict = as_topo_dicts[ad.id]
-        ad.fill_from_topology(topo_dict)
+        ad.fill_from_topology(topo_dict, auto_refs=on_the_fly_refs)
         print('> AS {} is loaded'.format(ad))
     transaction.commit()
     transaction.set_autocommit(True)
