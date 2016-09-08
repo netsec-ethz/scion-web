@@ -63,6 +63,8 @@ from lib.defines import GEN_PATH, PROJECT_ROOT
 from ad_manager.util.hostfile_generator import generate_ansible_hostfile
 from scripts.reload_data import reload_data_from_files
 
+from ad_manager.util.zlog_gen import create_zlog_file
+
 import subprocess
 from shutil import copy, copytree
 
@@ -943,6 +945,11 @@ def create_local_gen(isd_as, tp):
             one_of_topology = particular_topo_instance(tp, type_key)
             with open(one_of_topology_path, 'w') as file:
                 yaml.dump(one_of_topology, file, default_flow_style=False)
+
+            # created zlog file
+            zlog_path = os.path.join(node_path, 'zlog.conf')
+            create_zlog_file(zlog_path, serv_name)
+
             # copy(yaml_topo_path, node_path)  # Do not share global topology
             # as each node get its own topology file
 
