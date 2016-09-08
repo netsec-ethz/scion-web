@@ -49,6 +49,9 @@ class ConnectionRequestForm(forms.ModelForm):
         ad = get_object_or_404(AD, id=current_as_id)  # TODO: request by as_id
         remote_ip_choices = []
 
+        self.fields['connect_from'] = forms.CharField(
+            widget=forms.HiddenInput(attrs={'value': current_as_id})
+        )
         self.fields['connect_to'] = forms.CharField(
             widget=forms.TextInput(attrs={'placeholder':
                                           'ISD-AS of the AS to connect to'})

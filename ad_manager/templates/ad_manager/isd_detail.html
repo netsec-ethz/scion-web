@@ -89,7 +89,7 @@
 
         var url = "../../api/v1/internal/get_new_as_id/isd/" + isd + "/";
         $.post( url, function( data ) {
-          data = data['join_replies']
+          data = data['join_replies'];
           for (var i=0; i<data.length; i++) {
             $('#new_as_id_field').append('<option request_id="' + data[i]['request_id'] + '" value="' + data[i]['isdas'] + '"></option>');
           }

@@ -54,6 +54,7 @@ from ad_manager.util.defines import (
     UPLOAD_CONN_REPLIES_SVC,
     POLL_CONN_REPLIES_SVC,
     POLL_EVENTS_SVC,
+    INSERT_AS,
     INITIAL_CERT_VERSION
 )
 from ad_manager.forms import (
@@ -172,6 +173,19 @@ def add_as(request):
     isd_as = request.POST['inputASname']
     current_isd = request.POST['inputISDname']
 
+    coord_settings = get_object_or_404(OrganisationAdmin,
+                                       user_id=request.user.id)
+
+    key = coord_settings.key + "/"
+    secret = coord_settings.secret
+
+    base_url = COORD_SERVICE_URI
+
+    insert_as_url = INSERT_AS
+
+    request_url = reduce(urljoin, [base_url, insert_as_url, key, secret])
+    headers = {'content-type': 'application/json'}
+
     try:
         request_id = int(request.POST['inputRequestID'])
         jr = JoinRequest.objects.get(request_id=request_id)
@@ -189,10 +203,21 @@ def add_as(request):
             certificate=jr.certificate,
             trc=jr.trc
         )
+
+        try:
+            r = requests.post(request_url,
+                              json={'isdas': str(isd_as), 'core': False},
+                              headers=headers
+                              )
+        except:
+            print("Failed to create AS at coordination service")
+
     except (JoinRequest.DoesNotExist, ValueError):
         # no valid JoinRequest with this id, handle manually set id
         if '-' in isd_as:
             _, as_id = isd_as.split('-')
+        else:
+            as_id = isd_as
 
         try:
             as_id = int(as_id)
@@ -363,8 +388,8 @@ def new_as_id(request, isd_id):
                     jr = JoinRequest.objects.get(request_id=request_id)
                 except JoinRequest.DoesNotExist:
                     # We have a reply for a request we never made
-                    print("Unsollicited reply with id: ".format(request_id))
-                    pass
+                    print("Unsolicited reply with id: {}".format(request_id))
+                    continue
                 if jr.status != 'ACCEPTED':
                     jr.status = 'ACCEPTED'
                     jr.certificate = join_reply['certificate']
@@ -509,47 +534,6 @@ def read_log(request, pk, proc_id):
 
 
 @login_required
-def accept_connection_request(request, isd_as, request_id):
-    coord_settings = get_object_or_404(OrganisationAdmin,
-                                       user_id=request.user.id)
-    key = coord_settings.key + "/"
-    secret = coord_settings.secret
-
-    ad_request = get_object_or_404(ConnectionRequest, id=request_id)
-    ad = ad_request.connect_to
-    _check_user_permissions(request, ad)
-
-    if '_approve_request' in request.POST:
-        if not ad_request.is_approved():
-            ad_request.status = 'APPROVED'
-            replying_as = isd_as
-            requester_isdas = '1-' + str(ad_request.new_ad.as_id)
-            accept_conn_dict = {"isdas": replying_as,
-                                "certificate": "accepting_as_certificate",
-                                "replies": [{
-                                    "request_id": int(request_id),
-                                    "requester_isdas": requester_isdas,
-                                    "certificate": "requester_certificate",
-                                    "ip": "127.0.0.1",
-                                    "port": 1234,
-                                    "mtu": 1234,
-                                    "bandwidth": 1234,
-                                }]
-                                }
-            base_url = COORD_SERVICE_URI
-            accept_conn_url = UPLOAD_CONN_REPLIES_SVC
-            request_url = reduce(urljoin,
-                                 [base_url, accept_conn_url, key, secret])
-            headers = {'content-type': 'application/json'}
-            r = requests.post(request_url, json=accept_conn_dict,
-                              headers=headers)
-            answer = r.json()
-            print(answer)
-    elif '_decline_request' in request.POST:
-        ad_request.status = 'DECLINED'
-
-
-@login_required
 def accept_connection_request_auto(request, request_id):
     coord_settings = get_object_or_404(OrganisationAdmin,
                                        user_id=request.user.id)
@@ -607,18 +591,20 @@ class ConnectionRequestView(FormView):
         posted_data = self.request.POST
 
         connect_to = posted_data['connect_to']
-        con_request = form.instance
-        con_request.connect_to = connect_to
-        con_request.created_by = self.request.user
-        con_request.status = 'SENT'
+        connect_from = posted_data['connect_from']
+        conn_request = form.instance
+        conn_request.connect_to = connect_to
+        conn_request.connect_from = get_object_or_404(AD, id=connect_from)
+        conn_request.created_by = self.request.user
+        conn_request.status = 'SENT'
 
-        con_request.info = posted_data['info']
-        con_request.router_public_ip = posted_data['router_public_ip']
-        con_request.router_public_port = posted_data['router_public_port']
-        con_request.mtu = posted_data['mtu']
-        con_request.bandwidth = posted_data['bandwidth']
-        con_request.link_type = posted_data['link_type']
-        # con_request.save()
+        conn_request.info = posted_data['info']
+        conn_request.router_public_ip = posted_data['router_public_ip']
+        conn_request.router_public_port = posted_data['router_public_port']
+        conn_request.mtu = posted_data['mtu']
+        conn_request.bandwidth = posted_data['bandwidth']
+        conn_request.link_type = posted_data['link_type']
+        conn_request.save()
 
         # Talk to SCION coordination service, post connection request
         coord_settings = get_object_or_404(OrganisationAdmin,
@@ -630,13 +616,13 @@ class ConnectionRequestView(FormView):
         connection_request_dict = {"isdas": isd_as,
                                    "Certificate": self._get_ad().certificate,
                                    "requests": [
-                                       {"info": con_request.info,
-                                        "isdas": isd_as,
-                                        "ip":  con_request.router_public_ip,
-                                        "port": int(con_request.router_public_port),
-                                        "mtu": int(con_request.mtu),
-                                        "bandwidth": int(con_request.bandwidth),
-                                        "linktype": con_request.link_type}
+                                       {"info": conn_request.info,
+                                        "isdas": connect_to,
+                                        "ip":  conn_request.router_public_ip,
+                                        "port": int(conn_request.router_public_port),
+                                        "mtu": int(conn_request.mtu),
+                                        "bandwidth": int(conn_request.bandwidth),
+                                        "linktype": conn_request.link_type}
                                    ]
                                    }
         base_url = COORD_SERVICE_URI
@@ -650,7 +636,12 @@ class ConnectionRequestView(FormView):
         response = r.json()
         print(response)
 
-        accept_connection_request_auto(self.request, response['ids'][0])
+        # We sent a single request for which we retrieve the request_id
+        # assigned by the coordination service
+        conn_request.request_id = response['ids'][0]
+        conn_request.save()
+
+        #  accept_connection_request_auto(self.request, response['ids'][0])
 
         self.success_url = reverse('sent_requests')
         return super().form_valid(form)
@@ -772,25 +763,59 @@ def approve_request(ad, ad_request):
         ad.save()
 
 
+@login_required
+def accept_connection_request(request, request_id, replying_as, requester_isdas,
+                              requester_cert):
+    coord_settings = get_object_or_404(OrganisationAdmin,
+                                       user_id=request.user.id)
+    key = coord_settings.key + "/"
+    secret = coord_settings.secret
+
+    accept_conn_dict = {"isdas": str(replying_as),
+                        "certificate": replying_as.certificate,
+                        "replies": [{
+                            "request_id": int(request_id),
+                            "requester_isdas": requester_isdas,
+                            "certificate": requester_cert,
+                            "ip": "127.0.0.1",  #
+                            "port": 1234,
+                            "mtu": 1234,
+                            "bandwidth": 1234,
+                            }]
+                        }
+    base_url = COORD_SERVICE_URI
+    accept_conn_url = UPLOAD_CONN_REPLIES_SVC
+    request_url = reduce(urljoin, [base_url, accept_conn_url, key, secret])
+    headers = {'content-type': 'application/json'}
+    r = requests.post(request_url, json=accept_conn_dict, headers=headers)
+    print(r.text)
+
+
 @transaction.atomic
 @require_POST
 def request_action(request, req_id):
     """
     Approve or decline the sent connection request.
     """
-    ad_request = get_object_or_404(ConnectionRequest, id=req_id)
-    ad = ad_request.connect_to
-    _check_user_permissions(request, ad)
+    replying_isdas = request.POST['replying_isdas']
+    requester_isdas = request.POST['requester_isdas']
+    requester_cert = request.POST['requester_cert']
+    isd_id, as_id = replying_isdas.split('-')
+
+    replying_as = get_object_or_404(AD, isd=isd_id, as_id=as_id)
+    _check_user_permissions(request, replying_as)
 
     if '_approve_request' in request.POST:
-        if not ad_request.is_approved():
-            approve_request(ad, ad_request)
+        accept_connection_request(request, req_id,
+                                  replying_as, requester_isdas, requester_cert)
+        #  Create/update topology
     elif '_decline_request' in request.POST:
-        ad_request.status = 'DECLINED'
+        # Denied request are simply ignored according to the current scion coord
+        # implementation
+        pass
     else:
         return HttpResponseNotFound('Action not found')
-    ad_request.save()
-    return redirect(reverse('ad_connection_requests', args=[ad.id]))
+    return redirect(reverse('ad_connection_requests', args=[replying_as.id]))
 
 
 @login_required
@@ -805,51 +830,51 @@ def list_sent_requests(request):
                                        user_id=request.user.id)
     key = coord_settings.key + "/"
     secret = coord_settings.secret
-    poll_reply_dict = {
-                        "isdas": "1-2"
-                      }
-    base_url = COORD_SERVICE_URI
-    poll_request_url = POLL_CONN_REPLIES_SVC
-    request_url = reduce(urljoin, [base_url, poll_request_url, key, secret])
-    headers = {'content-type': 'application/json'}
-    r = requests.post(request_url, json=poll_reply_dict, headers=headers)
-    received_replies = r.json()
 
-    if False and 'replies' in received_replies and len(received_replies['replies']) > 0:
-        received_replies = received_replies['replies'][0]
+    received_replies = {}
+    if sent_requests:
 
-        received_replies['id'] = received_replies.pop('request_id')
-        received_replies['status'] = received_replies.pop('status')
-        received_replies['connect_to'] = received_replies.pop('requester_isdas')
-        received_replies['created_by_id'] = user.id
-        received_replies['info'] = received_replies.pop('info')
-        received_replies['new_ad'] = received_replies.pop('connect_to')
-        received_replies['router_public_ip'] = received_replies.pop('ip')
-        received_replies['router_public_port'] = received_replies.pop('port')
+        requesting_ases = []
+        for conn_request in sent_requests:
+            requesting_ases.append(conn_request.connect_from)
+        requesting_ases = set(requesting_ases)
+        requesting_ases.discard(None)
 
-        isd_id, as_id = received_replies['connect_to'].split('-')
-        connect_to = AD.objects.get(as_id=as_id,
-                                    isd=isd_id)
-        #  insert new connection replies retrieved
-        con_request = ConnectionRequest()
-        con_request.connect_to = connect_to
-        con_request.created_by = User.objects.get(
-            id=received_replies['created_by_id']
-        )
-        con_request.status = 'ACCEPTED'
-        con_request.info = received_replies['info']
-        con_request.router_public_ip = received_replies['router_public_ip']
-        con_request.router_public_port = received_replies['router_public_port']
-        con_request.save()
+        received_replies = {'replies': []}
+        for isd_as in requesting_ases:
+            poll_reply_dict = {
+                                "isdas": str(isd_as)
+                              }
+            base_url = COORD_SERVICE_URI
+            poll_request_url = POLL_CONN_REPLIES_SVC
+            request_url = reduce(urljoin, [base_url, poll_request_url, key, secret])
+            headers = {'content-type': 'application/json'}
+            r = requests.post(request_url, json=poll_reply_dict, headers=headers)
+            reply = r.json()
+            if reply:
+                received_replies['replies'].extend(reply['replies'])
 
-        received_replies = [received_replies]
-    else:
-        received_replies = []
+    new_received_replies = []
+    if 'replies' in received_replies:
+        for reply in received_replies['replies']:
+            request_id = reply['request_id']
+            try:
+                conn_request = ConnectionRequest.objects.get(
+                    request_id=request_id
+                )
+                if conn_request.status != 'APPROVED':
+                    conn_request.status = 'APPROVED'
+                    conn_request.save()
+                    new_received_replies.append(conn_request)
+                    sent_requests = sent_requests.exclude(request_id=request_id)
+            except ConnectionRequest.DoesNotExist:
+                # We have a reply for a request we never made
+                print("Unsolicited reply with id: {}".format(request_id))
+                continue
 
     return render(request, 'ad_manager/sent_requests.html',
                   {'sent_requests': sent_requests,
-                   'received_replies': received_replies
-                   }
+                   'received_replies': new_received_replies}
                   )
 
 
@@ -999,6 +1024,8 @@ def st_int(s, default):
 def name_entry_dict(name_l, address_l, port_l, addr_int_l, port_int_l):
     ret_dict = {}
     for i in range(len(name_l)):
+        if address_l[i] == '':
+            continue  # don't include empty entries
         ret_dict[name_l[i]] = {'Addr': address_l[i],
                                'Port': st_int(port_l[i],
                                               SCION_SUGGESTED_PORT),
@@ -1024,6 +1051,8 @@ def name_entry_dict_router(tp):
     remote_port_list = tp.getlist('inputInterfaceRemotePort')
     own_port_list = tp.getlist('inputInterfaceOwnPort')
     for i in range(len(name_list)):
+        if address_list[i] == '':
+            continue  # don't include empty entries
         ret_dict[name_list[i]] = {'Addr': address_list[i],
                                   'Port': st_int(port_list[i],
                                                  SCION_SUGGESTED_PORT),

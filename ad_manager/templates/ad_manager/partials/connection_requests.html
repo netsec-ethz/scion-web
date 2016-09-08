@@ -13,6 +13,7 @@
       <th class="col-md-2">Signing key</th>
       <th class="col-md-2">Encryption key</th>
       <th class="col-md-3">Info</th>
+      <th class="col-md-2">Actions</th>
     </tr>
     </thead>
 
@@ -24,7 +25,7 @@
         <td>
           <pre>{{ request.info }}</pre>
         </td>
-        <td class="col-md-2">
+        <td class="col-md-3">
           <form method="POST" action="{% url 'accept_join' isd_as=isdas request_id=request.id %}" class="request-approve-form">
             {% csrf_token %}
             <input type="text" name="sig_pub_key" value="{{ request.sigkey }}" class="hidden">
@@ -58,19 +59,17 @@
     <tbody>
     {% for request in received_requests %}
       <tr>
-        <td>{{ request.created_by }}</td>
+        <td>{{ request.requester_isdas }}</td>
         <td>
           <pre>{{ request.info }}</pre>
         </td>
         <td>
-          <div class="collapse" id="info-{{ request.id }}">
             <div class="well">
-              <b>Remote border router</b> {{ request.router_public_ip }} : {{ request.router_public_port }} <br />
+              <b>Remote border router</b> {{ request.ip }} : {{ request.port }} <br />
               {% if request.new_ad %}
                 New AS: <a href="{% url 'ad_detail' request.new_ad.id %}">{{ request.new_ad }}</a>
               {% endif %}
             </div>
-          </div>
         </td>
         <td>
           <a role="button" data-toggle="collapse" href="#info-{{ request.id }}" aria-expanded="false" aria-controls="collapseExample">
@@ -80,6 +79,9 @@
         <td>
           <form method="POST" action="{% url 'connection_request_action' request.id %}" class="request-approve-form">
             {% csrf_token %}
+            <input type="text" name="requester_isdas" value="{{ request.requester_isdas }}" class="hidden">
+            <input type="text" name="requester_cert" value="{{ request.requester_certificate }}" class="hidden">
+            <input type="text" name="replying_isdas" value="{{ object }}" class="hidden">
             <button type="submit" class="btn btn-success btn-sm click-confirm" name="_approve_request">
               Approve
             </button>

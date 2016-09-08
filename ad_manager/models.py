@@ -338,9 +338,12 @@ class ConnectionRequest(models.Model):
     STATUS_OPTIONS = ['NONE', 'SENT', 'APPROVED', 'DECLINED']
     LINK_TYPE = ['PARENT', 'CHILD', 'PEER', 'ROUTING']
 
+    # request_id assigned by the coordination service
+    request_id = models.IntegerField(null=True)
+
     created_by = models.ForeignKey(User)
     connect_to = models.CharField(max_length=100, null=True, blank=True)
-    new_ad = models.ForeignKey(AD, blank=True, null=True)
+    connect_from = models.ForeignKey(AD, blank=True, null=True)
     info = models.TextField()
     router_public_ip = models.GenericIPAddressField()
     router_public_port = models.IntegerField(default=int(PORT))
@@ -353,7 +356,7 @@ class ConnectionRequest(models.Model):
                               choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
                               default='NONE')
 
-    related_fields = ('new_ad__isd', 'created_by')
+    related_fields = ('connect_from__isd', 'created_by')
     objects = SelectRelatedModelManager()
 
     def is_approved(self):
