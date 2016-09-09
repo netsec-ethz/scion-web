@@ -777,23 +777,28 @@ def approve_request(ad, ad_request):
 
 
 @login_required
-def accept_connection_request(request, request_id, replying_as, requester_isdas,
-                              requester_cert):
+def accept_connection_request(request, request_id, replying_as, posted_data):
     coord_settings = get_object_or_404(OrganisationAdmin,
                                        user_id=request.user.id)
     key = coord_settings.key + "/"
     secret = coord_settings.secret
 
+    # AS requesting the connection and AS accepting the connection should agree
+    # on MTU and bandwidth of a link
+    negociated_mtu = min(posted_data['accepted_mtu'],
+                         posted_data['requested_mtu'])
+    negociated_bandwidth = min(posted_data['accepted_bandwidth'],
+                               posted_data['requested_bandwidth'])
+
     accept_conn_dict = {"isdas": str(replying_as),
-                        "certificate": replying_as.certificate,
+                        "certificate": str(replying_as.certificate),
                         "replies": [{
                             "request_id": int(request_id),
-                            "requester_isdas": requester_isdas,
-                            "certificate": requester_cert,
-                            "ip": "127.0.0.1",  #
-                            "port": 1234,
-                            "mtu": 1234,
-                            "bandwidth": 1234,
+                            "requester_isdas": posted_data['requester_isdas'],
+                            "ip": posted_data['router_public_ip'],
+                            "port": int(posted_data['router_public_port']),
+                            "mtu": int(negociated_mtu),
+                            "bandwidth": int(negociated_bandwidth),
                             }]
                         }
     base_url = COORD_SERVICE_URI
@@ -810,17 +815,15 @@ def request_action(request, req_id):
     """
     Approve or decline the sent connection request.
     """
-    replying_isdas = request.POST['replying_isdas']
-    requester_isdas = request.POST['requester_isdas']
-    requester_cert = request.POST['requester_cert']
+    posted_data = request.POST
+    replying_isdas = posted_data['replying_isdas']
     isd_id, as_id = replying_isdas.split('-')
 
     replying_as = get_object_or_404(AD, isd=isd_id, as_id=as_id)
     _check_user_permissions(request, replying_as)
 
     if '_approve_request' in request.POST:
-        accept_connection_request(request, req_id,
-                                  replying_as, requester_isdas, requester_cert)
+        accept_connection_request(request, req_id, replying_as, posted_data)
         #  Create/update topology
     elif '_decline_request' in request.POST:
         # Denied request are simply ignored according to the current scion coord
