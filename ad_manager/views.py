@@ -579,6 +579,8 @@ def st_int(s, default):
 def name_entry_dict(name_l, address_l, port_l, addr_int_l, port_int_l):
     ret_dict = {}
     for i in range(len(name_l)):
+        if address_l[i] == '':
+            continue  # don't include empty entries
         ret_dict[name_l[i]] = {'Addr': address_l[i],
                                'Port': st_int(port_l[i],
                                               SCION_SUGGESTED_PORT),
@@ -604,6 +606,8 @@ def name_entry_dict_router(tp):
     remote_port_list = tp.getlist('inputInterfaceRemotePort')
     own_port_list = tp.getlist('inputInterfaceOwnPort')
     for i in range(len(name_list)):
+        if address_list[i] == '':
+            continue  # don't include empty entries
         ret_dict[name_list[i]] = {'Addr': address_list[i],
                                   'Port': st_int(port_list[i],
                                                  SCION_SUGGESTED_PORT),

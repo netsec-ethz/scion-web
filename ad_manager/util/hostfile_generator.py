@@ -25,13 +25,13 @@ def add_new_section(config, section_name):
 def fill_section(config, section_name, val, tags, hostname_lookup):
     server_index = 0
     add_new_section(config, section_name)
-    for entry in val:
+    for (serv_id, entry) in val:
         server_index += 1
         entry = entry.split('/')[0]  # remove subnet size
         try:
             hostname = hostname_lookup[entry]
         except KeyError:
-            hostname = ''  # no hostname defined
+            hostname = serv_id  # no hostname defined, use identifier
         config[section_name][entry] = tags + '={} # {}'.format(server_index,
                                                                hostname)
 
@@ -43,7 +43,7 @@ def fill_router_section(config, section_name, val, remote_isd_as,
     remote_isd, remote_as = zip(
         *map(lambda ip: ip.split('-'), remote_isd_as)
     )
-    for entry in val:
+    for (serv_id, entry) in val:
         tags = base_tags + 'to_isd={}' ' to_as={} {}'.format(
             remote_isd[server_index],
             remote_as[server_index],
@@ -53,8 +53,12 @@ def fill_router_section(config, section_name, val, remote_isd_as,
         try:
             hostname = hostname_lookup[entry]
         except KeyError:
-            hostname = ''  # no hostname defined
-        config[section_name][entry] = tags + '={} # {}'.format(server_index,
+            hostname = serv_id  # no hostname defined, use identifier
+        try:
+            isd_id, as_id, instance_id = serv_id.split('-')
+        except ValueError:
+            instance_id = server_index
+        config[section_name][entry] = tags + '={} # {}'.format(instance_id,
                                                                hostname)
 
 
@@ -81,7 +85,8 @@ def set_cloud_providers(config, topology_params):
 
 
 def get_section_attr(mockup_dict, section_name, attr):
-    return [server[attr] for server in mockup_dict[section_name].values()]
+    section = mockup_dict[section_name]
+    return [(sec_id, section[sec_id][attr]) for sec_id in section]
 
 
 def generate_ansible_hostfile(topology_params, mockup_dict, isd_as,commit_hash):
@@ -118,7 +123,7 @@ def generate_ansible_hostfile(topology_params, mockup_dict, isd_as,commit_hash):
             fill_section(config, section_name, val, tags, hostname_lookup)
         elif service_type == 'router':
             interfaces = get_section_attr(mockup_dict, key+'s', 'Interface')
-            remote_isd_as = [x['ISD_AS'] for x in interfaces]
+            remote_isd_as = [x['ISD_AS'] for (_, x) in interfaces]
             section_name = 'border_routers'
             tags = 'isd={} as={} '.format(isd_id,
                                           as_id)
