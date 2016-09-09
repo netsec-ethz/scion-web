@@ -45,6 +45,8 @@ from ad_manager.util.response_handling import (
 )
 from ad_manager.util.util import to_b64, from_b64
 from ad_manager.util.defines import (
+    DEFAULT_BANDWIDTH,
+    SCION_SUGGESTED_PORT,
     COORD_SERVICE_URI,
     UPLOAD_JOIN_REQUEST_SVC,
     UPLOAD_JOIN_REPLIES_SVC,
@@ -94,9 +96,6 @@ from scripts.reload_data import reload_data_from_files
 
 import subprocess
 from shutil import copy, copytree
-
-DEFAULT_BANDWIDTH = 1000
-SCION_SUGGESTED_PORT = 31000
 
 GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
 WEB_ROOT = os.path.join(PROJECT_ROOT, 'sub', 'web')  # TODO:fix import all paths

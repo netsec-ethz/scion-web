@@ -14,10 +14,16 @@ from lib.defines import (
     BEACON_SERVICE,
     CERTIFICATE_SERVICE,
     PATH_SERVICE,
-    SIBRA_SERVICE
+    SIBRA_SERVICE,
+    DEFAULT_MTU
 )
 
-PORT = 31000
+from ad_manager.util.defines import (
+    DEFAULT_BANDWIDTH,
+    SCION_SUGGESTED_PORT,
+)
+
+PORT = SCION_SUGGESTED_PORT
 PACKAGE_DIR_PATH = 'gen'
 
 
@@ -347,8 +353,8 @@ class ConnectionRequest(models.Model):
     info = models.TextField()
     router_public_ip = models.GenericIPAddressField()
     router_public_port = models.IntegerField(default=int(PORT))
-    mtu = models.IntegerField(null=True, default=1400)
-    bandwidth = models.IntegerField(null=True, default=1000)
+    mtu = models.IntegerField(null=True, default=DEFAULT_MTU)
+    bandwidth = models.IntegerField(null=True, default=DEFAULT_BANDWIDTH)
     link_type = models.CharField(max_length=20,
                                  choices=zip(LINK_TYPE, LINK_TYPE),
                                  default='CHILD')
