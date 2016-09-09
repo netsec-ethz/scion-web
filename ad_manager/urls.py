@@ -57,6 +57,8 @@ ad_patterns = patterns(
         views.ADDetailView.as_view(), name='ad_detail'),
     url(r'^ads/(?P<pk>\d+)/#!topology$',
         views.ADDetailView.as_view(), name='ad_detail_topology'),
+    url(r'^ads/(?P<pk>\d+)/#!topology&expanded_routers$',
+        views.ADDetailView.as_view(), name='ad_detail_topology_routers'),
     url(r'^ads/(?P<pk>\d+)/#!updates$',
         views.ADDetailView.as_view(), name='ad_detail_updates'),
     url(r'^ads/(?P<pk>\d+)/#!requests$',

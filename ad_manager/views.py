@@ -618,7 +618,7 @@ class ConnectionRequestView(FormView):
         # Issue with typeflaw attack, and replay when we permit multiple request
         # to be sent in bulk without signing over isdas and request parameters
         # certificate is not included in signature
-        connection_request_dict = {"isdas": isd_as, "request": [
+        connection_request_dict = {"isdas": isd_as, "request":
             {"info": conn_request.info,
              "isdas": connect_to,
              "ip": conn_request.router_public_ip,
@@ -628,14 +628,15 @@ class ConnectionRequestView(FormView):
              "linktype": conn_request.link_type,
              "timestamp":
                  iso_timestamp(int(time.time()))},
-        ], "signature": ""}
+        "signature": ""}
 
         # Signature is over the JSON string representation
         # of connection_request_dict
         signing_key = conn_request.connect_from.sig_priv_key
         signed_content = json.dumps(connection_request_dict, sort_keys=True)
-        connection_request_dict["signature"] = sign(signed_content,
-                                                    signing_key)
+        signed_content = bytes(signed_content.encode('utf-8'))
+        signature = to_b64(sign(signed_content, from_b64(signing_key)))
+        connection_request_dict["signature"] = signature
 
         connection_request_dict["certificate"] = self._get_ad().certificate
         base_url = COORD_SERVICE_URI
@@ -825,13 +826,15 @@ def request_action(request, req_id):
     if '_approve_request' in request.POST:
         accept_connection_request(request, req_id, replying_as, posted_data)
         #  Create/update topology
+        return redirect(
+            reverse('ad_detail_topology_routers', args=[replying_as.id]))
     elif '_decline_request' in request.POST:
         # Denied request are simply ignored according to the current scion coord
         # implementation
-        pass
-    else:
-        return HttpResponseNotFound('Action not found')
-    return redirect(reverse('ad_connection_requests', args=[replying_as.id]))
+        return redirect(
+            reverse('ad_connection_requests', args=[replying_as.id]))
+
+    return HttpResponseNotFound('Action not found')
 
 
 @login_required
