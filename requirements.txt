@@ -1,5 +1,5 @@
 # Main
-Django==1.7.8
+Django==1.8.13
 django-bootstrap3==5.4.0
 webtest==2.0.18
 gitpython==1.0.1
