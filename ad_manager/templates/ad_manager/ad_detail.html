@@ -11,7 +11,7 @@
 {% block content %}
   {% include 'ad_manager/partials/object_path.html' %}
 
-  <h4 id="core-label" class="ad-label">
+  <h4 id="core-label" class="as-label">
     Core AS:
     {{ object.is_core_ad|yesno:"Yes,No,???" }}
     <span class="glyphicon glyphicon-{{ object.is_core_ad|yesno:"ok,remove," }}"></span>
