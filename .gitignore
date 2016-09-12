@@ -32,7 +32,7 @@ Thumbs.db
 
 
 # scion-web generated files
-/ad_manager/static/tmp/
+/as_manager/static/tmp/
 *.sqlite3
 
 

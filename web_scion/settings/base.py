@@ -35,7 +35,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'bootstrap3',
-    'ad_manager',
+    'as_manager',
     'guardian',
 
     # Two-factor authentication
@@ -69,7 +69,7 @@ WSGI_APPLICATION = 'web_scion.wsgi.application'
 
 TEMPLATE_CONTEXT_PROCESSORS = TCP + (
     'django.core.context_processors.request',
-    'ad_manager.context_processors.account_urls',
+    'as_manager.context_processors.account_urls',
 )
 
 

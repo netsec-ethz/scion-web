@@ -1,0 +1,369 @@
+# Stdlib
+import copy
+import logging
+
+# External packages
+import jsonfield
+from django.contrib.auth.models import User
+from django.core.urlresolvers import reverse
+from django.db import models, IntegrityError
+
+# SCION
+from as_manager.util.common import empty_dict
+from lib.defines import (
+    BEACON_SERVICE,
+    CERTIFICATE_SERVICE,
+    PATH_SERVICE,
+    SIBRA_SERVICE,
+    DEFAULT_MTU
+)
+
+from as_manager.util.defines import (
+    DEFAULT_BANDWIDTH,
+    SCION_SUGGESTED_PORT,
+)
+
+PORT = SCION_SUGGESTED_PORT
+PACKAGE_DIR_PATH = 'gen'
+
+
+class OrganisationAdmin(models.Model):
+    user = models.OneToOneField(User)
+    is_org_admin = models.BooleanField(default=False)
+    key = models.CharField(max_length=260, null=False, blank=True)
+    secret = models.CharField(max_length=260, null=False, blank=True)
+
+
+class SelectRelatedModelManager(models.Manager):
+    """
+    Model manager that also selects related objects from the database,
+    avoiding multiple similar queries.
+    """
+
+    def get_queryset(self):
+        queryset = super(SelectRelatedModelManager, self).get_queryset()
+        related_fields = getattr(self.model, 'related_fields', [])
+        if not related_fields:
+            return queryset.select_related()
+        else:
+            return queryset.select_related(*related_fields)
+
+
+class ISD(models.Model):
+    id = models.IntegerField(primary_key=True)
+
+    def get_absolute_url(self):
+        return reverse('isd_detail', args=[self.id])
+
+    def __str__(self):
+        return str(self.id)
+
+    class Meta:
+        verbose_name = 'ISD'
+        ordering = ['id']
+
+
+class AS(models.Model):
+    as_id = models.IntegerField()
+    isd = models.ForeignKey('ISD')
+    is_core_as = models.BooleanField(default=False)
+    is_open = models.BooleanField(default=True)
+    md_host = models.GenericIPAddressField(default='127.0.0.1')
+    original_topology = jsonfield.JSONField(default=empty_dict)
+    sig_pub_key = models.CharField(max_length=100, null=True, blank=True)
+    sig_priv_key = models.CharField(max_length=100, null=True, blank=True)
+    enc_pub_key = models.CharField(max_length=100, null=True, blank=True)
+    enc_priv_key = models.CharField(max_length=100, null=True, blank=True)
+    certificate = models.CharField(max_length=1000, null=True, blank=True)
+    trc = models.CharField(max_length=500, null=True, blank=True)
+
+    # Use custom model manager with select_related()
+    objects = SelectRelatedModelManager()
+
+    class Meta:
+        unique_together = (("id", "isd"),)
+        verbose_name = 'AS'
+        ordering = ['id']
+
+    def generate_topology_dict(self):
+        """
+        Create a Python dictionary with the stored AS topology.
+        """
+        assert isinstance(self.original_topology, dict)
+        out_dict = copy.deepcopy(self.original_topology)
+        out_dict.update({
+            'ISDID': int(self.isd_id), 'ADID': int(self.id),
+            'Core': int(self.is_core_as),
+            'BorderRouters': {}, 'PathServers': {}, 'BeaconServers': {},
+            'CertificateServers': {}, 'SibraServers': {},
+        })
+        for router in self.routerweb_set.all():
+            out_dict['BorderRouters'][str(router.name)] = router.get_dict()
+        for ps in self.pathserverweb_set.all():
+            out_dict['PathServers'][str(ps.name)] = ps.get_dict()
+        for bs in self.beaconserverweb_set.all():
+            out_dict['BeaconServers'][str(bs.name)] = bs.get_dict()
+        for cs in self.certificateserverweb_set.all():
+            out_dict['CertificateServers'][str(cs.name)] = cs.get_dict()
+        for sb in self.sibraserverweb_set.all():
+            out_dict['SibraServers'][str(sb.name)] = sb.get_dict()
+        return out_dict
+
+    def get_all_elements(self):
+        elements = [self.routerweb_set.all(),
+                    self.pathserverweb_set.all(),
+                    self.beaconserverweb_set.all(),
+                    self.certificateserverweb_set.all(),
+                    self.sibraserverweb_set.all()]
+        for element_group in elements:
+            for element in element_group:
+                yield element
+
+    def get_all_element_ids(self):
+        all_elements = self.get_all_elements()
+        element_ids = [element.id_str() for element in all_elements]
+        return element_ids
+
+    def fill_from_topology(self, topology_dict, clear=False):
+        """
+        Add infrastructure elements (servers, routers) to the AS, extracted
+        from the topology dictionary.
+        """
+        assert isinstance(topology_dict, dict), 'Dictionary expected'
+
+        if clear:
+            self.routerweb_set.all().delete()
+            self.pathserverweb_set.all().delete()
+            self.certificateserverweb_set.all().delete()
+            self.beaconserverweb_set.all().delete()
+            self.sibraserverweb_set.all().delete()
+
+        self.original_topology = topology_dict
+        self.is_core_as = (topology_dict['Core'] == 1)
+        self.save()
+
+        routers = topology_dict["BorderRouters"]
+        beacon_servers = topology_dict["BeaconServers"]
+        certificate_servers = topology_dict["CertificateServers"]
+        path_servers = topology_dict["PathServers"]
+        sibra_servers = topology_dict["SibraServers"]
+
+        try:
+            for name, router in routers.items():
+                interface = router["Interface"]
+
+                isd_as_split = interface["ISD_AS"].split('-')
+                isd_str = isd_as_split[0]
+                as_str = isd_as_split[1]
+                neighbor_as = AS.objects.get(as_id=as_str,
+                                             isd=isd_str)
+
+                RouterWeb.objects.update_or_create(
+                    addr=router["Addr"], as_obj=self,
+                    addr_internal='',
+                    port_internal=None,
+                    name=name, neighbor_as=neighbor_as,
+                    neighbor_type=interface["LinkType"],
+                    interface_addr=interface["Addr"],
+                    interface_toaddr=interface["ToAddr"],
+                    interface_id=interface["IFID"],
+                    interface_port=interface["UdpPort"],
+                    interface_toport=interface["ToUdpPort"],
+                )
+
+            for name, bs in beacon_servers.items():
+                BeaconServerWeb.objects.\
+                    update_or_create(addr=bs["Addr"],
+                                     addr_internal=bs["AddrInternal"],
+                                     port_internal=bs["PortInternal"],
+                                     name=name,
+                                     as_obj=self)
+
+            for name, cs in certificate_servers.items():
+                CertificateServerWeb.objects.\
+                    update_or_create(addr=cs["Addr"],
+                                     addr_internal=cs["AddrInternal"],
+                                     port_internal=cs["PortInternal"],
+                                     name=name,
+                                     as_obj=self)
+
+            for name, ps in path_servers.items():
+                PathServerWeb.objects.\
+                    update_or_create(addr=ps["Addr"],
+                                     addr_internal=ps["AddrInternal"],
+                                     port_internal=ps["PortInternal"],
+                                     name=name,
+                                     as_obj=self)
+
+            for name, sb in sibra_servers.items():
+                SibraServerWeb.objects.\
+                    update_or_create(addr=sb["Addr"],
+                                     addr_internal=sb["AddrInternal"],
+                                     port_internal=sb["PortInternal"],
+                                     name=name,
+                                     as_obj=self)
+        except IntegrityError:
+            logging.warning("Integrity error in AS.fill_from_topology(): "
+                            "ignoring")
+            raise
+
+    def get_absolute_url(self):
+        return reverse('as_detail', args=[self.id])
+
+    def get_full_process_name(self, id_str):
+        if ':' in id_str:
+            return id_str
+        else:
+            # changed for rpc log retrieval, to match new supervisord names
+            return "as{}-{}:{}".format(self.isd.id, self.id, id_str)
+
+    def __str__(self):
+        return '{}-{}'.format(self.isd.id, self.id)
+
+
+class SCIONWebElement(models.Model):
+    addr = models.GenericIPAddressField()
+    addr_internal = models.GenericIPAddressField(default=None, null=True)
+    port_internal = models.IntegerField(default=None, null=True)
+    as_obj = models.ForeignKey(AS)
+    name = models.CharField(max_length=20, null=True)
+
+    def id_str(self):
+        # FIXME How to identify multiple servers of the same type?
+        # return "{}{}-{}-{}".format(self.prefix, self.ad.isd_id,
+        #                           self.ad_id, self.name)
+        return self.name
+
+    def get_dict(self):
+        return {'AddrType': 'IPV4', 'Addr': self.addr}
+
+    def __str__(self):
+        return '{} -- {}'.format(self.as_obj, self.addr)
+
+    class Meta:
+        abstract = True
+
+
+class BeaconServerWeb(SCIONWebElement):
+    prefix = BEACON_SERVICE
+
+    class Meta:
+        verbose_name = 'Beacon server'
+        unique_together = (("as_obj", "addr"),)
+
+
+class CertificateServerWeb(SCIONWebElement):
+    prefix = CERTIFICATE_SERVICE
+
+    class Meta:
+        verbose_name = 'Certificate server'
+        unique_together = (("as_obj", "addr"),)
+
+
+class PathServerWeb(SCIONWebElement):
+    prefix = PATH_SERVICE
+
+    class Meta:
+        verbose_name = 'Path server'
+        unique_together = (("as_obj", "addr"),)
+
+
+class RouterWeb(SCIONWebElement):
+    NEIGHBOR_TYPES = (
+        ('CHILD',) * 2,
+        ('PARENT',) * 2,
+        ('PEER',) * 2,
+        ('ROUTING',) * 2,
+    )
+
+    neighbor_as = models.ForeignKey(AS, related_name='neighbors')
+    neighbor_type = models.CharField(max_length=10, choices=NEIGHBOR_TYPES)
+
+    interface_id = models.IntegerField()
+    interface_addr = models.GenericIPAddressField()
+    interface_toaddr = models.GenericIPAddressField()
+    interface_port = models.IntegerField(default=int(PORT))
+    interface_toport = models.IntegerField(default=int(PORT))
+
+    def id_str(self):
+        return "er{}-{}er{}-{}".format(self.as_obj.isd_id, self.ad_id,
+                                       self.neighbor_as.isd_id,
+                                       self.neighbor_as.id)
+
+    def get_dict(self):
+        out_dict = super(RouterWeb, self).get_dict()
+        out_dict['Interface'] = {'NeighborType': self.neighbor_type,
+                                 'NeighborISD': int(self.neighbor_as.isd_id),
+                                 'NeighborAD': int(self.neighbor_as.id),
+                                 'Addr': str(self.interface_addr),
+                                 'AddrType': 'IPV4',
+                                 'ToAddr': str(self.interface_toaddr),
+                                 'UdpPort': self.interface_port,
+                                 'ToUdpPort': self.interface_toport,
+                                 'IFID': self.interface_id,
+                                 }
+        return out_dict
+
+    class Meta:
+        verbose_name = 'Router'
+        unique_together = (("as_obj", "addr"),)
+
+
+class SibraServerWeb(SCIONWebElement):
+    prefix = SIBRA_SERVICE
+
+    class Meta:
+        verbose_name = 'SIBRA server'
+        unique_together = (("as_obj", "addr"),)
+
+
+class JoinRequest(models.Model):
+    STATUS_OPTIONS = ['NONE', 'SENT', 'ACCEPTED', 'DECLINED']
+    request_id = models.IntegerField(primary_key=True)
+    created_by = models.ForeignKey(User)
+
+    join_isd = models.ForeignKey(ISD)
+    core_as_signing = models.CharField(max_length=10, null=True)
+    status = models.CharField(max_length=20,
+                              choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
+                              default='NONE')
+
+    sig_pub_key = models.CharField(max_length=100, null=True, blank=True)
+    sig_priv_key = models.CharField(max_length=100, null=True, blank=True)
+    enc_pub_key = models.CharField(max_length=100, null=True, blank=True)
+    enc_priv_key = models.CharField(max_length=100, null=True, blank=True)
+
+    certificate = models.CharField(max_length=1000, null=True, blank=True)
+    trc = models.CharField(max_length=500, null=True, blank=True)
+
+    def is_accepted(self):
+        return self.status == 'ACCEPTED'
+
+
+class ConnectionRequest(models.Model):
+    STATUS_OPTIONS = ['NONE', 'SENT', 'APPROVED', 'DECLINED']
+    LINK_TYPE = ['PARENT', 'CHILD', 'PEER', 'ROUTING']
+
+    # request_id assigned by the coordination service
+    request_id = models.IntegerField(null=True)
+
+    created_by = models.ForeignKey(User)
+    connect_to = models.CharField(max_length=100, null=True, blank=True)
+    connect_from = models.ForeignKey(AS, blank=True, null=True)
+    info = models.TextField()
+    router_public_ip = models.GenericIPAddressField()
+    router_public_port = models.IntegerField(default=int(PORT))
+    mtu = models.IntegerField(null=True, default=DEFAULT_MTU)
+    bandwidth = models.IntegerField(null=True, default=DEFAULT_BANDWIDTH)
+    link_type = models.CharField(max_length=20,
+                                 choices=zip(LINK_TYPE, LINK_TYPE),
+                                 default='CHILD')
+    status = models.CharField(max_length=20,
+                              choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
+                              default='NONE')
+
+    related_fields = ('connect_from__isd', 'created_by')
+    objects = SelectRelatedModelManager()
+
+    def is_approved(self):
+        return self.status == 'APPROVED'

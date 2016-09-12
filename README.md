@@ -49,7 +49,7 @@ Feedback about the script is welcome.
 
 ##### Using PostgreSQL
 
-By default an SQLite database is used, and it works fine if the number of ADs is relatively small (lower than 100). One can switch to using PostgreSQL for improved performance and flexibility.
+By default an SQLite database is used, and it works fine if the number of ASes is relatively small (lower than 100). One can switch to using PostgreSQL for improved performance and flexibility.
 
 1. Install additional system dependencies
 
@@ -76,13 +76,13 @@ By default an SQLite database is used, and it works fine if the number of ADs is
 
 * Creating a topology from the web interface
 
-* Connecting new ADs and connection requests
+* Connecting new ASes and connection requests
 
-Adding new ADs to the network is implemented via the concept of connection requests. Assume you want to create a new AD and to connect it to AD 1. To do that, you open the 'Connection requests' tab of AD 1 and click the 'New request' button. Then you fill the form, providing some information about the prospective AD (purpose, location), including the router (or AD host) details: IP, port. There is an option to specify "external" IP and port if they differ from local values, for example, if the AD host is behind the NAT.
+Adding new ASes to the network is implemented via the concept of connection requests. Assume you want to create a new AS and to connect it to AS 1. To do that, you open the 'Connection requests' tab of AS 1 and click the 'New request' button. Then you fill the form, providing some information about the prospective AS (purpose, location), including the router (or AS host) details: IP, port. There is an option to specify "external" IP and port if they differ from local values, for example, if the AS host is behind the NAT.
 
-After the connection request is sent, it is listed in two places: on the 'Submitted request' page for the request sender, and on the 'Connection request' tab of AD 1 (the 'Received requests' section). The administrator of AD 1 can now review the submitted request on the latter web page. Then, he can approve or decline the request by clicking the corresponding button. If the request is approved, then the request sender can download the generated package from the 'Submitted request' page. After it, he just needs to upload the package to the AD host, extract it, and run the 'web_scion/scripts/deploy.sh' script, which will execute all essential deployment steps.
+After the connection request is sent, it is listed in two places: on the 'Submitted request' page for the request sender, and on the 'Connection request' tab of AS 1 (the 'Received requests' section). The administrator of AS 1 can now review the submitted request on the latter web page. Then, he can approve or decline the request by clicking the corresponding button. If the request is approved, then the request sender can download the generated package from the 'Submitted request' page. After it, he just needs to upload the package to the AS host, extract it, and run the 'web_scion/scripts/deploy.sh' script, which will execute all essential deployment steps.
 
-AD can also be marked as 'open' (see the `is_open` AD attribute), which means that every sent request is approved automatically.
+AS can also be marked as 'open' (see the `is_open` AS attribute), which means that every sent request is approved automatically.
 
 * Ansible integration
 
@@ -103,7 +103,7 @@ If something doesn't work (no element status displayed, topology cannot be retri
 
 1. Check that the management daemon is running at the AD host (`./supervisor/supervisor.sh status`).
 2. If the AD is deployed on a virtual or remote machine (not on localhost/127.0.0.1), ensure that the management daemon of that AD is listening on the 0.0.0.0 address, and not 127.0.0.1 (check the `[program:management_daemon]` section in `supervisor/supervisord.conf`).
-3. Check that the md_host attribute of the AD points to the correct host where the management daemon is deployed. You can check it on the AD administration page (/admin/ad_manager/ad/<AD_ID>/).
+3. Check that the md_host attribute of the AD points to the correct host where the management daemon is deployed. You can check it on the AD administration page (/admin/as_manager/ad/<AS_ID>/).
 4. Check that the web panel can open the TLS connection to the port 9010 of the AD host.
 5. Software updates don't work? Check that the corresponding RPC function (`self.send_update`) is registered in the `ManagementDaemon.__init__()` function. Thing to keep in mind: this is a highly experimental feature and should be used with care before additional security reviews are done, otherwise this can result in remote code execution vulnerabilities.
 
@@ -118,9 +118,9 @@ and manage.py migrate
 There are two directories (relative to the SCION sub/web directory) that contain all essential components of the testbed management system:
 
 * `web_scion/` -- contains the web management application (Django web app). All the settings are located in `web_scion/web_scion/settings/`, useful scripts -- under `web_scion/scripts`
-* the actual web module (views, models) -- under `web_scion/ad_manager`.
+* the actual web module (views, models) -- under `web_scion/as_manager`.
 
 #### Current limitations
 
-1. ISD is a foreign key for the AD model, so currently an AD can only belong to a single ISD.
-2. All ADs are using the same certificate for authentication (`ad_management/certs/ad.pem`).
+1. ISD is a foreign key for the AS model, so currently an AS can only belong to a single ISD.
+2. All ASs are using the same certificate for authentication (`ad_management/certs/ad.pem`).

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Import ISD/AD data from topology files
+Import ISD/AS data from topology files
 """
 
 # Stdlib
@@ -27,7 +27,7 @@ from lib.defines import GEN_PATH, PROJECT_ROOT
 from lib.topology import Topology
 
 # Django app imports
-from ad_manager.models import AD, ISD
+from as_manager.models import AS, ISD
 from django.contrib.auth.models import User
 
 WEB_SCION_DIR = os.path.join(PROJECT_ROOT, 'web_scion')
@@ -113,10 +113,10 @@ def reload_data_from_files(topology_files):
         for topo in as_topos:
             routers = topo.get_all_border_routers()
             for router in routers:
-                neighbor_id = router.interface.neighbor_ad
+                neighbor_id = router.interface.neighbor_as
                 new_neighbor_id = id_map[(neighbor_id,
                                           router.interface.neighbor_isd)]
-                router.interface.neighbor_ad = new_neighbor_id
+                router.interface.neighbor_as = new_neighbor_id
 
     # Create ISD objects
     for isd_id in sorted(
@@ -130,19 +130,19 @@ def reload_data_from_files(topology_files):
     for i, as_topo in enumerate(as_topos, start=1):
         if i in report_ranges:
             print("{}%".format(report_ranges[i]))
-        AD.objects.update_or_create(as_id=as_topo.isd_as[1],
+        AS.objects.update_or_create(as_id=as_topo.isd_as[1],
                                     isd=isds[as_topo.isd_as[0]],
-                                    is_core_ad=as_topo.is_core_as)
+                                    is_core_as=as_topo.is_core_as)
     transaction.commit()
     print("> ASes instances were added")
 
     # Second, add routers, servers, etc.
     for as_topo in as_topos:
-        ad = AD.objects.get(id=as_topo.isd_as[1], isd=isds[
+        as_obj = AS.objects.get(id=as_topo.isd_as[1], isd=isds[
             as_topo.isd_as[0]])  # getitem[0] = self._isd, [1] = self._as
-        topo_dict = as_topo_dicts[ad.id]
-        ad.fill_from_topology(topo_dict)
-        print('> AS {} is loaded'.format(ad))
+        topo_dict = as_topo_dicts[as_obj.id]
+        as_obj.fill_from_topology(topo_dict)
+        print('> AS {} is loaded'.format(as_obj))
     transaction.commit()
     transaction.set_autocommit(True)
 

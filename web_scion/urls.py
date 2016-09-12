@@ -6,7 +6,7 @@ from django.core.urlresolvers import reverse, reverse_lazy
 from django.http import HttpResponseRedirect
 
 # SCION
-from ad_manager.admin import admin_site
+from as_manager.admin import admin_site
 
 
 # Basic URLs
@@ -14,7 +14,7 @@ urlpatterns = patterns(
     '',
     url(r'^$', lambda _: HttpResponseRedirect(reverse('list_isds'))),
     url(r'^admin/', include(admin_site.urls)),
-    url(r'^as_manager/', include('ad_manager.urls')),
+    url(r'^as_manager/', include('as_manager.urls')),
 )
 
 # Logout

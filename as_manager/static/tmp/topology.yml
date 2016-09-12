@@ -1,0 +1,22 @@
+BeaconServers: {}
+BorderRouters:
+  br1-2-1:
+    Addr: 192.33.93.192/30
+    Interface:
+      Addr: 192.33.92.146/31
+      Bandwidth: 1000
+      IFID: 1
+      ISD_AS: 1-1
+      LinkType: PARENT
+      MTU: 1472
+      ToAddr: 192.33.92.146/31
+      ToUdpPort: 50000
+      UdpPort: 50000
+    Port: 30041
+CertificateServers: {}
+Core: false
+ISD_AS: 1-2
+MTU: 1472
+PathServers: {}
+SibraServers: {}
+Zookeepers: {}
