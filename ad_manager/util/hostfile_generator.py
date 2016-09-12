@@ -89,7 +89,8 @@ def get_section_attr(mockup_dict, section_name, attr):
     return [(sec_id, section[sec_id][attr]) for sec_id in section]
 
 
-def generate_ansible_hostfile(topology_params, mockup_dict, isd_as,commit_hash):
+def generate_ansible_hostfile(topology_params, mockup_dict, isd_as,
+                              commit_hash):
     """
     Generate the host file for Ansible
     The hostfile is per AS and can have the same IP in multiple roles
