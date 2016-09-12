@@ -26,11 +26,11 @@ class BasicWebTest(WebTest):
         for ad in AD.objects.all():
             self.ads[ad.id] = ad
 
-    def _get_ad_detail(self, ad, *args, **kwargs):
+    def _get_as_detail(self, ad, *args, **kwargs):
         if isinstance(ad, AD):
             ad = ad.id
         assert isinstance(ad, int)
-        return self.app.get(reverse('ad_detail', args=[ad]), *args, **kwargs)
+        return self.app.get(reverse('as_detail', args=[ad]), *args, **kwargs)
 
     def _find_form_by_action(self, response, view_name, *args, **kwargs):
         if args is None:
@@ -99,9 +99,9 @@ class TestAdDetail(BasicWebTest):
 
     def test_servers_page(self):
         ad = self.ads[1]
-        ad_detail = self._get_ad_detail(ad)
-        self.assertContains(ad_detail, str(ad))
-        html = ad_detail.html
+        as_detail = self._get_as_detail(ad)
+        self.assertContains(as_detail, str(ad))
+        html = as_detail.html
         beacon_servers = html.find(id="beacon-servers-table")
         certificate_servers = html.find(id="certificate-servers-table")
         path_servers = html.find(id="path-servers-table")
@@ -125,7 +125,7 @@ class TestAdDetail(BasicWebTest):
             assert r.neighbor_type in row.text
 
         # Test that links to other ASes work
-        ad_2_detail = ad_detail.click(str(self.ads[2]))
+        ad_2_detail = as_detail.click(str(self.ads[2]))
         self.assertEqual(ad_2_detail.status_int, 200)
         self.assertContains(ad_2_detail, str(self.ads[2]))
 
@@ -137,8 +137,8 @@ class TestAdDetail(BasicWebTest):
         for is_core_value, page_value in value_map.items():
             ad.is_core_ad = is_core_value
             ad.save()
-            ad_detail = self._get_ad_detail(ad)
-            core_container = ad_detail.html.find(id='core-label')
+            as_detail = self._get_as_detail(ad)
+            core_container = as_detail.html.find(id='core-label')
             self.assertIn(page_value, core_container.text,
                           'Invalid label: core')
 
@@ -148,9 +148,9 @@ class TestUsersAndPermissions(BasicWebTestUsers):
     CONTROL_CLASS = 'process-control-form'
 
     def test_login_admin(self):
-        ad_detail = self._get_ad_detail(self.ads[1])
-        self.assertNotContains(ad_detail, 'admin')
-        login_page = ad_detail.click('Login')
+        as_detail = self._get_as_detail(self.ads[1])
+        self.assertNotContains(as_detail, 'admin')
+        login_page = as_detail.click('Login')
         login_form = login_page.form
         login_form['username'] = 'admin'
         login_form['password'] = 'admin'
@@ -183,10 +183,10 @@ class TestUsersAndPermissions(BasicWebTestUsers):
     def test_nonpriv_user_control(self):
         ad = self.ads[1]
         bs = ad.beaconserverweb_set.first()
-        ad_detail = self._get_ad_detail(ad)
+        as_detail = self._get_as_detail(ad)
 
         # No control buttons
-        self.assertFalse(ad_detail.html.findAll('form', self.CONTROL_CLASS))
+        self.assertFalse(as_detail.html.findAll('form', self.CONTROL_CLASS))
 
         # Action is forbidden
         control_url = reverse('control_process', args=[ad.id, bs.id_str()])
@@ -197,12 +197,12 @@ class TestUsersAndPermissions(BasicWebTestUsers):
     def test_priv_user_control(self, run_remote_command):
         ad = self.ads[1]
         bs = ad.beaconserverweb_set.first()
-        ad_detail = self._get_ad_detail(ad, user=self.admin_user)
+        as_detail = self._get_as_detail(ad, user=self.admin_user)
 
-        self.assertTrue(ad_detail.html.findAll('form', self.CONTROL_CLASS))
+        self.assertTrue(as_detail.html.findAll('form', self.CONTROL_CLASS))
 
         # Find the bs control form
-        bs_control_form = self._find_form_by_action(ad_detail,
+        bs_control_form = self._find_form_by_action(as_detail,
                                                     'control_process',
                                                     args=[ad.id, bs.id_str()])
 
@@ -215,7 +215,7 @@ class TestUsersAndPermissions(BasicWebTestUsers):
 class TestConnectionRequests(BasicWebTestUsers):
 
     def _get_request_page(self, ad_id):
-        requests_page = reverse('ad_connection_requests', args=[ad_id])
+        requests_page = reverse('as_connection_requests', args=[ad_id])
         return requests_page
 
     def test_view_nopriv(self):

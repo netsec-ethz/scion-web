@@ -49,20 +49,18 @@ isd_patterns = patterns(
         views.ISDDetailView.as_view(), name='isd_detail'),
 )
 
-ad_patterns = patterns(
+as_patterns = patterns(
     '',
     url(r'^ads/add_as$',
         views.add_as, name='add_as'),
     url(r'^ads/(?P<pk>\d+)/$',
-        views.ADDetailView.as_view(), name='ad_detail'),
+        views.ADDetailView.as_view(), name='as_detail'),
     url(r'^ads/(?P<pk>\d+)/#!topology$',
-        views.ADDetailView.as_view(), name='ad_detail_topology'),
+        views.ADDetailView.as_view(), name='as_detail_topology'),
     url(r'^ads/(?P<pk>\d+)/#!topology&expanded_routers$',
-        views.ADDetailView.as_view(), name='ad_detail_topology_routers'),
-    url(r'^ads/(?P<pk>\d+)/#!updates$',
-        views.ADDetailView.as_view(), name='ad_detail_updates'),
+        views.ADDetailView.as_view(), name='as_detail_topology_routers'),
     url(r'^ads/(?P<pk>\d+)/#!requests$',
-        views.ADDetailView.as_view(), name='ad_connection_requests'),
+        views.ADDetailView.as_view(), name='as_connection_requests'),
     url(r'^ads/(?P<pk>\d+)/control/(?P<proc_id>[\w-]+)/$',
         views.control_process, name='control_process'),
     url(r'^ads/(?P<pk>\d+)/log/(?P<proc_id>[\w-]+)/$',
@@ -93,5 +91,5 @@ misc = patterns(
         views.coord_service, name='coord_service'),
 )
 
-urlpatterns = api_patterns_internal + isd_patterns + ad_patterns + \
+urlpatterns = api_patterns_internal + isd_patterns + as_patterns + \
               connection_request_patterns + misc

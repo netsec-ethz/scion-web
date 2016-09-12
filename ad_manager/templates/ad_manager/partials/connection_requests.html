@@ -72,7 +72,7 @@
             <div class="well requester-ip-port">
               {{ request.ip }} : <span id="port">{{ request.port }}</span> <br />
               {% if request.new_ad %}
-                New AS: <a href="{% url 'ad_detail' request.new_ad.id %}">{{ request.new_ad }}</a>
+                New AS: <a href="{% url 'as_detail' request.new_ad.id %}">{{ request.new_ad }}</a>
               {% endif %}
             </div>
         </td>

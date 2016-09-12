@@ -15,7 +15,7 @@
   <ul>
     {% for ad in object_list %}
       <li>
-        <a href="{% url 'ad_detail' ad.id %}">AS {{ ad.isd.id }}-{{ ad.as_id }}</a>
+        <a href="{% url 'as_detail' ad.id %}">AS {{ ad.isd.id }}-{{ ad.as_id }}</a>
         {% if ad.is_core_ad %} <span class="badge alert-warning">core</span> {% endif %}
       </li>
     {% empty %}

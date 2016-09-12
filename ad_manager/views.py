@@ -230,7 +230,7 @@ def add_as(request):
                                    is_open=False)
         as_obj.save()
     as_obj = AD.objects.get(as_id=as_id, isd=current_isd)
-    ad_page = reverse('ad_detail', args=[as_obj.id])
+    ad_page = reverse('as_detail', args=[as_obj.id])
     return redirect(ad_page + '#!nodes')
 
 
@@ -705,7 +705,7 @@ class NewLinkView(FormView):
         # with transaction.atomic():
         #     link_ads(from_ad, to_ad, link_type)
 
-        self.success_url = reverse('ad_detail', args=[this_ad.id])
+        self.success_url = reverse('as_detail', args=[this_ad.id])
         return super().form_valid(form)
 
 
@@ -826,12 +826,12 @@ def request_action(request, req_id):
         accept_connection_request(request, req_id, replying_as, posted_data)
         #  Create/update topology
         return redirect(
-            reverse('ad_detail_topology_routers', args=[replying_as.id]))
+            reverse('as_detail_topology_routers', args=[replying_as.id]))
     elif '_decline_request' in request.POST:
         # Denied request are simply ignored according to the current scion coord
         # implementation
         return redirect(
-            reverse('ad_connection_requests', args=[replying_as.id]))
+            reverse('as_connection_requests', args=[replying_as.id]))
 
     return HttpResponseNotFound('Action not found')
 
