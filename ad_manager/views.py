@@ -209,7 +209,7 @@ def add_as(request):
                               json={'isdas': str(isd_as), 'core': False},
                               headers=headers
                               )
-        except:
+        except requests.RequestException:
             print("Failed to create AS at coordination service")
 
     except (JoinRequest.DoesNotExist, ValueError):
@@ -267,9 +267,11 @@ def accept_join_request(request, isd_as, request_id):
     accept_join_url = UPLOAD_JOIN_REPLIES_SVC
     request_url = reduce(urljoin, [base_url, accept_join_url, key, secret])
     headers = {'content-type': 'application/json'}
-    r = requests.post(request_url, json=accept_join_dict, headers=headers)
-    answer = r.json()
-    print(answer)
+    try:
+        r = requests.post(request_url, json=accept_join_dict, headers=headers)
+        print(r.json())
+    except requests.RequestException:
+        print("Failed to upload join reply to coordination service")
     current_page = request.META.get('HTTP_REFERER')
     return redirect(current_page)
 
@@ -301,9 +303,12 @@ def accept_join_request_auto(request, request_id):
     accept_join_url = UPLOAD_JOIN_REPLIES_SVC
     request_url = reduce(urljoin, [base_url, accept_join_url, key, secret])
     headers = {'content-type': 'application/json'}
-    r = requests.post(request_url, json=accept_join_dict, headers=headers)
-    answer = r.json()
-    print(answer)
+    try:
+        r = requests.post(request_url, json=accept_join_dict, headers=headers)
+        answer = r.json()
+        print(answer)
+    except requests.RequestException:
+        print("Failed to upload join reply to coordination service")
 
 
 @require_POST
@@ -350,26 +355,33 @@ def new_as_id(request, isd_id):
 
     request_url = reduce(urljoin, [base_url, join_request_url, key, secret])
     headers = {'content-type': 'application/json'}
-    r = requests.post(request_url, json=join_request_dict, headers=headers)
-    answer = r.json()
-    request_id = answer['id']
-    print(answer)
+    try:
+        r = requests.post(request_url, json=join_request_dict, headers=headers)
+        answer = r.json()
+        request_id = answer['id']
+        print(answer)
 
-    JoinRequest.objects.update_or_create(
-        request_id=request_id,
-        created_by=request.user,
-        join_isd=ISD.objects.get(id=int(isd_id)),
-        core_as_signing=core_as_to_query,
-        status='SENT',
-        sig_pub_key=to_b64(public_key_sign),
-        sig_priv_key=to_b64(private_key_sign),
-        enc_pub_key=to_b64(public_key_encr),
-        enc_priv_key=to_b64(private_key_encr)
-    )
+        JoinRequest.objects.update_or_create(
+            request_id=request_id,
+            created_by=request.user,
+            join_isd=ISD.objects.get(id=int(isd_id)),
+            core_as_signing=core_as_to_query,
+            status='SENT',
+            sig_pub_key=to_b64(public_key_sign),
+            sig_priv_key=to_b64(private_key_sign),
+            enc_pub_key=to_b64(public_key_encr),
+            enc_priv_key=to_b64(private_key_encr)
+        )
+    except requests.RequestException:
+        print("Failed to make join request at coordination service")
 
     join_poll_url = POLL_JOIN_REPLIES_SVC
     request_url = reduce(urljoin, [base_url, join_poll_url, key, secret])
-    r = requests.post(request_url, json={}, headers=headers)
+    try:
+        r = requests.post(request_url, json={}, headers=headers)
+    except requests.RequestException:
+        print("Failed to poll join replies from coordination service")
+        return JsonResponse(response_dict)
 
     if r.status_code == 200:
         try:
@@ -454,11 +466,15 @@ class ADDetailView(DetailView):
         get_all_requests = POLL_EVENTS_SVC
         request_url = reduce(urljoin, [base_url, get_all_requests, key, secret])
         headers = {'content-type': 'application/json'}
-        r = requests.post(request_url, json={'isdas': isdas}, headers=headers)
-        if r.status_code == 200:
-            answer = r.json()
-            context['join_requests'] = answer['join_requests']
-            context['received_requests'] = answer['conn_requests']
+        try:
+            r = requests.post(request_url, json={'isdas': isdas},
+                              headers=headers)
+            if r.status_code == 200:
+                answer = r.json()
+                context['join_requests'] = answer['join_requests']
+                context['received_requests'] = answer['conn_requests']
+        except requests.RequestException:
+            print("Retrieving requests from coordination service API failed.")
 
         # Permissions
         context['user_has_perm'] = self.request.user.has_perm('change_ad', ad)
@@ -557,9 +573,12 @@ def accept_connection_request_auto(request, request_id):
     accept_conn_url = UPLOAD_CONN_REPLIES_SVC
     request_url = reduce(urljoin, [base_url, accept_conn_url, key, secret])
     headers = {'content-type': 'application/json'}
-    r = requests.post(request_url, json=accept_conn_dict, headers=headers)
-    answer = r.json()
-    print(answer)
+    try:
+        r = requests.post(request_url, json=accept_conn_dict, headers=headers)
+        answer = r.json()
+        print(answer)
+    except requests.RequestException:
+        print("Uploading connection replies to coordination service API failed.")
 
 
 class ConnectionRequestView(FormView):
@@ -642,17 +661,20 @@ class ConnectionRequestView(FormView):
         poll_request_url = UPLOAD_CONN_REQUESTS_SVC
         request_url = reduce(urljoin, [base_url, poll_request_url, key, secret])
         headers = {'content-type': 'application/json'}
-        r = requests.post(request_url,
-                          json=connection_request_dict,
-                          headers=headers
-                          )
-        response = r.json()
-        print(response)
+        try:
+            r = requests.post(request_url,
+                              json=connection_request_dict,
+                              headers=headers
+                              )
+            response = r.json()
+            print(response)
 
-        # We sent a single request for which we retrieve the request_id
-        # assigned by the coordination service
-        conn_request.request_id = response['ids'][0]
-        conn_request.save()
+            # We sent a single request for which we retrieve the request_id
+            # assigned by the coordination service
+            conn_request.request_id = response['ids'][0]
+            conn_request.save()
+        except requests.RequestException:
+            print("Uploading connection request to coord. service API failed.")
 
         #  accept_connection_request_auto(self.request, response['ids'][0])
 
@@ -805,8 +827,11 @@ def accept_connection_request(request, request_id, replying_as, posted_data):
     accept_conn_url = UPLOAD_CONN_REPLIES_SVC
     request_url = reduce(urljoin, [base_url, accept_conn_url, key, secret])
     headers = {'content-type': 'application/json'}
-    r = requests.post(request_url, json=accept_conn_dict, headers=headers)
-    print(r.text)
+    try:
+        r = requests.post(request_url, json=accept_conn_dict, headers=headers)
+        print(r.text)
+    except requests.RequestException:
+        print("Uploading connection replies to coordination service API failed")
 
 
 @transaction.atomic
@@ -867,10 +892,14 @@ def list_sent_requests(request):
             poll_request_url = POLL_CONN_REPLIES_SVC
             request_url = reduce(urljoin, [base_url, poll_request_url, key, secret])
             headers = {'content-type': 'application/json'}
-            r = requests.post(request_url, json=poll_reply_dict, headers=headers)
-            reply = r.json()
-            if reply:
-                received_replies['replies'].extend(reply['replies'])
+            try:
+                r = requests.post(request_url, json=poll_reply_dict, headers=headers)
+                reply = r.json()
+                if reply:
+                    received_replies['replies'].extend(reply['replies'])
+            except requests.RequestException:
+                print("Retrieving reply for request issued by AS {} from "
+                      "coordination service API failed.".format(isd_as))
 
     new_received_replies = []
     if 'replies' in received_replies:
