@@ -28,6 +28,7 @@ import configparser
 import xmlrpc.client
 import socket
 from copy import deepcopy
+from string import Template
 
 # SCION
 from guardian.shortcuts import assign_perm
@@ -48,7 +49,10 @@ from ad_manager.util.ad_connect import (
     # link_ads,
 )
 from ad_manager.util.errors import HttpResponseUnavailable
-from lib.util import write_file
+from lib.util import (
+    read_file,
+    write_file
+)
 from topology.generator import ConfigGenerator  # , DEFAULT_PATH_POLICY_FILE,
 # DEFAULT_ZK_CONFIG
 
@@ -949,6 +953,12 @@ def create_local_gen(isd_as, tp):
                 yaml.dump(one_of_topology, file, default_flow_style=False)
             # copy(yaml_topo_path, node_path)  # Do not share global topology
             # as each node get its own topology file
+
+            # create zlog file
+            tmpl = Template(read_file(os.path.join(PROJECT_ROOT,
+                                                   "topology/zlog.tmpl")))
+            cfg = os.path.join(node_path, "%s.zlog.conf" % serv_name)
+            write_file(cfg, tmpl.substitute(name=service_type, elem=serv_name))
 
             # Generating only the needed intermediate parts
             # not used as for now we generator.py all certs and keys resources
