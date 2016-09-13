@@ -38,6 +38,10 @@
             </button>
           </form>
         </td>
+    {% empty %}
+      <tr>
+        <td colspan="4"><i>No requests</i></td>
+      </tr>
     {% endfor %}
     </tbody>
   </table>
