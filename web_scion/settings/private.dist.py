@@ -1,4 +1,5 @@
-from .base import *  # noqa
+import os
+from .base import WEB_SCION_DIR, INSTALLED_APPS
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
