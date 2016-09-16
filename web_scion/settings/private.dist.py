@@ -1,5 +1,4 @@
-import os
-from .base import WEB_SCION_DIR, INSTALLED_APPS
+from .base import *
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
