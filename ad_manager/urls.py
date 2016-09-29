@@ -22,8 +22,6 @@ api_patterns_internal = patterns(
     '',
     url(r'^api/v1/internal/isd/(?P<isd_id>\d+)/as/(?P<as_id>\d+)/topo_hash$',
         views.as_topo_hash, name='topo_hash'),
-    url(r'^api/v1/internal/isd/(?P<isd_id>\d+)/as/(?P<as_id>\d+)/deploy$',
-        views.deploy, name='deploy'),
     url(r'^api/v1/internal/.*$',
         views.wrong_api_call, name='wrong_api_call'),
 )
