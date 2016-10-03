@@ -25,6 +25,7 @@ from guardian.admin import GuardedModelAdmin
 from two_factor.admin import AdminSiteOTPRequiredMixin
 from two_factor.models import PhoneDevice
 from ad_manager.models import (
+    OrganisationAdmin,
     AD,
     BeaconServerWeb,
     CertificateServerWeb,
@@ -86,7 +87,7 @@ class PrivilegedChangeAdmin(GuardedModelAdmin):
         return super().get_queryset(request).order_by('id')
 
 
-@admin.register(AD, ISD, site=admin_site)
+@admin.register(AD, ISD, OrganisationAdmin, site=admin_site)
 class SortRelatedAdmin(PrivilegedChangeAdmin):
     privileged_fields = ('isd', 'is_core_ad',)
 
