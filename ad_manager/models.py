@@ -72,7 +72,7 @@ class ISD(models.Model):
 
 
 class AD(models.Model):
-    as_id = models.IntegerField()
+    as_id = models.IntegerField(default=-1)
     isd = models.ForeignKey('ISD')
     is_core_ad = models.BooleanField(default=False)
     is_open = models.BooleanField(default=True)
