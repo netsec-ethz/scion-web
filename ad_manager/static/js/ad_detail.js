@@ -152,7 +152,7 @@ $(document).ready(function () {
 function queryForHashes(datalistId) {
     var gitBaseUrl = "https://api.github.com/repos";
     var organisation = "/netsec-ethz";
-    var repo = "/scion-web/"; // set this to the main scion repo aka /scion/ once it is public
+    var repo = "/scion/";
 
     $(datalistId).children().slice(1).remove(); // remove previous entries
 
