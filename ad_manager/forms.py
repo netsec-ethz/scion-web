@@ -82,8 +82,8 @@ class ConnectionRequestForm(forms.ModelForm):
 
     class Meta:
         model = ConnectionRequest
-        fields = ('connect_to', 'info', 'router_public_ip', 'router_public_port', 'mtu',
-                  'bandwidth', 'link_type')
+        fields = ('connect_to', 'info', 'router_public_ip',
+                  'router_public_port', 'mtu', 'bandwidth', 'link_type')
         # 'router_bound_ip','router_bound_port',
         labels = {'connect_to': 'Connect to',
                   'router_public_ip': 'Router external IP',
