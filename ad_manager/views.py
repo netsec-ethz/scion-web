@@ -471,12 +471,24 @@ class ADDetailView(DetailView):
                 key=lambda el: el.name if el.name is not None else -1
             )
 
+        # Permissions
+        context['user_has_perm'] = self.request.user.has_perm('change_ad', ad)
         # Connection requests tab
+        context['join_requests'] = {}
         context['received_requests'] = {}
 
         # Join requests: received ISD join requests (only for Core ASes)
-        coord_settings = get_object_or_404(OrganisationAdmin,
-                                           user_id=self.request.user.id)
+        # If a user_id is not provided in the request, then do not
+        # query the SCION coordination service.
+        if self.request.user.id is None:
+            return context
+
+        try:
+            coord_settings = OrganisationAdmin.objects.get(user_id=self.request.user.id)
+        except OrganisationAdmin.DoesNotExist:
+            print("Retrieving key and secret failed!!.")
+            return context
+
         key = coord_settings.key + "/"
         secret = coord_settings.secret
 
@@ -494,8 +506,6 @@ class ADDetailView(DetailView):
         except requests.RequestException:
             print("Retrieving requests from coordination service API failed.")
 
-        # Permissions
-        context['user_has_perm'] = self.request.user.has_perm('change_ad', ad)
         return context
 
 
