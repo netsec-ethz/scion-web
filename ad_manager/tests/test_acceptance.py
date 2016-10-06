@@ -22,7 +22,7 @@ from unittest.mock import patch
 # SCION
 from guardian.shortcuts import assign_perm
 from ad_manager.util.response_handling import response_success
-from ad_manager.models import ISD, AD, ConnectionRequest
+from ad_manager.models import ISD, AD
 
 
 class BasicWebTest(WebTest):
@@ -217,7 +217,8 @@ class TestUsersAndPermissions(BasicWebTestUsers):
         # Find the bs control form
         bs_control_form = self._find_form_by_action(ad_detail,
                                                     'control_process',
-                                                    args=[ad.as_id, bs.id_str()])
+                                                    args=[ad.as_id,
+                                                          bs.id_str()])
 
         # Press the "start" button
         run_remote_command.return_value = response_success('ok')

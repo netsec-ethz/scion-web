@@ -65,7 +65,6 @@ from ad_manager.util.defines import (
     COORD_SERVICE_URI,
     UPLOAD_JOIN_REQUEST_SVC,
     UPLOAD_JOIN_REPLIES_SVC,
-    POLL_JOIN_REPLY_SVC,
     POLL_JOIN_REPLIES_SVC,
     UPLOAD_CONN_REQUESTS_SVC,
     UPLOAD_CONN_REPLIES_SVC,
@@ -81,7 +80,7 @@ from ad_manager.forms import (
     UploadFileForm
 )
 from ad_manager.models import AD, ISD, ConnectionRequest,\
-    OrganisationAdmin, User, JoinRequest
+    OrganisationAdmin, JoinRequest
 from ad_manager.util.ad_connect import (
     create_new_ad_files,
     find_last_router,
@@ -223,10 +222,9 @@ def add_as(request):
         )
 
         try:
-            r = requests.post(request_url,
-                              json={'isdas': str(isd_as), 'core': False},
-                              headers=headers
-                              )
+            requests.post(request_url,
+                          json={'isdas': str(isd_as), 'core': False},
+                          headers=headers)
         except requests.RequestException:
             print("Failed to create AS at coordination service")
 
@@ -262,7 +260,8 @@ def accept_join_request(request, isd_as, request_id):
     sig_pub_keys = from_b64(request.POST['sig_pub_key'])
     enc_pub_keys = from_b64(request.POST['enc_pub_key'])
     core_as_id = isd_as
-    core_as = AD.objects.get(as_id=isd_as.split('-')[1], isd=isd_as.split('-')[0])
+    core_as = AD.objects.get(as_id=isd_as.split('-')[1],
+                             isd=isd_as.split('-')[0])
     core_as_sig_priv_key = from_b64(core_as.sig_priv_key)
     core_as_trc = str(core_as.trc)
 
@@ -484,13 +483,13 @@ class ADDetailView(DetailView):
             return context
 
         try:
-            coord_settings = OrganisationAdmin.objects.get(user_id=self.request.user.id)
+            coord = OrganisationAdmin.objects.get(user_id=self.request.user.id)
         except OrganisationAdmin.DoesNotExist:
             print("Retrieving key and secret failed!!.")
             return context
 
-        key = coord_settings.key + "/"
-        secret = coord_settings.secret
+        key = coord.key + "/"
+        secret = coord.secret
 
         base_url = COORD_SERVICE_URI
         get_all_requests = POLL_EVENTS_SVC
@@ -606,7 +605,7 @@ def accept_connection_request_auto(request, request_id):
         answer = r.json()
         print(answer)
     except requests.RequestException:
-        print("Uploading connection replies to coordination service API failed.")
+        print("Uploading connection replies to coordination service failed.")
 
 
 class ConnectionRequestView(FormView):
@@ -664,17 +663,17 @@ class ConnectionRequestView(FormView):
         # Issue with typeflaw attack, and replay when we permit multiple request
         # to be sent in bulk without signing over isdas and request parameters
         # certificate is not included in signature
-        connection_request_dict = {"isdas": isd_as, "request":
-            {"info": conn_request.info,
-             "isdas": connect_to,
-             "ip": conn_request.router_public_ip,
-             "port": int(conn_request.router_public_port),
-             "mtu": int(conn_request.mtu),
-             "bandwidth": int(conn_request.bandwidth),
-             "linktype": conn_request.link_type,
-             "timestamp":
-                 iso_timestamp(int(time.time()))},
-        "signature": ""}
+        connection_request_dict = {
+            "isdas": isd_as,
+            "request": {"info": conn_request.info,
+                        "isdas": connect_to,
+                        "ip": conn_request.router_public_ip,
+                        "port": int(conn_request.router_public_port),
+                        "mtu": int(conn_request.mtu),
+                        "bandwidth": int(conn_request.bandwidth),
+                        "linktype": conn_request.link_type,
+                        "timestamp": iso_timestamp(int(time.time()))},
+            "signature": ""}
 
         # Signature is over the JSON string representation
         # of connection_request_dict
@@ -918,10 +917,12 @@ def list_sent_requests(request):
                               }
             base_url = COORD_SERVICE_URI
             poll_request_url = POLL_CONN_REPLIES_SVC
-            request_url = reduce(urljoin, [base_url, poll_request_url, key, secret])
+            request_url = reduce(urljoin,
+                                 [base_url, poll_request_url, key, secret])
             headers = {'content-type': 'application/json'}
             try:
-                r = requests.post(request_url, json=poll_reply_dict, headers=headers)
+                r = requests.post(request_url, json=poll_reply_dict,
+                                  headers=headers)
                 reply = r.json()
                 if reply:
                     received_replies['replies'].extend(reply['replies'])
