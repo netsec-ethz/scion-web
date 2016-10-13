@@ -190,6 +190,8 @@ def add_as(request):
     isd_as = request.POST['inputASname']
     current_isd = request.POST['inputISDname']
 
+    print("HEREEEEEEE")
+
     coord_settings = get_object_or_404(OrganisationAdmin,
                                        user_id=request.user.id)
 
@@ -293,48 +295,20 @@ def accept_join_request(request, isd_as, request_id):
     return redirect(current_page)
 
 
-def accept_join_request_auto(request, request_id):
-    coord_settings = get_object_or_404(OrganisationAdmin,
-                                       user_id=request.user.id)
-    key = coord_settings.key + "/"
-    secret = coord_settings.secret
-
-    sig_pub_keys = b'public_signing_key_of_new_as'
-    enc_pub_keys = b'public_encryption_key_of_new_as'
-    core_as_id = "1-2"
-    core_as_sig_priv_key = b'private_signing_key_of_core_as__'
-
-    certificate = Certificate.from_values(
-            request_id, sig_pub_keys, enc_pub_keys, core_as_id,
-            core_as_sig_priv_key, INITIAL_CERT_VERSION,
-        )
-
-    accept_join_dict = {"isdas": core_as_id,
-                        "replies": [{
-                            "request_id": request_id,
-                            "isdas": core_as_id,
-                            "certificate": str(certificate),
-                            "trc": "trc_123"}]
-                        }
-    base_url = COORD_SERVICE_URI
-    accept_join_url = UPLOAD_JOIN_REPLIES_SVC
-    request_url = reduce(urljoin, [base_url, accept_join_url, key, secret])
-    headers = {'content-type': 'application/json'}
-    try:
-        r = requests.post(request_url, json=accept_join_dict, headers=headers)
-        answer = r.json()
-        print(answer)
-    except requests.RequestException:
-        print("Failed to upload join reply to coordination service")
-
-
 @require_POST
 @login_required
 def new_as_id(request, isd_id):
+
+    print("HEREEEE-------------------------")
+
     response_dict = {'join_replies': [{'request_id': -1, 'isdas': 'Pending'}]}
 
     coord_settings = get_object_or_404(OrganisationAdmin,
                                        user_id=request.user.id)
+
+    print("coord_settings")
+    print(coord_settings.key)
+    print(coord_settings.secret)
     key = coord_settings.key + "/"
     secret = coord_settings.secret
 
@@ -344,17 +318,33 @@ def new_as_id(request, isd_id):
 
     request_url = reduce(urljoin, [base_url, query_core_ases_url, key, secret])
     headers = {'content-type': 'application/json'}
+
+    print("ISD_id")
+    print(isd_id)
+
+    print("request URL")
+    print(request_url)
+
+    print("headers")
+    print(headers)
     try:
         r = requests.post(request_url,
                           json={'isd_id': int(isd_id)},
-                          headers=headers
-                          )
+                          headers=headers)
     except requests.ConnectionError:
         # Coordination service is not responding
+        print("Coordination service is not responding")
         response_dict['join_replies'][0]['isdas'] = 'No response'
         return JsonResponse(response_dict)
 
+    if r.status_code != 200:
+        print("POST request to SCION coordination service failed.")
+        response_dict['join_replies'][0]['isdas'] = 'Communication to SCION coord failed with ' + str(r.status_code)
+        return JsonResponse(response_dict)
+
+    print("response:", r.json())
     answer = r.json()
+
     core_as_list = answer['coreASes']
     chosen_core_as_index = random.randint(0, len(answer['coreASes'])-1)
     core_as_to_query = core_as_list[chosen_core_as_index]
@@ -376,7 +366,6 @@ def new_as_id(request, isd_id):
         r = requests.post(request_url, json=join_request_dict, headers=headers)
         answer = r.json()
         request_id = answer['id']
-        print(answer)
 
         JoinRequest.objects.update_or_create(
             request_id=request_id,
@@ -576,38 +565,6 @@ def read_log(request, pk, proc_id):
         return HttpResponseUnavailable(get_failure_errors(response))
 
 
-@login_required
-def accept_connection_request_auto(request, request_id):
-    coord_settings = get_object_or_404(OrganisationAdmin,
-                                       user_id=request.user.id)
-    key = coord_settings.key + "/"
-    secret = coord_settings.secret
-    replying_as = "1-2"
-    requester_isdas = "1-2"
-    accept_conn_dict = {"isdas": replying_as,
-                        "certificate": "accepting_as_certificate",
-                        "replies": [{
-                            "request_id": int(request_id),
-                            "requester_isdas": requester_isdas,
-                            "certificate": "requester_certificate",
-                            "ip": "127.0.0.1",
-                            "port": 1234,
-                            "mtu": 1234,
-                            "bandwidth": 1234,
-                            }]
-                        }
-    base_url = COORD_SERVICE_URI
-    accept_conn_url = UPLOAD_CONN_REPLIES_SVC
-    request_url = reduce(urljoin, [base_url, accept_conn_url, key, secret])
-    headers = {'content-type': 'application/json'}
-    try:
-        r = requests.post(request_url, json=accept_conn_dict, headers=headers)
-        answer = r.json()
-        print(answer)
-    except requests.RequestException:
-        print("Uploading connection replies to coordination service failed.")
-
-
 class ConnectionRequestView(FormView):
     form_class = ConnectionRequestForm
     template_name = 'ad_manager/new_connection_request.html'
@@ -702,8 +659,6 @@ class ConnectionRequestView(FormView):
             conn_request.save()
         except requests.RequestException:
             print("Uploading connection request to coord. service API failed.")
-
-        #  accept_connection_request_auto(self.request, response['ids'][0])
 
         self.success_url = reverse('sent_requests')
         return super().form_valid(form)
