@@ -88,8 +88,8 @@ class AD(models.Model):
     sig_priv_key = models.CharField(max_length=100, null=True, blank=True)
     enc_pub_key = models.CharField(max_length=100, null=True, blank=True)
     enc_priv_key = models.CharField(max_length=100, null=True, blank=True)
-    certificate = models.CharField(max_length=1000, null=True, blank=True)
-    trc = models.CharField(max_length=500, null=True, blank=True)
+    certificate = models.CharField(max_length=1500, null=True, blank=True)
+    trc = models.CharField(max_length=1500, null=True, blank=True)
 
     # Use custom model manager with select_related()
     objects = SelectRelatedModelManager()
@@ -356,8 +356,7 @@ class JoinRequest(models.Model):
     request_id = models.IntegerField(primary_key=True)
     created_by = models.ForeignKey(User)
 
-    join_isd = models.ForeignKey(ISD)
-    core_as_signing = models.CharField(max_length=10, null=True)
+    isd_to_join = models.IntegerField(default=-1)
     status = models.CharField(max_length=20,
                               choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
                               default='NONE')
