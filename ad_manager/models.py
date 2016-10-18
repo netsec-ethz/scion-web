@@ -356,8 +356,7 @@ class JoinRequest(models.Model):
     request_id = models.IntegerField(primary_key=True)
     created_by = models.ForeignKey(User)
 
-    join_isd = models.ForeignKey(ISD)
-    core_as_signing = models.CharField(max_length=10, null=True)
+    isd_to_join = models.IntegerField(default=-1)
     status = models.CharField(max_length=20,
                               choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
                               default='NONE')
