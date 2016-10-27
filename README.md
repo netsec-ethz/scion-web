@@ -11,7 +11,7 @@ Feedback about the script is welcome.
 1. Go to to this repos top folder (which would be sub/web if you checked it out as a submodule of the main scion repo), install the dependencies
     If you got this as a submodule from the main repository at https://github.com/netsec-ethz/scion, make sure this is the version you want as the main repo could reference an old version of this.
 
-    `pip3 install --user -r requirements.txt`
+    `pip3 install --user --require-hashes -r requirements.txt`
 
 2. Copy the private settings file, update it if necessary
 

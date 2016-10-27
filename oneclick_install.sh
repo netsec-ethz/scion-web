@@ -14,7 +14,7 @@ sudo cp ./docker/zoo.cfg /etc/zookeeper/conf/zoo.cfg
 ./scion.sh topology
 cd ./sub/web/
 git checkout master
-pip3 install --user -r requirements.txt
+pip3 install --user --require-hashes -r requirements.txt
 cp web_scion/settings/private.dist.py web_scion/settings/private.py
 python3 ./manage.py migrate
 python3 ./manage.py test

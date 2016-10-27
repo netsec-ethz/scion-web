@@ -2,7 +2,7 @@ FROM scion:latest
 
 WORKDIR ./web_scion/
 
-RUN pip3 install --user -r requirements.txt
+RUN pip3 install --user --require-hashes -r requirements.txt
 
 RUN cp ./web_scion/settings/private.dist.py ./web_scion/settings/private.py
 
