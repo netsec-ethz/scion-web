@@ -30,6 +30,8 @@
             {% csrf_token %}
             <input type="text" name="sig_pub_key" value="{{ request.sigkey }}" class="hidden">
             <input type="text" name="enc_pub_key" value="{{ request.enckey }}" class="hidden">
+            <label class="control-label" class="floor-align-text" for="newASname">Joining AS name:</label>
+            <input id="newASname" name="newASname" type="text" required>
             <button type="submit" class="btn btn-success btn-sm click-confirm" name="_approve_request">
               Approve
             </button>

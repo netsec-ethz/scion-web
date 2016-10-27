@@ -17,10 +17,14 @@ import hashlib
 import json
 import os
 import random
+import subprocess
 import tempfile
 import time
 from collections import deque
-from shutil import rmtree
+from shutil import (rmtree,
+    copy,
+    copytree
+)
 
 # External packages
 from urllib.parse import urljoin
@@ -45,14 +49,14 @@ import yaml
 import tarfile
 import configparser
 import xmlrpc.client
+import requests
 import socket
 from copy import deepcopy
 from string import Template
+from guardian.shortcuts import assign_perm
 
-import requests
 
 # SCION
-from guardian.shortcuts import assign_perm
 from ad_manager.util.response_handling import (
     get_failure_errors,
     get_success_data,
@@ -65,10 +69,10 @@ from ad_manager.util.defines import (
     COORD_SERVICE_URI,
     UPLOAD_JOIN_REQUEST_SVC,
     UPLOAD_JOIN_REPLIES_SVC,
-    POLL_JOIN_REPLIES_SVC,
     UPLOAD_CONN_REQUESTS_SVC,
     UPLOAD_CONN_REPLIES_SVC,
     POLL_CONN_REPLIES_SVC,
+    POLL_JOIN_REPLY_SVC,
     POLL_EVENTS_SVC,
     INSERT_AS,
     INITIAL_CERT_VERSION
@@ -84,15 +88,13 @@ from ad_manager.models import AD, ISD, ConnectionRequest,\
 from ad_manager.util.ad_connect import (
     create_new_ad_files,
     find_last_router,
-    # link_ads,
 )
 from ad_manager.util.errors import HttpResponseUnavailable
 from lib.util import (
     read_file,
     write_file
 )
-from topology.generator import ConfigGenerator  # , DEFAULT_PATH_POLICY_FILE,
-# DEFAULT_ZK_CONFIG
+from ad_manager.util.hostfile_generator import generate_ansible_hostfile
 from lib.crypto.certificate import Certificate
 from lib.util import iso_timestamp
 from lib.crypto.asymcrypto import (
@@ -107,12 +109,10 @@ from lib.defines import (BEACON_SERVICE,
                          SIBRA_SERVICE)
 from lib.defines import DEFAULT_MTU
 from lib.defines import GEN_PATH, PROJECT_ROOT
-
-from ad_manager.util.hostfile_generator import generate_ansible_hostfile
+from lib.packet.scion_addr import ISD_AS
 from scripts.reload_data import reload_data_from_files
+from topology.generator import ConfigGenerator
 
-import subprocess
-from shutil import copy, copytree
 
 GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
 WEB_ROOT = os.path.join(PROJECT_ROOT, 'sub', 'web')  # TODO:fix import all paths
@@ -186,11 +186,63 @@ class ISDDetailView(ListView):
 
 
 @require_POST
+@login_required
+def poll_join_reply(web_req):
+    print("Polling Join Reply!!!")
+    current_page = web_req.META.get('HTTP_REFERER')
+    try:
+        coord = OrganisationAdmin.objects.get(user_id=web_req.user.id)
+    except OrganisationAdmin.DoesNotExist:
+        print("Retrieving key and secret failed!!.")
+        return redirect(current_page)
+
+    open_join_requests = JoinRequest.objects.filter(status='SENT')
+    for req in open_join_requests:
+        req_id = req.request_id
+        print('Pending request=', req_id)
+        key = coord.key + "/"
+        secret = coord.secret
+        base_url = COORD_SERVICE_URI
+        poll_join_reply = POLL_JOIN_REPLY_SVC
+        request_url = reduce(urljoin, [base_url, poll_join_reply, key, secret])
+        headers = {'content-type': 'application/json'}
+        try:
+            r = requests.post(request_url,
+                              json={'request_id': req_id},
+                              headers=headers)
+            if r.status_code == 200:
+                handle_join_reply(r, web_req)
+        except requests.RequestException:
+            print("Retrieving requests from coordination service API failed.")
+
+    return redirect(current_page)
+
+
+def handle_join_reply(reply, web_req):
+    print("resp=", reply.json())
+    join_reply = reply.json()
+
+    new_as = ISD_AS(join_reply['assigned_isdas'])
+    cert = join_reply['certificate']
+    trc = join_reply['trc']
+
+    # TODO: create if new ISD needs to be created
+    AD.objects.update_or_create(
+        as_id=int(new_as[1]),
+        isd=ISD.objects.get(id=int(new_as[0])),
+        is_core_ad=False,
+        is_open=False,
+        certificate=cert,
+        trc=trc
+    )
+    messages.success(web_req, 'New AS Created!!!')
+
+
+
+@require_POST
 def add_as(request):
     isd_as = request.POST['inputASname']
     current_isd = request.POST['inputISDname']
-
-    print("HEREEEEEEE")
 
     coord_settings = get_object_or_404(OrganisationAdmin,
                                        user_id=request.user.id)
@@ -254,53 +306,61 @@ def add_as(request):
 
 @login_required
 def accept_join_request(request, isd_as, request_id):
+    """
+    Accepts the join request, assigns a new AS ID to
+    the requesting party and creates the certificate.
+    This function is only executed by a core AS.
+    """
+    current_page = request.META.get('HTTP_REFERER')
     coord_settings = get_object_or_404(OrganisationAdmin,
                                        user_id=request.user.id)
     key = coord_settings.key + "/"
     secret = coord_settings.secret
 
-    sig_pub_keys = from_b64(request.POST['sig_pub_key'])
-    enc_pub_keys = from_b64(request.POST['enc_pub_key'])
-    core_as_id = isd_as
-    core_as = AD.objects.get(as_id=isd_as.split('-')[1],
-                             isd=isd_as.split('-')[0])
-    core_as_sig_priv_key = from_b64(core_as.sig_priv_key)
-    core_as_trc = str(core_as.trc)
+    print("new AS name=", request.POST['newASname'])
+    print("isd_as=", isd_as)
+
+    joining_as = request.POST['newASname']
+    sig_pub_key = from_b64(request.POST['sig_pub_key'])
+    enc_pub_key = from_b64(request.POST['enc_pub_key'])
+    own_isdas = ISD_AS(isd_as)
+    signing_as = AD.objects.get(as_id=own_isdas[1],
+                                isd=own_isdas[0])
+    signing_as_sig_priv_key = from_b64(signing_as.sig_priv_key)
+    signing_as_trc = str(signing_as.trc)
+    joining_isdas = ISD_AS.from_values(own_isdas[0], joining_as)
 
     certificate = Certificate.from_values(
-        request_id, sig_pub_keys, enc_pub_keys, core_as_id,
-        core_as_sig_priv_key, INITIAL_CERT_VERSION,
+        str(joining_isdas), sig_pub_key, enc_pub_key, str(own_isdas),
+        signing_as_sig_priv_key, INITIAL_CERT_VERSION,
     )
 
-    accept_join_dict = {"isdas": core_as_id,
-                        "replies": [
+    accept_join_dict = {"isdas": str(own_isdas),
+                        "join_reply":
                             {
                                 "request_id": int(request_id),
-                                "isdas": core_as_id,
+                                "joining_isdas": str(joining_isdas),
+                                "signing_isdas": str(own_isdas),
                                 "certificate": str(certificate),
-                                "trc": core_as_trc
+                                "trc": signing_as_trc
                             }
-                        ]
                         }
+    print("accept join dic=", accept_join_dict)
     base_url = COORD_SERVICE_URI
     accept_join_url = UPLOAD_JOIN_REPLIES_SVC
     request_url = reduce(urljoin, [base_url, accept_join_url, key, secret])
     headers = {'content-type': 'application/json'}
     try:
         r = requests.post(request_url, json=accept_join_dict, headers=headers)
-        print(r.json())
     except requests.RequestException:
         print("Failed to upload join reply to coordination service")
-    current_page = request.META.get('HTTP_REFERER')
     return redirect(current_page)
 
 
 @require_POST
 @login_required
 def new_as_id(request):
-
     current_page = request.META.get('HTTP_REFERER')
-
     # check the validity of parameters
     if not request.POST["inputISDtojoin"].isdigit():
         messages.error(request, 'ISD to join has to be a number!')
@@ -346,9 +406,7 @@ def new_as_id(request):
 
     resp = r.json()
     request_id = resp['id']
-
     print("request_id =", request_id)
-
     JoinRequest.objects.update_or_create(
         request_id=request_id,
         created_by=request.user,
@@ -409,12 +467,6 @@ class ADDetailView(DetailView):
         context['join_requests'] = {}
         context['received_requests'] = {}
 
-        # Join requests: received ISD join requests (only for Core ASes)
-        # If a user_id is not provided in the request, then do not
-        # query the SCION coordination service.
-        if self.request.user.id is None:
-            return context
-
         try:
             coord = OrganisationAdmin.objects.get(user_id=self.request.user.id)
         except OrganisationAdmin.DoesNotExist:
@@ -423,7 +475,6 @@ class ADDetailView(DetailView):
 
         key = coord.key + "/"
         secret = coord.secret
-
         base_url = COORD_SERVICE_URI
         get_all_requests = POLL_EVENTS_SVC
         request_url = reduce(urljoin, [base_url, get_all_requests, key, secret])

@@ -35,6 +35,14 @@
     </div>
   </form>
 
+  <form method="POST" action="/as_manager/isds/poll_join_reply">
+    {% csrf_token %}
+    <div class="form-group">
+        <br/>
+        <button type="submit" class="btn">Fetch Join Replies</button>
+    </div>
+  </form>
+
   <script>
     function queryForAsId() {
         $.ajaxSetup({
