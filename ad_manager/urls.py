@@ -29,9 +29,6 @@ api_patterns_internal = patterns(
     url(r'^api/v1/internal/acceptJoin/isd-as/(?P<isd_as>\S+)'
         '/request/(?P<request_id>\d+)/$',
         views.accept_join_request, name='accept_join'),
-    url(r'^api/v1/internal/acceptConnection/isd-as/(?P<isd_as>\S+)'
-        '/request/(?P<request_id>\d+)/$',
-        views.accept_connection_request, name='accept_connection'),
     url(r'^api/v1/internal/.*$',
         views.wrong_api_call, name='wrong_api_call'),
 )
@@ -69,8 +66,6 @@ isd_patterns = patterns(
 
 ad_patterns = patterns(
     '',
-    url(r'^ads/add_as$',
-        views.add_as, name='add_as'),
     url(r'^ads/(?P<pk>\d+)/$',
         views.ADDetailView.as_view(), name='ad_detail'),
     url(r'^ads/(?P<pk>\d+)/#!topology$',
@@ -85,20 +80,8 @@ ad_patterns = patterns(
         views.control_process, name='control_process'),
     url(r'^ads/(?P<pk>\d+)/log/(?P<proc_id>[\w-]+)/$',
         views.read_log, name='read_log'),
-    url(r'^ads/(?P<pk>\d+)/new_link/$',
-        views.NewLinkView.as_view(), name='new_link'),
     url(r'^ads/generate_topology$',
         views.generate_topology, name='generate_topology'),
-)
-
-connection_request_patterns = patterns(
-    '',
-    url(r'^connection_requests/new/(?P<pk>\d+)/$',
-        views.ConnectionRequestView.as_view(), name='new_connection_request'),
-    url(r'^connection_requests/sent$',
-        views.list_sent_requests, name='sent_requests'),
-    url(r'^connection_requests/(?P<req_id>\d+)/action/$',
-        views.request_action, name='connection_request_action'),
 )
 
 misc = patterns(
@@ -111,5 +94,4 @@ misc = patterns(
         views.coord_service, name='coord_service'),
 )
 
-urlpatterns = api_patterns_internal + isd_patterns + ad_patterns + \
-              connection_request_patterns + misc
+urlpatterns = api_patterns_internal + isd_patterns + ad_patterns + misc

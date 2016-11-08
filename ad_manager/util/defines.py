@@ -18,6 +18,4 @@ UPLOAD_CONN_REPLIES_SVC = "/api/as/uploadConnReplies/"
 POLL_CONN_REPLIES_SVC = "/api/as/pollConnReplies/"
 POLL_EVENTS_SVC = "/api/as/pollEvents/"
 
-INSERT_AS = "/api/as/insert/"
-
 INITIAL_CERT_VERSION = 0

@@ -1,7 +1,5 @@
 <br />
 
-<p>Send a connection request</p>
-<a href="{% url 'new_connection_request' object.as_id %}" class="btn btn-default">New request</a>
 
 {% if user_has_perm %}
   <hr />
@@ -50,117 +48,6 @@
 
   <hr />
   <h2>Received connection requests</h2>
+  <!-- TODO(ercanucan): To be implemented -->
 
-  <table class="table" id="received-connection-requests-tbl">
-    <thead>
-    <tr>
-      <th class="col-md-1">Created by</th>
-      <th class="col-md-2">Info</th>
-      <th class="col-md-2">Router IP</th>
-      <th class="col-md-1">MTU</th>
-      <th class="col-md-1">Bandwidth</th>
-      <th class="col-md-1">Link type</th>
-      <th class="col-md-1">Status</th>
-      <th class="col-md-3">Actions</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    {% for request in received_requests %}
-      <tr class="request-id-{{ request.id }}">
-        <td class="request-id hidden">{{ request.id }}</td>
-        <td class="requester-isd-as" value="{{ request.requester_isdas }}">{{ request.requester_isdas }}</td>
-        <td class="requester-certificate hidden">{{ request.requester_certificate }}</td>
-        <td>
-          <div class="well">{{ request.info }}</div>
-        </td>
-        <td>
-            <div class="well requester-ip-port">
-              {{ request.ip }} : <span id="port">{{ request.port }}</span> <br />
-              {% if request.new_ad %}
-                New AS: <a href="{% url 'ad_detail' request.new_ad.id %}">{{ request.new_ad }}</a>
-              {% endif %}
-            </div>
-        </td>
-        <td class="mtu">{{ request.mtu }}</td>
-        <td class="bandwidth">{{ request.bandwidth }}</td>
-        <td class="linktype">{{ request.linktype }}</td>
-        <td class="timestamp hidden">{{ request.timestamp }}</td>
-        <td class="signature hidden">{{ request.signature }}</td>
-        <td>
-          <a role="button" data-toggle="collapse" href="#info-{{ request.id }}" aria-expanded="false" aria-controls="collapseExample">
-            {{ request.status}}
-          </a>
-        </td>
-        <td>
-          <form id="request_action_form" method="POST" action="{% url 'connection_request_action' request.id %}" class="request-approve-form">
-            {% csrf_token %}
-            <button type="button" class="btn btn-success btn-sm" name="_approve_request" onclick="showAcceptModal({{ request.id }});">
-              Approve
-            </button>
-            <button type="submit" class="btn btn-danger btn-sm click-confirm" name="_decline_request">
-              Decline
-            </button>
-          </form>
-        </td>
-      </tr>
-    {% empty %}
-      <tr>
-        <td colspan="4"><i>No requests</i></td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-
-  <!-- Accept connection request modal: allows you to set the reply parameters -->
-  <div class="modal fade" data-backdrop="true" id="acceptConnectionModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-                <h4 class="modal-title">Connection reply parameters</h4>
-            </div>
-            <div class="modal-body">
-                <form id="acceptConnectionModalForm" method="POST">
-                    {% csrf_token %}
-                    <input type="text" id="replying_isdas" name="replying_isdas" class="hidden" value="{{ object }}">
-                    <input type="text" id="requester_isdas" name="requester_isdas" class="hidden">
-                    <input type="text" id="request_id" name="request_id" class="hidden">
-                    <div class="form-group">
-                        <label class="control-label" for="id_router_public_ip">Router public ip</label>
-                        <input class="form-control" id="id_router_public_ip" name="router_public_ip" required="required" title="" type="text">
-                        </input>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label" for="id_router_public_port">Router external port</label>
-                        <input class="form-control" id="id_router_public_port" name="router_public_port" placeholder="Router external port" required="required" title="" type="number">
-                    </div>
-                    <input class="hidden" id="id_requested_mtu" name="requested_mtu" type="number">
-                    <div class="form-group"><label class="control-label" for="id_mtu">MTU</label>
-                        <input class="form-control" id="id_mtu" name="accepted_mtu" placeholder="MTU" required="required" title="" type="number">
-                    </div>
-                    <input class="hidden" id="id_requested_bandwidth" name="requested_bandwidth" type="number">
-                    <div class="form-group"><label class="control-label" for="id_bandwidth">Bandwidth</label>
-                        <input class="form-control" id="id_bandwidth" name="accepted_bandwidth" placeholder="Bandwidth" required="required" title="" type="number">
-                    </div>
-                    <button type="submit" class="click-confirm" name="_approve_request">Send Approval</button>
-                </form>
-            </div>
-        </div>
-    </div>
-  </div>
-  <script>
-    function showAcceptModal(requestID) {
-        $('#acceptConnectionModal').modal('show');
-        var requestSelector = ".request-id-" + requestID;
-        $('#acceptConnectionModal #acceptConnectionModalForm').attr('action', $(requestSelector + " #request_action_form").attr('action'));
-        $('#acceptConnectionModal #request_id').attr('value', requestID);
-        $('#acceptConnectionModal #requester_isdas').attr('value', $($(requestSelector + " .requester-isd-as")[0]).attr('value'));
-        $('#acceptConnectionModal #id_mtu').attr('value', $(requestSelector + " .mtu")[0].innerText); // prepopulate with requested value
-        $('#acceptConnectionModal #id_requested_mtu').attr('value', $(requestSelector + " .mtu")[0].innerText); // submit requested value to decide server side
-        $('#acceptConnectionModal #id_bandwidth').attr('value', $(requestSelector + " .bandwidth")[0].innerText); // prepopulate with requested value
-        $('#acceptConnectionModal #id_requested_bandwidth').attr('value', $(requestSelector + " .bandwidth")[0].innerText); // submit requested value to decide server side
-        $('#acceptConnectionModal #id_router_public_port').attr('value', $(requestSelector + " .requester-ip-port #port")[0].innerText)
-    }
-  </script>
 {% endif %}
