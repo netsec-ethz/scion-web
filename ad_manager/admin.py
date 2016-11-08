@@ -25,15 +25,15 @@ from guardian.admin import GuardedModelAdmin
 from two_factor.admin import AdminSiteOTPRequiredMixin
 from two_factor.models import PhoneDevice
 from ad_manager.models import (
-    OrganisationAdmin,
     AD,
     BeaconServerWeb,
     CertificateServerWeb,
     ConnectionRequest,
     ISD,
+    OrganisationAdmin,
     PathServerWeb,
     RouterWeb,
-    SibraServerWeb,
+    SibraServerWeb
 )
 
 

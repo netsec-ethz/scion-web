@@ -13,65 +13,69 @@
 # limitations under the License.
 
 # Stdlib
+import configparser
 import hashlib
 import json
+import logging
 import os
+import requests
+import socket
 import subprocess
+import tarfile
+import yaml
+
 from collections import deque
+from copy import deepcopy
 from shutil import (
     rmtree,
     copy,
     copytree
 )
+from string import Template
 
 # External packages
-from urllib.parse import urljoin
-from functools import reduce
-
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.http import (
     HttpResponseNotFound,
-    JsonResponse,
+    JsonResponse
 )
 from django.shortcuts import redirect, get_object_or_404, render
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView, DetailView
-import yaml
-import tarfile
-import configparser
+from functools import reduce
+from urllib.parse import urljoin
 import xmlrpc.client
-import requests
-import socket
-from copy import deepcopy
-from string import Template
-
 
 # SCION
 from ad_manager.util.response_handling import (
     get_failure_errors,
     get_success_data,
-    is_success,
+    is_success
 )
 from ad_manager.util.util import to_b64, from_b64
 from ad_manager.util.defines import (
-    DEFAULT_BANDWIDTH,
-    SCION_SUGGESTED_PORT,
     COORD_SERVICE_URI,
-    UPLOAD_JOIN_REQUEST_SVC,
-    UPLOAD_JOIN_REPLIES_SVC,
+    DEFAULT_BANDWIDTH,
+    INITIAL_CERT_VERSION,
     POLL_JOIN_REPLY_SVC,
     POLL_EVENTS_SVC,
-    INITIAL_CERT_VERSION
+    SCION_SUGGESTED_PORT,
+    UPLOAD_JOIN_REQUEST_SVC,
+    UPLOAD_JOIN_REPLIES_SVC
 )
 from ad_manager.forms import (
     CoordinationServiceSettingsForm,
     UploadFileForm
 )
-from ad_manager.models import AD, ISD, \
-    OrganisationAdmin, JoinRequest
+from ad_manager.models import (
+    AD,
+    ISD,
+    OrganisationAdmin,
+    JoinRequest
+)
 from ad_manager.util.errors import HttpResponseUnavailable
 from lib.util import (
     read_file,
@@ -83,11 +87,12 @@ from lib.crypto.asymcrypto import (
     generate_sign_keypair,
     generate_enc_keypair,
 )
-from lib.defines import (BEACON_SERVICE,
-                         CERTIFICATE_SERVICE,
-                         PATH_SERVICE,
-                         ROUTER_SERVICE,
-                         SIBRA_SERVICE)
+from lib.defines import (
+    BEACON_SERVICE,
+    CERTIFICATE_SERVICE,
+    PATH_SERVICE,
+    ROUTER_SERVICE,
+    SIBRA_SERVICE)
 from lib.defines import DEFAULT_MTU
 from lib.defines import GEN_PATH, PROJECT_ROOT
 from lib.packet.scion_addr import ISD_AS
@@ -122,6 +127,7 @@ SERVICE_EXECUTABLES = (
 
 REQ_SENT = 'SENT'
 REQ_APPROVED = 'APPROVED'
+logger = logging.getLogger("scion-web")
 
 
 class ISDListView(ListView):
@@ -171,18 +177,18 @@ class ISDDetailView(ListView):
 @require_POST
 @login_required
 def poll_join_reply(web_req):
-    print("Polling Join Reply!!!")
+    logger.info("Polling Join Reply")
     current_page = web_req.META.get('HTTP_REFERER')
     try:
         coord = OrganisationAdmin.objects.get(user_id=web_req.user.id)
     except OrganisationAdmin.DoesNotExist:
-        print("Retrieving key and secret failed!!.")
+        logger.error("Retrieving key and secret failed.")
         return redirect(current_page)
 
     open_join_requests = JoinRequest.objects.filter(status=REQ_SENT)
     for req in open_join_requests:
         jr_id = req.request_id
-        print('Pending request=', jr_id)
+        logger.info('Pending request = %s', jr_id)
         key = coord.key + "/"
         secret = coord.secret
         base_url = COORD_SERVICE_URI
@@ -196,13 +202,13 @@ def poll_join_reply(web_req):
             if r.status_code == 200:
                 handle_join_reply(r, web_req, jr_id)
         except requests.RequestException:
-            print("Retrieving requests from coordination service API failed.")
+            logger.info("Retrieving requests from scion-coord failed.")
 
     return redirect(current_page)
 
 
 def handle_join_reply(reply, web_req, jr_id):
-    print("resp=", reply.json())
+    logger.info("resp = %s", reply.json())
     join_reply = reply.json()
 
     new_as = ISD_AS(join_reply['assigned_isdas'])
@@ -237,8 +243,8 @@ def accept_join_request(request, isd_as, request_id):
     key = coord_settings.key + "/"
     secret = coord_settings.secret
 
-    print("new AS name=", request.POST['newASname'])
-    print("isd_as=", isd_as)
+    logger.info("new AS name = %s", request.POST['newASname'])
+    logger.info("isd_as = %s", isd_as)
 
     joining_as = request.POST['newASname']
     sig_pub_key = from_b64(request.POST['sig_pub_key'])
@@ -265,7 +271,7 @@ def accept_join_request(request, isd_as, request_id):
                                 "trc": signing_as_trc
                             }
                         }
-    print("accept join dic=", accept_join_dict)
+    logger.info("accept join dic=%s", accept_join_dict)
     base_url = COORD_SERVICE_URI
     accept_join_url = UPLOAD_JOIN_REPLIES_SVC
     request_url = reduce(urljoin, [base_url, accept_join_url, key, secret])
@@ -273,7 +279,7 @@ def accept_join_request(request, isd_as, request_id):
     try:
         requests.post(request_url, json=accept_join_dict, headers=headers)
     except requests.RequestException:
-        print("Failed to upload join reply to coordination service")
+        logger.error("Failed to upload join reply to coordination service")
     return redirect(current_page)
 
 
@@ -310,8 +316,8 @@ def new_as_id(request):
     request_url = reduce(urljoin, [base_url, join_request_url, key, secret])
     headers = {'content-type': 'application/json'}
 
-    print("Request", request_url)
-    print("Join request dict", join_request_dict)
+    logger.info("Request = %s", request_url)
+    logger.info("Join request dict = %s", join_request_dict)
     try:
         r = requests.post(request_url, json=join_request_dict, headers=headers)
     except requests.RequestException:
@@ -326,7 +332,7 @@ def new_as_id(request):
 
     resp = r.json()
     request_id = resp['id']
-    print("request_id =", request_id)
+    logger.info("request_id = %s", request_id)
     JoinRequest.objects.update_or_create(
         request_id=request_id,
         created_by=request.user,
@@ -390,7 +396,7 @@ class ADDetailView(DetailView):
         try:
             coord = OrganisationAdmin.objects.get(user_id=self.request.user.id)
         except OrganisationAdmin.DoesNotExist:
-            print("Retrieving key and secret failed!!.")
+            logger.error("Retrieving key and secret failed!!.")
             return context
 
         key = coord.key + "/"
@@ -406,10 +412,10 @@ class ADDetailView(DetailView):
                 answer = r.json()
                 context['join_requests'] = answer['join_requests']
                 context['received_requests'] = answer['conn_requests']
-                print("join requests", context['join_requests'])
-                print("conn requests", context['received_requests'])
+                logger.info("join requests = %s", context['join_requests'])
+                logger.info("conn requests = %s", context['received_requests'])
         except requests.RequestException:
-            print("Retrieving requests from coordination service API failed.")
+            logger.info("Retrieving requests from scion-coord failed.")
 
         return context
 
@@ -611,7 +617,7 @@ def network_view(request):
 
 
 def wrong_api_call(request):
-    print('Wrong API call')
+    logger.error('Wrong API call')
     return JsonResponse({'data': 'Failure'})
 
 
@@ -769,7 +775,7 @@ def get_own_local_ip():
             s.connect(('192.168.255.255', 22))
             result = s.getsockname()[0]
     except OSError:
-        print('Network is unreachable')
+        logger.error('Network is unreachable')
     return result
 
 
@@ -1060,7 +1066,7 @@ def run_remote_command(ip, process_name, command, use_ansible=True):
             length = 4000
             result = server.supervisor.tailProcessStdoutLog(process_name,
                                                             offset, length)
-        print('Remote operation {} completed: {}'.format(command, result))
+        logger.info('Remote operation {} completed: {}'.format(command, result))
     else:
         # using the ansibleCLI instead of
         # duplicating code to use the PlaybookExecutor
@@ -1072,7 +1078,7 @@ def run_remote_command(ip, process_name, command, use_ansible=True):
                                                          'deploy-current.yml')],
                                            cwd=PROJECT_ROOT)
         except subprocess.CalledProcessError:
-            print(result)
+            logger.error(result)
     return result
 
 
@@ -1085,6 +1091,6 @@ def run_rpc_command(ip, uuid, management_interface_ip, command, isd_id, as_id):
         result = server.retrieve_configuration(uuid, management_interface_ip,
                                                isd_id, as_id)
     else:
-        print('Wrong command')
-    print('Remote operation {} completed: {}'.format(command, 'True'))
+        logger.error('Wrong command')
+    logger.info('Remote operation {} completed: {}'.format(command, 'True'))
     return result

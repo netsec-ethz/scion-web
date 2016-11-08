@@ -14,12 +14,14 @@
 
 # External packages
 from django import forms
+from django.shortcuts import get_object_or_404
 
 # SCION
-from ad_manager.models import ConnectionRequest, AD, \
+from ad_manager.models import (
+    AD,
+    ConnectionRequest,
     OrganisationAdmin
-
-from django.shortcuts import get_object_or_404
+)
 
 
 # never use for untrusted uploads
