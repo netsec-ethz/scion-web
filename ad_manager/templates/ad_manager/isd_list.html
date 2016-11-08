@@ -15,16 +15,6 @@
     {% endfor %}
   </ul>
 
-<!--   <form method="POST" action="/as_manager/isds/add_isd">
-    {% csrf_token %}
-    <div class="form-group">
-        <br/>
-        <label class="control-label" class="floor-align-text" for="inputISDname">new ISD name:</label>
-        <input id="inputISDname" name="inputISDname" type="text">
-        <button type="submit" class="btn">Create ISD</button>
-    </div>
-  </form> -->
-
   <form method="POST" id="joinISD" action="/as_manager/isds/join_isd">
     {% csrf_token %}
     <div class="form-group">
@@ -32,6 +22,17 @@
         <label class="control-label" class="floor-align-text" for="inputISDtojoin">Create new AS in ISD:</label>
         <input id="inputISDtojoin" name="inputISDtojoin" type="text">
         <button type="button" class="btn" onclick="queryForAsId();">Join</button>
+    </div>
+  </form>
+
+  <!--TODO(ercanucan): This form will eventually be removed from scion-web-->
+  <form method="POST" action="/as_manager/isds/add_isd">
+    {% csrf_token %}
+    <div class="form-group">
+        <br/>
+        <label class="control-label" class="floor-align-text" for="inputISDname">new ISD name:</label>
+        <input id="inputISDname" name="inputISDname" type="text">
+        <button type="submit" class="btn">Create ISD</button>
     </div>
   </form>
 
