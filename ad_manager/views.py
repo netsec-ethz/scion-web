@@ -13,66 +13,69 @@
 # limitations under the License.
 
 # Stdlib
+import configparser
 import hashlib
 import json
 import logging
 import os
+import requests
+import socket
 import subprocess
+import tarfile
+import yaml
+
 from collections import deque
+from copy import deepcopy
 from shutil import (
     rmtree,
     copy,
     copytree
 )
+from string import Template
 
 # External packages
-from urllib.parse import urljoin
-from functools import reduce
-
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.http import (
     HttpResponseNotFound,
-    JsonResponse,
+    JsonResponse
 )
 from django.shortcuts import redirect, get_object_or_404, render
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView, DetailView
-import yaml
-import tarfile
-import configparser
+from functools import reduce
+from urllib.parse import urljoin
 import xmlrpc.client
-import requests
-import socket
-from copy import deepcopy
-from string import Template
-
 
 # SCION
 from ad_manager.util.response_handling import (
     get_failure_errors,
     get_success_data,
-    is_success,
+    is_success
 )
 from ad_manager.util.util import to_b64, from_b64
 from ad_manager.util.defines import (
-    DEFAULT_BANDWIDTH,
-    SCION_SUGGESTED_PORT,
     COORD_SERVICE_URI,
-    UPLOAD_JOIN_REQUEST_SVC,
-    UPLOAD_JOIN_REPLIES_SVC,
+    DEFAULT_BANDWIDTH,
+    INITIAL_CERT_VERSION,
     POLL_JOIN_REPLY_SVC,
     POLL_EVENTS_SVC,
-    INITIAL_CERT_VERSION
+    SCION_SUGGESTED_PORT,
+    UPLOAD_JOIN_REQUEST_SVC,
+    UPLOAD_JOIN_REPLIES_SVC
 )
 from ad_manager.forms import (
     CoordinationServiceSettingsForm,
     UploadFileForm
 )
-from ad_manager.models import AD, ISD, \
-    OrganisationAdmin, JoinRequest
+from ad_manager.models import (
+    AD,
+    ISD,
+    OrganisationAdmin,
+    JoinRequest
+)
 from ad_manager.util.errors import HttpResponseUnavailable
 from lib.util import (
     read_file,
@@ -84,11 +87,12 @@ from lib.crypto.asymcrypto import (
     generate_sign_keypair,
     generate_enc_keypair,
 )
-from lib.defines import (BEACON_SERVICE,
-                         CERTIFICATE_SERVICE,
-                         PATH_SERVICE,
-                         ROUTER_SERVICE,
-                         SIBRA_SERVICE)
+from lib.defines import (
+    BEACON_SERVICE,
+    CERTIFICATE_SERVICE,
+    PATH_SERVICE,
+    ROUTER_SERVICE,
+    SIBRA_SERVICE)
 from lib.defines import DEFAULT_MTU
 from lib.defines import GEN_PATH, PROJECT_ROOT
 from lib.packet.scion_addr import ISD_AS

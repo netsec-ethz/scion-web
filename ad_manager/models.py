@@ -17,24 +17,23 @@ import copy
 import logging
 
 # External packages
-import jsonfield
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.db import models, IntegrityError
+import jsonfield
 
 # SCION
 from ad_manager.util.common import empty_dict
+from ad_manager.util.defines import (
+    DEFAULT_BANDWIDTH,
+    SCION_SUGGESTED_PORT
+)
 from lib.defines import (
     BEACON_SERVICE,
     CERTIFICATE_SERVICE,
+    DEFAULT_MTU,
     PATH_SERVICE,
-    SIBRA_SERVICE,
-    DEFAULT_MTU
-)
-
-from ad_manager.util.defines import (
-    DEFAULT_BANDWIDTH,
-    SCION_SUGGESTED_PORT,
+    SIBRA_SERVICE
 )
 
 PORT = SCION_SUGGESTED_PORT
