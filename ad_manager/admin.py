@@ -24,6 +24,8 @@ from guardian.admin import GuardedModelAdmin
 # SCION
 from two_factor.admin import AdminSiteOTPRequiredMixin
 from two_factor.models import PhoneDevice
+
+# SCION-WEB
 from ad_manager.models import (
     AD,
     BeaconServerWeb,
@@ -33,7 +35,7 @@ from ad_manager.models import (
     OrganisationAdmin,
     PathServerWeb,
     RouterWeb,
-    SibraServerWeb
+    SibraServerWeb,
 )
 
 

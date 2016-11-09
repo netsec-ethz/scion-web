@@ -17,11 +17,9 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django_webtest import WebTest
-from unittest.mock import patch
-
-# SCION
 from guardian.shortcuts import assign_perm
-from ad_manager.util.response_handling import response_success
+
+# SCION-WEB
 from ad_manager.models import ISD, AD
 
 
@@ -193,38 +191,6 @@ class TestUsersAndPermissions(BasicWebTestUsers):
         res = home.click('logout').maybe_follow()
         self.assertContains(res, 'Login')
 
-    def test_nonpriv_user_control(self):
-        ad = self.ads[1]
-        bs = ad.beaconserverweb_set.first()
-        ad_detail = self._get_ad_detail(ad)
-
-        # No control buttons
-        self.assertFalse(ad_detail.html.findAll('form', self.CONTROL_CLASS))
-
-        # Action is forbidden
-        control_url = reverse('control_process', args=[ad.as_id, bs.id_str()])
-        res = self.app.post(control_url, expect_errors=True)
-        self.assertEqual(res.status_code, 403)
-
-    @patch("ad_manager.views.run_remote_command")
-    def test_priv_user_control(self, run_remote_command):
-        ad = self.ads[1]
-        bs = ad.beaconserverweb_set.first()
-        ad_detail = self._get_ad_detail(ad, user=self.admin_user)
-
-        self.assertTrue(ad_detail.html.findAll('form', self.CONTROL_CLASS))
-
-        # Find the bs control form
-        bs_control_form = self._find_form_by_action(ad_detail,
-                                                    'control_process',
-                                                    args=[ad.as_id,
-                                                          bs.id_str()])
-
-        # Press the "start" button
-        run_remote_command.return_value = response_success('ok')
-        res = bs_control_form.submit('_start_process')
-        self.assertTrue(res.json)
-
 
 class TestConnectionRequests(BasicWebTestUsers):
 
@@ -259,15 +225,3 @@ class TestConnectionRequests(BasicWebTestUsers):
         assign_perm('change_ad', self.user, ad)
         ad_requests = self.app.get(requests_page, user=self.user)
         self.assertContains(ad_requests, 'Received connection requests')
-
-
-class TestNewLink(BasicWebTestUsers):
-
-    def test_permissions(self):
-        ad = self.ads[2]
-        new_link_page = reverse('new_link', args=[ad.as_id])
-        resp = self.app.get(new_link_page, user=self.admin_user)
-        self.assertContains(resp, 'Link type')
-
-        resp = self.app.get(new_link_page, user=self.user, expect_errors=True)
-        self.assertEqual(resp.status_code, 403)

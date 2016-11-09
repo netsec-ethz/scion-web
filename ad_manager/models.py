@@ -17,34 +17,29 @@ import copy
 import logging
 
 # External packages
+import jsonfield
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.db import models, IntegrityError
-import jsonfield
 
 # SCION
 from ad_manager.util.common import empty_dict
 from ad_manager.util.defines import (
     DEFAULT_BANDWIDTH,
-    SCION_SUGGESTED_PORT
+    SCION_SUGGESTED_PORT,
 )
+
+# SCION-WEB
 from lib.defines import (
     BEACON_SERVICE,
     CERTIFICATE_SERVICE,
     DEFAULT_MTU,
     PATH_SERVICE,
-    SIBRA_SERVICE
+    SIBRA_SERVICE,
 )
 
 PORT = SCION_SUGGESTED_PORT
 PACKAGE_DIR_PATH = 'gen'
-
-
-class OrganisationAdmin(models.Model):
-    user = models.OneToOneField(User)
-    is_org_admin = models.BooleanField(default=False)
-    key = models.CharField(max_length=260, null=False, blank=True)
-    secret = models.CharField(max_length=260, null=False, blank=True)
 
 
 class SelectRelatedModelManager(models.Manager):
@@ -60,6 +55,13 @@ class SelectRelatedModelManager(models.Manager):
             return queryset.select_related()
         else:
             return queryset.select_related(*related_fields)
+
+
+class OrganisationAdmin(models.Model):
+    user = models.OneToOneField(User)
+    is_org_admin = models.BooleanField(default=False)
+    key = models.CharField(max_length=260, null=False, blank=True)
+    secret = models.CharField(max_length=260, null=False, blank=True)
 
 
 class ISD(models.Model):
@@ -94,9 +96,9 @@ class AD(models.Model):
     objects = SelectRelatedModelManager()
 
     class Meta:
-        unique_together = (("id", "isd"),)
+        unique_together = (("as_id", "isd"),)
         verbose_name = 'AD'
-        ordering = ['id']
+        ordering = ['as_id']
 
     def generate_topology_dict(self):
         """
@@ -105,7 +107,7 @@ class AD(models.Model):
         assert isinstance(self.original_topology, dict)
         out_dict = copy.deepcopy(self.original_topology)
         out_dict.update({
-            'ISDID': int(self.isd_id), 'ADID': int(self.id),
+            'ISDID': int(self.isd_id), 'ADID': int(self.as_id),
             'Core': int(self.is_core_ad),
             'BorderRouters': {}, 'PathServers': {}, 'BeaconServers': {},
             'CertificateServers': {}, 'SibraServers': {},
@@ -169,7 +171,7 @@ class AD(models.Model):
                 isd_str = isd_as_split[0]
                 as_str = isd_as_split[1]
                 try:
-                    neighbor_ad = AD.objects.get(id=as_str,
+                    neighbor_ad = AD.objects.get(as_id=as_str,
                                                  isd=isd_str)
                 except AD.DoesNotExist:
                     if auto_refs:
@@ -181,12 +183,12 @@ class AD(models.Model):
                         except ISD.DoesNotExist:
                             isd = ISD(id=isd_str)
                             isd.save()
-                        as_obj = AD.objects.create(id=as_str, isd=isd,
+                        as_obj = AD.objects.create(as_id=as_str, isd=isd,
                                                    is_core_ad=0,
                                                    is_open=False)
                         as_obj.save()
 
-                        neighbor_ad = AD.objects.get(id=as_str,
+                        neighbor_ad = AD.objects.get(as_id=as_str,
                                                      isd=isd_str)
                     else:
                         raise
@@ -241,17 +243,17 @@ class AD(models.Model):
             raise
 
     def get_absolute_url(self):
-        return reverse('ad_detail', args=[self.id])
+        return reverse('ad_detail', args=[self.as_id])
 
     def get_full_process_name(self, id_str):
         if ':' in id_str:
             return id_str
         else:
             # changed for rpc log retrieval, to match new supervisord names
-            return "as{}-{}:{}".format(self.isd.id, self.id, id_str)
+            return "as{}-{}:{}".format(self.isd.id, self.as_id, id_str)
 
     def __str__(self):
-        return '{}-{}'.format(self.isd.id, self.id)
+        return '{}-{}'.format(self.isd.id, self.as_id)
 
 
 class SCIONWebElement(models.Model):
@@ -321,13 +323,13 @@ class RouterWeb(SCIONWebElement):
     def id_str(self):
         return "er{}-{}er{}-{}".format(self.ad.isd_id, self.ad_id,
                                        self.neighbor_ad.isd_id,
-                                       self.neighbor_ad.id)
+                                       self.neighbor_ad.as_id)
 
     def get_dict(self):
         out_dict = super(RouterWeb, self).get_dict()
         out_dict['Interface'] = {'NeighborType': self.neighbor_type,
                                  'NeighborISD': int(self.neighbor_ad.isd_id),
-                                 'NeighborAD': int(self.neighbor_ad.id),
+                                 'NeighborAD': int(self.neighbor_ad.as_id),
                                  'Addr': str(self.interface_addr),
                                  'AddrType': 'IPV4',
                                  'ToAddr': str(self.interface_toaddr),

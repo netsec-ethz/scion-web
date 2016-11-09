@@ -16,6 +16,7 @@
 import configparser
 import os
 
+# SCION
 from lib.defines import (BEACON_SERVICE,
                          CERTIFICATE_SERVICE,
                          PATH_SERVICE,
@@ -128,7 +129,7 @@ def generate_ansible_hostfile(topology_params, mockup_dict, isd_as,
                               ('SibraServer', 'sibra_server'),
                               ('Zookeeper', 'zookeeper_service')]:
         val = get_section_attr(mockup_dict, key+'s', 'Addr')
-        if not val:  # do not treat empty entries
+        if not val:  # skip empty entries
             continue
         hostnames = topology_params.getlist('inputHostname')
         unique_addr = topology_params.getlist('inputCloudAddress')
