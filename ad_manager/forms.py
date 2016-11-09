@@ -70,7 +70,7 @@ class ConnectionRequestForm(forms.ModelForm):
         )
         self.fields['connect_to'] = forms.CharField(
             widget=forms.TextInput(attrs={'placeholder':
-                                          'ISD-AS of the AS to connect to'})
+                                          'ISD-AS to connect to'})
         )
 
         if 'BorderRouters' in ad.original_topology.keys():
@@ -84,8 +84,8 @@ class ConnectionRequestForm(forms.ModelForm):
 
     class Meta:
         model = ConnectionRequest
-        fields = ('connect_to', 'info', 'router_public_ip',
-                  'router_public_port', 'mtu', 'bandwidth', 'link_type')
+        fields = ('connect_to', 'router_public_ip', 'router_public_port',
+                  'mtu', 'bandwidth', 'link_type', 'info')
         # 'router_bound_ip','router_bound_port',
         labels = {'connect_to': 'Connect to',
                   'router_public_ip': 'Router external IP',

@@ -94,9 +94,9 @@ class AD(models.Model):
     objects = SelectRelatedModelManager()
 
     class Meta:
-        unique_together = (("id", "isd"),)
+        unique_together = (("as_id", "isd"),)
         verbose_name = 'AD'
-        ordering = ['id']
+        ordering = ['as_id']
 
     def generate_topology_dict(self):
         """
@@ -105,7 +105,7 @@ class AD(models.Model):
         assert isinstance(self.original_topology, dict)
         out_dict = copy.deepcopy(self.original_topology)
         out_dict.update({
-            'ISDID': int(self.isd_id), 'ADID': int(self.id),
+            'ISDID': int(self.isd_id), 'ADID': int(self.as_id),
             'Core': int(self.is_core_ad),
             'BorderRouters': {}, 'PathServers': {}, 'BeaconServers': {},
             'CertificateServers': {}, 'SibraServers': {},
@@ -169,7 +169,7 @@ class AD(models.Model):
                 isd_str = isd_as_split[0]
                 as_str = isd_as_split[1]
                 try:
-                    neighbor_ad = AD.objects.get(id=as_str,
+                    neighbor_ad = AD.objects.get(as_id=as_str,
                                                  isd=isd_str)
                 except AD.DoesNotExist:
                     if auto_refs:
@@ -181,12 +181,12 @@ class AD(models.Model):
                         except ISD.DoesNotExist:
                             isd = ISD(id=isd_str)
                             isd.save()
-                        as_obj = AD.objects.create(id=as_str, isd=isd,
+                        as_obj = AD.objects.create(as_id=as_str, isd=isd,
                                                    is_core_ad=0,
                                                    is_open=False)
                         as_obj.save()
 
-                        neighbor_ad = AD.objects.get(id=as_str,
+                        neighbor_ad = AD.objects.get(as_id=as_str,
                                                      isd=isd_str)
                     else:
                         raise
@@ -241,17 +241,17 @@ class AD(models.Model):
             raise
 
     def get_absolute_url(self):
-        return reverse('ad_detail', args=[self.id])
+        return reverse('ad_detail', args=[self.as_id])
 
     def get_full_process_name(self, id_str):
         if ':' in id_str:
             return id_str
         else:
             # changed for rpc log retrieval, to match new supervisord names
-            return "as{}-{}:{}".format(self.isd.id, self.id, id_str)
+            return "as{}-{}:{}".format(self.isd.id, self.as_id, id_str)
 
     def __str__(self):
-        return '{}-{}'.format(self.isd.id, self.id)
+        return '{}-{}'.format(self.isd.id, self.as_id)
 
 
 class SCIONWebElement(models.Model):

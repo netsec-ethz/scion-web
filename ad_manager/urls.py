@@ -84,6 +84,12 @@ ad_patterns = patterns(
         views.generate_topology, name='generate_topology'),
 )
 
+connection_request_patterns = patterns(
+    '',
+    url(r'^connection_requests/new/(?P<pk>\d+)/$',
+        views.ConnectionRequestView.as_view(), name='new_connection_request'),
+)
+
 misc = patterns(
     '',
     url(r'^network/$',
@@ -94,4 +100,5 @@ misc = patterns(
         views.coord_service, name='coord_service'),
 )
 
-urlpatterns = api_patterns_internal + isd_patterns + ad_patterns + misc
+urlpatterns = api_patterns_internal + isd_patterns + ad_patterns + \
+              connection_request_patterns + misc

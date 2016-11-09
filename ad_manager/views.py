@@ -39,12 +39,15 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.http import (
+    HttpResponse,
+    HttpResponseForbidden,
     HttpResponseNotFound,
     JsonResponse
 )
 from django.shortcuts import redirect, get_object_or_404, render
+from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
-from django.views.generic import ListView, DetailView
+from django.views.generic import ListView, DetailView, FormView
 from functools import reduce
 from urllib.parse import urljoin
 import xmlrpc.client
@@ -67,6 +70,7 @@ from ad_manager.util.defines import (
     UPLOAD_JOIN_REPLIES_SVC
 )
 from ad_manager.forms import (
+    ConnectionRequestForm,
     CoordinationServiceSettingsForm,
     UploadFileForm
 )
@@ -347,6 +351,42 @@ def new_as_id(request):
     messages.success(request, 'Join Request Submitted Successfully.'
                               ' Request ID = %s' % request_id)
     return redirect(current_page)
+
+
+class ConnectionRequestView(FormView):
+    form_class = ConnectionRequestForm
+    template_name = 'ad_manager/new_connection_request.html'
+    success_url = ''
+
+    @method_decorator(login_required)
+    def dispatch(self, request, *args, **kwargs):
+        current_as_id = kwargs['pk']
+        form = ConnectionRequestForm(pk=current_as_id)
+        context = self.get_context_data(form=form)
+        if request.method == 'POST':
+            return self.form_valid(form)
+        else:
+            return self.render_to_response(context)
+
+    def _get_ad(self):
+        return get_object_or_404(AD, as_id=self.kwargs['pk'])
+
+    def form_invalid(self, form):
+        print('form is invalid')
+        return HttpResponse('Invalid form')
+
+    def form_valid(self, form):
+        if not self.request.user.is_authenticated():
+            return HttpResponseForbidden('Authentication required')
+
+        logger.info("Submitting Connection Request not yet implemented.")
+        self.success_url = self._get_ad().get_absolute_url()
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context_data = super().get_context_data(**kwargs)
+        context_data['ad'] = self._get_ad()
+        return context_data
 
 
 class ADDetailView(DetailView):
