@@ -15,7 +15,7 @@
 # External packages
 from django.conf.urls import patterns, url
 
-# SCION
+# SCION-WEB
 from ad_manager import views
 
 api_patterns_internal = patterns(
@@ -76,10 +76,6 @@ ad_patterns = patterns(
         views.ADDetailView.as_view(), name='ad_detail_updates'),
     url(r'^ads/(?P<pk>\d+)/#!requests$',
         views.ADDetailView.as_view(), name='ad_connection_requests'),
-    url(r'^ads/(?P<pk>\d+)/control/(?P<proc_id>[\w-]+)/$',
-        views.control_process, name='control_process'),
-    url(r'^ads/(?P<pk>\d+)/log/(?P<proc_id>[\w-]+)/$',
-        views.read_log, name='read_log'),
     url(r'^ads/generate_topology$',
         views.generate_topology, name='generate_topology'),
 )

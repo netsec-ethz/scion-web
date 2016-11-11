@@ -30,14 +30,8 @@
     <!-- Tab panes -->
     <div class="tab-content">
 
-      <!-- Server status tab -->
+      <!-- Server summary tab -->
       <div role="tabpanel" class="tab-pane active" id="servers">
-        <div>
-          <div class="col-md-10"></div>
-          <div class="col-md-2">
-            <button type="button" class="btn btn-info pull-right" id="update-ad-btn">Update status</button>
-          </div>
-        </div>
 
         {% with table_name='Beacon servers' servers=beacon_servers table_id='beacon-servers' %}
           {% include 'ad_manager/partials/server_table.html' %}

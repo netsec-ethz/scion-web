@@ -17,34 +17,29 @@ import copy
 import logging
 
 # External packages
+import jsonfield
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.db import models, IntegrityError
-import jsonfield
 
 # SCION
 from ad_manager.util.common import empty_dict
 from ad_manager.util.defines import (
     DEFAULT_BANDWIDTH,
-    SCION_SUGGESTED_PORT
+    SCION_SUGGESTED_PORT,
 )
+
+# SCION-WEB
 from lib.defines import (
     BEACON_SERVICE,
     CERTIFICATE_SERVICE,
     DEFAULT_MTU,
     PATH_SERVICE,
-    SIBRA_SERVICE
+    SIBRA_SERVICE,
 )
 
 PORT = SCION_SUGGESTED_PORT
 PACKAGE_DIR_PATH = 'gen'
-
-
-class OrganisationAdmin(models.Model):
-    user = models.OneToOneField(User)
-    is_org_admin = models.BooleanField(default=False)
-    key = models.CharField(max_length=260, null=False, blank=True)
-    secret = models.CharField(max_length=260, null=False, blank=True)
 
 
 class SelectRelatedModelManager(models.Manager):
@@ -60,6 +55,13 @@ class SelectRelatedModelManager(models.Manager):
             return queryset.select_related()
         else:
             return queryset.select_related(*related_fields)
+
+
+class OrganisationAdmin(models.Model):
+    user = models.OneToOneField(User)
+    is_org_admin = models.BooleanField(default=False)
+    key = models.CharField(max_length=260, null=False, blank=True)
+    secret = models.CharField(max_length=260, null=False, blank=True)
 
 
 class ISD(models.Model):
@@ -321,13 +323,13 @@ class RouterWeb(SCIONWebElement):
     def id_str(self):
         return "er{}-{}er{}-{}".format(self.ad.isd_id, self.ad_id,
                                        self.neighbor_ad.isd_id,
-                                       self.neighbor_ad.id)
+                                       self.neighbor_ad.as_id)
 
     def get_dict(self):
         out_dict = super(RouterWeb, self).get_dict()
         out_dict['Interface'] = {'NeighborType': self.neighbor_type,
                                  'NeighborISD': int(self.neighbor_ad.isd_id),
-                                 'NeighborAD': int(self.neighbor_ad.id),
+                                 'NeighborAD': int(self.neighbor_ad.as_id),
                                  'Addr': str(self.interface_addr),
                                  'AddrType': 'IPV4',
                                  'ToAddr': str(self.interface_toaddr),

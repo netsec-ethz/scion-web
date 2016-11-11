@@ -23,15 +23,16 @@ import socket
 import subprocess
 import tarfile
 import yaml
-
 from collections import deque
 from copy import deepcopy
+from functools import reduce
 from shutil import (
-    rmtree,
     copy,
-    copytree
+    copytree,
+    rmtree,
 )
 from string import Template
+from urllib.parse import urljoin
 
 # External packages
 from django.contrib.auth.decorators import login_required, permission_required
@@ -41,51 +42,18 @@ from django.core.urlresolvers import reverse
 from django.http import (
     HttpResponse,
     HttpResponseForbidden,
-    HttpResponseNotFound,
-    JsonResponse
+    JsonResponse,
 )
 from django.shortcuts import redirect, get_object_or_404, render
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView, DetailView, FormView
-from functools import reduce
-from urllib.parse import urljoin
-import xmlrpc.client
 
 # SCION
-from ad_manager.util.response_handling import (
-    get_failure_errors,
-    get_success_data,
-    is_success
-)
-from ad_manager.util.util import to_b64, from_b64
-from ad_manager.util.defines import (
-    COORD_SERVICE_URI,
-    DEFAULT_BANDWIDTH,
-    INITIAL_CERT_VERSION,
-    POLL_JOIN_REPLY_SVC,
-    POLL_EVENTS_SVC,
-    SCION_SUGGESTED_PORT,
-    UPLOAD_JOIN_REQUEST_SVC,
-    UPLOAD_JOIN_REPLIES_SVC
-)
-from ad_manager.forms import (
-    ConnectionRequestForm,
-    CoordinationServiceSettingsForm,
-    UploadFileForm
-)
-from ad_manager.models import (
-    AD,
-    ISD,
-    OrganisationAdmin,
-    JoinRequest
-)
-from ad_manager.util.errors import HttpResponseUnavailable
 from lib.util import (
     read_file,
-    write_file
+    write_file,
 )
-from ad_manager.util.hostfile_generator import generate_ansible_hostfile
 from lib.crypto.certificate import Certificate
 from lib.crypto.asymcrypto import (
     generate_sign_keypair,
@@ -96,11 +64,37 @@ from lib.defines import (
     CERTIFICATE_SERVICE,
     PATH_SERVICE,
     ROUTER_SERVICE,
-    SIBRA_SERVICE)
+    SIBRA_SERVICE,
+)
 from lib.defines import DEFAULT_MTU
 from lib.defines import GEN_PATH, PROJECT_ROOT
 from lib.packet.scion_addr import ISD_AS
 from scripts.reload_data import reload_data_from_files
+
+# SCION-WEB
+from ad_manager.forms import (
+    ConnectionRequestForm,
+    CoordinationServiceSettingsForm,
+    UploadFileForm,
+)
+from ad_manager.models import (
+    AD,
+    ISD,
+    JoinRequest,
+    OrganisationAdmin,
+)
+from ad_manager.util.hostfile_generator import generate_ansible_hostfile
+from ad_manager.util.util import to_b64, from_b64
+from ad_manager.util.defines import (
+    COORD_SERVICE_URI,
+    DEFAULT_BANDWIDTH,
+    INITIAL_CERT_VERSION,
+    POLL_JOIN_REPLY_SVC,
+    POLL_EVENTS_SVC,
+    SCION_SUGGESTED_PORT,
+    UPLOAD_JOIN_REQUEST_SVC,
+    UPLOAD_JOIN_REPLIES_SVC,
+)
 
 
 GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
@@ -164,7 +158,7 @@ class ISDDetailView(ListView):
     def get_queryset(self):
         isd = get_object_or_404(ISD, id=int(self.kwargs['pk']))
         self.isd = isd
-        queryset = isd.ad_set.all().order_by('id')
+        queryset = isd.ad_set.all().order_by('as_id')
         return queryset
 
     def get_context_data(self, **kwargs):
@@ -193,20 +187,22 @@ def poll_join_reply(web_req):
     for req in open_join_requests:
         jr_id = req.request_id
         logger.info('Pending request = %s', jr_id)
-        key = coord.key + "/"
-        secret = coord.secret
-        base_url = COORD_SERVICE_URI
-        poll_join_reply = POLL_JOIN_REPLY_SVC
-        request_url = reduce(urljoin, [base_url, poll_join_reply, key, secret])
+        request_url = reduce(urljoin, [COORD_SERVICE_URI, POLL_JOIN_REPLY_SVC,
+                             os.path.join(coord.key, coord.secret)])
+
+        logger.info('url = %s' % request_url)
         headers = {'content-type': 'application/json'}
         try:
-            r = requests.post(request_url,
-                              json={'request_id': jr_id},
+            r = requests.post(request_url, json={'request_id': jr_id},
                               headers=headers)
-            if r.status_code == 200:
-                handle_join_reply(r, web_req, jr_id)
         except requests.RequestException:
             logger.info("Retrieving requests from scion-coord failed.")
+
+        if r.status_code == 200:
+            handle_join_reply(r, web_req, jr_id)
+        else:
+            logger.error("Poll Join Reply for request %s return with code %s",
+                         jr_id, r.status_code)
 
     return redirect(current_page)
 
@@ -216,8 +212,6 @@ def handle_join_reply(reply, web_req, jr_id):
     join_reply = reply.json()
 
     new_as = ISD_AS(join_reply['assigned_isdas'])
-    cert = join_reply['certificate']
-    trc = join_reply['trc']
 
     # TODO(ercanucan): create the ISD in DB if it's not yet in DB
     AD.objects.update_or_create(
@@ -225,8 +219,8 @@ def handle_join_reply(reply, web_req, jr_id):
         isd=ISD.objects.get(id=int(new_as[0])),
         is_core_ad=False,
         is_open=False,
-        certificate=cert,
-        trc=trc
+        certificate=join_reply['certificate'],
+        trc=join_reply['trc']
     )
     messages.success(web_req, 'Created new AS with ID %s.' % new_as)
 
@@ -242,13 +236,9 @@ def accept_join_request(request, isd_as, request_id):
     This function is only executed by a core AS.
     """
     current_page = request.META.get('HTTP_REFERER')
-    coord_settings = get_object_or_404(OrganisationAdmin,
-                                       user_id=request.user.id)
-    key = coord_settings.key + "/"
-    secret = coord_settings.secret
-
-    logger.info("new AS name = %s", request.POST['newASname'])
-    logger.info("isd_as = %s", isd_as)
+    coord = get_object_or_404(OrganisationAdmin, user_id=request.user.id)
+    logger.info("new AS name = %s \nisd_as = %s", request.POST['newASname'],
+                isd_as)
 
     joining_as = request.POST['newASname']
     sig_pub_key = from_b64(request.POST['sig_pub_key'])
@@ -275,10 +265,9 @@ def accept_join_request(request, isd_as, request_id):
                                 "trc": signing_as_trc
                             }
                         }
-    logger.info("accept join dic=%s", accept_join_dict)
-    base_url = COORD_SERVICE_URI
-    accept_join_url = UPLOAD_JOIN_REPLIES_SVC
-    request_url = reduce(urljoin, [base_url, accept_join_url, key, secret])
+    logger.info("accept join dict = %s", accept_join_dict)
+    request_url = reduce(urljoin, [COORD_SERVICE_URI, UPLOAD_JOIN_REPLIES_SVC,
+                         os.path.join(coord.key, coord.secret)])
     headers = {'content-type': 'application/json'}
     try:
         requests.post(request_url, json=accept_join_dict, headers=headers)
@@ -299,14 +288,7 @@ def new_as_id(request):
     isd_to_join = int(request.POST["inputISDtojoin"])
 
     # get the key and secret necessary to query SCION-coord
-    coord_settings = get_object_or_404(OrganisationAdmin,
-                                       user_id=request.user.id)
-
-    key = coord_settings.key + "/"
-    secret = coord_settings.secret
-
-    base_url = COORD_SERVICE_URI
-    join_request_url = UPLOAD_JOIN_REQUEST_SVC
+    coord = get_object_or_404(OrganisationAdmin, user_id=request.user.id)
 
     # generate the sign and encryption keys
     private_key_sign, public_key_sign = generate_sign_keypair()
@@ -317,16 +299,17 @@ def new_as_id(request):
                          "enckey": to_b64(public_key_encr)
                          }
 
-    request_url = reduce(urljoin, [base_url, join_request_url, key, secret])
+    request_url = reduce(urljoin, [COORD_SERVICE_URI, UPLOAD_JOIN_REQUEST_SVC,
+                         os.path.join(coord.key, coord.secret)])
     headers = {'content-type': 'application/json'}
 
-    logger.info("Request = %s", request_url)
-    logger.info("Join request dict = %s", join_request_dict)
+    logger.info("Request = %s\nJoin Request Dict = %s", request_url,
+                join_request_dict)
     try:
         r = requests.post(request_url, json=join_request_dict, headers=headers)
     except requests.RequestException:
-        messages.error(request, 'Failed to submit ISD join request '
-                                'at scion-coord!')
+        messages.error(request,
+                       'Failed to submit ISD join request at scion-coord!')
         return redirect(current_page)
 
     if r.status_code != 200:
@@ -372,7 +355,7 @@ class ConnectionRequestView(FormView):
         return get_object_or_404(AD, as_id=self.kwargs['pk'])
 
     def form_invalid(self, form):
-        print('form is invalid')
+        logger.error('Connection request form is invalid')
         return HttpResponse('Invalid form')
 
     def form_valid(self, form):
@@ -396,7 +379,7 @@ class ADDetailView(DetailView):
         """
         Populate 'context' dictionary with the required objects
         """
-        context = super(ADDetailView, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         ad = context['object']
 
         # Status tab
@@ -478,56 +461,6 @@ def _check_user_permissions(request, ad):
         raise PermissionDenied()
 
 
-@require_POST
-def control_process(request, pk, proc_id):
-    """
-    Send a control command to an AS element instance.
-    """
-    ad = get_object_or_404(AD, id=pk)  # load by as_id
-    _check_user_permissions(request, ad)
-
-    ad_elements = ad.get_all_element_ids()
-    if proc_id not in ad_elements:
-        return HttpResponseNotFound('Element not found')
-
-    if '_start_process' in request.POST:
-        command = 'START'
-    elif '_stop_process' in request.POST:
-        command = 'STOP'
-    else:
-        return HttpResponseNotFound('Command not found')
-
-    response = run_remote_command(ad.md_host, proc_id, command,
-                                  use_ansible=False)
-    if is_success(response):
-        return JsonResponse({'status': True})
-    else:
-        return HttpResponseUnavailable(get_failure_errors(response))
-
-
-def read_log(request, pk, proc_id):
-    # FIXME(rev112): minor duplication, see control_process()
-    ad = get_object_or_404(AD, id=pk)  # TODO: query by as_id
-    _check_user_permissions(request, ad)
-
-    ad_elements = ad.get_all_element_ids()
-    if proc_id not in ad_elements:
-        return HttpResponseNotFound('Element not found')
-    proc_id = ad.get_full_process_name(proc_id)
-
-    response = run_remote_command(ad.md_host, proc_id, 'STATUS',
-                                  use_ansible=False)
-    if is_success(response):
-        log_data = get_success_data(response)[0]
-        if '\n' in log_data:  # Don't show first line of output, why?
-            log_data = log_data[log_data.index('\n') + 1:]
-        if log_data == '':
-            log_data = 'No log output to display, OUT file is empty.'
-        return JsonResponse({'data': log_data})
-    else:
-        return HttpResponseUnavailable(get_failure_errors(response))
-
-
 @permission_required('ad_manager.change_organisationadmin', login_url='/login/')
 def coord_service(request):
     """
@@ -547,11 +480,11 @@ def coord_service_update(request):
     user = request.user
     form = CoordinationServiceSettingsForm(request.POST, user_id=user.id)
     if form.is_valid():
-        OrganisationAdmin.\
-            objects.update_or_create(key=form.cleaned_data['key'],
-                                     secret=form.cleaned_data['secret'],
-                                     is_org_admin=True,
-                                     user_id=request.user.id)
+        OrganisationAdmin.objects.update_or_create(
+            key=form.cleaned_data['key'],
+            secret=form.cleaned_data['secret'],
+            is_org_admin=True,
+            user_id=request.user.id)
     return redirect(current_page)
 
 
@@ -586,7 +519,7 @@ def _get_node_object(ad):
 
 
 def network_view_neighbors(request, pk):
-    pov_ad = get_object_or_404(AD, id=pk)  # query by as_id
+    pov_ad = get_object_or_404(AD, id=pk)  # TODO(ercanucan): query by as_id
     rank = 2
 
     partial_graph = _get_partial_graph(pov_ad, rank)
@@ -1083,54 +1016,3 @@ def particular_topo_instance(tp, type_key):
                 if internal_port is not None:
                     singular_topo[server_type][entry]['Port'] = internal_port
     return singular_topo
-
-
-def run_remote_command(ip, process_name, command, use_ansible=True):
-
-    if not use_ansible:
-        server = xmlrpc.client.ServerProxy('http://{}:9011'.format(ip))
-        wait_for_result = True
-        result = False
-        if command == 'retrieve_tar':
-            result = server.supervisor.startProcess(process_name,
-                                                    wait_for_result)
-
-        if command == 'STOP':
-            result = server.supervisor.stopProcess(process_name,
-                                                   wait_for_result)
-        if command == 'START':
-            result = server.supervisor.startProcess(process_name,
-                                                    wait_for_result)
-        if command == 'STATUS':
-            offset = 0
-            length = 4000
-            result = server.supervisor.tailProcessStdoutLog(process_name,
-                                                            offset, length)
-        logger.info('Remote operation {} completed: {}'.format(command, result))
-    else:
-        # using the ansibleCLI instead of
-        # duplicating code to use the PlaybookExecutor
-        result = "Call failed"
-        try:
-            result = subprocess.check_call(['ansible-playbook',
-                                            os.path.join(PROJECT_ROOT,
-                                                         'ansible',
-                                                         'deploy-current.yml')],
-                                           cwd=PROJECT_ROOT)
-        except subprocess.CalledProcessError:
-            logger.error(result)
-    return result
-
-
-def run_rpc_command(ip, uuid, management_interface_ip, command, isd_id, as_id):
-    server = xmlrpc.client.ServerProxy('http://{}:9012'.format(ip))
-    result = None
-    if command == 'register':
-        result = server.register(management_interface_ip, isd_id, as_id)
-    elif command == 'retrieve_tar':
-        result = server.retrieve_configuration(uuid, management_interface_ip,
-                                               isd_id, as_id)
-    else:
-        logger.error('Wrong command')
-    logger.info('Remote operation {} completed: {}'.format(command, 'True'))
-    return result

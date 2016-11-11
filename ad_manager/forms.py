@@ -16,11 +16,11 @@
 from django import forms
 from django.shortcuts import get_object_or_404
 
-# SCION
+# SCION-WEB
 from ad_manager.models import (
     AD,
     ConnectionRequest,
-    OrganisationAdmin
+    OrganisationAdmin,
 )
 
 
@@ -62,7 +62,8 @@ class ConnectionRequestForm(forms.ModelForm):
         current_as_id = kwargs.pop('pk')
         super(ConnectionRequestForm, self).__init__(*args, **kwargs)
 
-        ad = get_object_or_404(AD, id=current_as_id)  # TODO: request by as_id
+        # TODO(ercanucan): request by as_id
+        ad = get_object_or_404(AD, id=current_as_id)
         remote_ip_choices = []
 
         self.fields['connect_from'] = forms.CharField(
