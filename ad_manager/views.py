@@ -13,22 +13,35 @@
 # limitations under the License.
 
 # Stdlib
-import json
-import tempfile
-import os
+import configparser
 import hashlib
+import json
+import logging
+import os
+import posixpath
+import requests
+import socket
+import subprocess
+import tarfile
+import yaml
 from collections import deque
-from shutil import rmtree
+from copy import deepcopy
+from shutil import (
+    copy,
+    copytree,
+    rmtree,
+)
+from string import Template
+from urllib.parse import urljoin
 
 # External packages
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
-from django.db import transaction
 from django.http import (
     HttpResponse,
     HttpResponseForbidden,
-    HttpResponseNotFound,
     JsonResponse,
 )
 from django.shortcuts import redirect, get_object_or_404, render
@@ -36,56 +49,53 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView, DetailView, FormView
 
-import yaml
-import tarfile
-import configparser
-import xmlrpc.client
-import socket
-from copy import deepcopy
-from string import Template
-
 # SCION
-from guardian.shortcuts import assign_perm
-from ad_manager.util.response_handling import (
-    get_failure_errors,
-    get_success_data,
-    is_success,
-)
-from ad_manager.forms import (
-    ConnectionRequestForm,
-    NewLinkForm,
-    UploadFileForm
-)
-from ad_manager.models import AD, ISD, ConnectionRequest
-from ad_manager.util.ad_connect import (
-    create_new_ad_files,
-    find_last_router,
-    # link_ads,
-)
-from ad_manager.util.errors import HttpResponseUnavailable
 from lib.util import (
     read_file,
-    write_file
+    write_file,
 )
-from topology.generator import ConfigGenerator  # , DEFAULT_PATH_POLICY_FILE,
-# DEFAULT_ZK_CONFIG
-
-from lib.defines import (BEACON_SERVICE,
-                         CERTIFICATE_SERVICE,
-                         PATH_SERVICE,
-                         ROUTER_SERVICE,
-                         SIBRA_SERVICE)
+from lib.crypto.certificate import Certificate
+from lib.crypto.asymcrypto import (
+    generate_sign_keypair,
+    generate_enc_keypair,
+)
+from lib.defines import (
+    BEACON_SERVICE,
+    CERTIFICATE_SERVICE,
+    PATH_SERVICE,
+    ROUTER_SERVICE,
+    SIBRA_SERVICE,
+)
 from lib.defines import DEFAULT_MTU
 from lib.defines import GEN_PATH, PROJECT_ROOT
-
-from ad_manager.util.hostfile_generator import generate_ansible_hostfile
+from lib.packet.scion_addr import ISD_AS
 from scripts.reload_data import reload_data_from_files
 
-import subprocess
-from shutil import copy, copytree
+# SCION-WEB
+from ad_manager.forms import (
+    ConnectionRequestForm,
+    CoordinationServiceSettingsForm,
+    UploadFileForm,
+)
+from ad_manager.models import (
+    AD,
+    ISD,
+    JoinRequest,
+    OrganisationAdmin,
+)
+from ad_manager.util.hostfile_generator import generate_ansible_hostfile
+from ad_manager.util.util import to_b64, from_b64
+from ad_manager.util.defines import (
+    COORD_SERVICE_URI,
+    DEFAULT_BANDWIDTH,
+    INITIAL_CERT_VERSION,
+    POLL_JOIN_REPLY_SVC,
+    POLL_EVENTS_SVC,
+    SCION_SUGGESTED_PORT,
+    UPLOAD_JOIN_REQUEST_SVC,
+    UPLOAD_JOIN_REPLY_SVC,
+)
 
-DEFAULT_BANDWIDTH = 1000
-SCION_SUGGESTED_PORT = 31000
 
 GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
 WEB_ROOT = os.path.join(PROJECT_ROOT, 'sub', 'web')  # TODO:fix import all paths
@@ -112,6 +122,10 @@ SERVICE_EXECUTABLES = (
     ROUTER_EXECUTABLE,
     SIBRA_EXECUTABLE,
 )
+
+REQ_SENT = 'SENT'
+REQ_APPROVED = 'APPROVED'
+logger = logging.getLogger("scion-web")
 
 
 class ISDListView(ListView):
@@ -144,7 +158,7 @@ class ISDDetailView(ListView):
     def get_queryset(self):
         isd = get_object_or_404(ISD, id=int(self.kwargs['pk']))
         self.isd = isd
-        queryset = isd.ad_set.all().order_by('id')
+        queryset = isd.ad_set.all().order_by('as_id')
         return queryset
 
     def get_context_data(self, **kwargs):
@@ -159,132 +173,166 @@ class ISDDetailView(ListView):
 
 
 @require_POST
-def add_as(request):
-    new_as_id = request.POST['inputASname']
+@login_required
+def poll_join_reply(web_req):
+    logger.info("Polling Join Reply")
+    current_page = web_req.META.get('HTTP_REFERER')
     try:
-        new_as_id = int(new_as_id)
-    except ValueError:
-        return JsonResponse({'data': 'Invalid AS id'})
-    current_isd = request.POST['inputISDname']
-    isd = get_object_or_404(ISD, id=int(current_isd))
-    as_obj = AD.objects.create(id=new_as_id, isd=isd,
-                               is_core_ad=0,
-                               is_open=False)
-    as_obj.save()
-    ad_page = reverse('ad_detail', args=[new_as_id])
-    return redirect(ad_page + '#!nodes')
+        coord = OrganisationAdmin.objects.get(user_id=web_req.user.id)
+    except OrganisationAdmin.DoesNotExist:
+        logger.error("Retrieving key and secret failed.")
+        return redirect(current_page)
+
+    open_join_requests = JoinRequest.objects.filter(status=REQ_SENT)
+    for req in open_join_requests:
+        jr_id = req.request_id
+        logger.info('Pending request = %s', jr_id)
+        request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                              POLL_JOIN_REPLY_SVC, coord.key, coord.secret))
+        logger.info('url = %s' % request_url)
+        headers = {'content-type': 'application/json'}
+        try:
+            r = requests.post(request_url, json={'request_id': jr_id},
+                              headers=headers)
+        except requests.RequestException:
+            logger.info("Retrieving requests from scion-coord failed.")
+
+        if r.status_code == 200:
+            handle_join_reply(r, web_req, jr_id)
+        else:
+            logger.error("Poll Join Reply for request %s return with code %s",
+                         jr_id, r.status_code)
+
+    return redirect(current_page)
 
 
-class ADDetailView(DetailView):
-    model = AD
+def handle_join_reply(reply, web_req, jr_id):
+    logger.info("resp = %s", reply.json())
+    join_reply = reply.json()
 
-    def get_context_data(self, **kwargs):
-        """
-        Populate 'context' dictionary with the required objects
-        """
-        context = super(ADDetailView, self).get_context_data(**kwargs)
-        ad = context['object']
+    new_as = ISD_AS(join_reply['assigned_isdas'])
 
-        # Status tab
-        context['routers'] = ad.routerweb_set.select_related()
-        context['path_servers'] = ad.pathserverweb_set.all()
-        context['certificate_servers'] = ad.certificateserverweb_set.all()
-        context['beacon_servers'] = ad.beaconserverweb_set.all()
-        context['sibra_servers'] = ad.sibraserverweb_set.all()
+    # TODO(ercanucan): create the ISD in DB if it's not yet in DB
+    AD.objects.update_or_create(
+        as_id=int(new_as[1]),
+        isd=ISD.objects.get(id=int(new_as[0])),
+        is_core_ad=False,
+        is_open=False,
+        certificate=join_reply['certificate'],
+        trc=join_reply['trc']
+    )
+    messages.success(web_req, 'Created new AS with ID %s.' % new_as)
 
-        context['management_interface_ip'] = get_own_local_ip()
-        context['reloaded_topology'] = ad.original_topology
-        flat_string = json.dumps(ad.original_topology, sort_keys=True)
-        # hash for non cryptographic purpose (state comparison for user warning)
-        context['reloaded_topology_hash'] = \
-            hashlib.md5(flat_string.encode('utf-8')).hexdigest()
-        context['as_id'] = ad.id
-        context['isd_id'] = ad.isd_id
-
-        # Sort by name numerically
-        lists_to_sort = ['routers', 'path_servers',
-                         'certificate_servers', 'beacon_servers',
-                         'sibra_servers']
-        for list_name in lists_to_sort:
-            context[list_name] = sorted(
-                context[list_name],
-                key=lambda el: el.name if el.name is not None else -1
-            )
-
-        # Connection requests tab
-        context['received_requests'] = ad.received_requests.all()
-
-        # Permissions
-        context['user_has_perm'] = self.request.user.has_perm('change_ad', ad)
-        return context
+    # change join request status to APPROVED
+    JoinRequest.objects.filter(request_id=jr_id).update(status=REQ_APPROVED)
 
 
-def as_topo_hash(request, isd_id, as_id):
+@login_required
+def accept_join_request(request, isd_as, request_id):
+    """
+    Accepts the join request, assigns a new AS ID to
+    the requesting party and creates the certificate.
+    This function is only executed by a core AS.
+    """
+    current_page = request.META.get('HTTP_REFERER')
+    coord = get_object_or_404(OrganisationAdmin, user_id=request.user.id)
+    logger.info("new AS name = %s isd_as = %s", request.POST['newASname'],
+                isd_as)
+
+    joining_as = request.POST['newASname']
+    sig_pub_key = from_b64(request.POST['sig_pub_key'])
+    enc_pub_key = from_b64(request.POST['enc_pub_key'])
+    own_isdas = ISD_AS(isd_as)
+    signing_as = AD.objects.get(as_id=own_isdas[1],
+                                isd=own_isdas[0])
+    signing_as_sig_priv_key = from_b64(signing_as.sig_priv_key)
+    signing_as_trc = str(signing_as.trc)
+    joining_isdas = ISD_AS.from_values(own_isdas[0], joining_as)
+
+    certificate = Certificate.from_values(
+        str(joining_isdas), sig_pub_key, enc_pub_key, str(own_isdas),
+        signing_as_sig_priv_key, INITIAL_CERT_VERSION,
+    )
+
+    accept_join_dict = {"isdas": str(own_isdas),
+                        "join_reply":
+                            {
+                                "request_id": int(request_id),
+                                "joining_isdas": str(joining_isdas),
+                                "signing_isdas": str(own_isdas),
+                                "certificate": str(certificate),
+                                "trc": signing_as_trc
+                            }
+                        }
+    logger.info("accept join dict = %s", accept_join_dict)
+    request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                          UPLOAD_JOIN_REPLY_SVC, coord.key, coord.secret))
+    headers = {'content-type': 'application/json'}
     try:
-        ad = AD.objects.get(id=as_id,
-                            isd=isd_id)
-        flat_string = json.dumps(ad.original_topology, sort_keys=True)
-        # hash for non cryptographic purpose (state comparison for user warning)
-        topo_hash = hashlib.md5(flat_string.encode('utf-8')).hexdigest()
-        return JsonResponse({'topo_hash': topo_hash})
-    except AD.DoesNotExist:
-        return JsonResponse({'topo_hash': -1})
-
-
-def _check_user_permissions(request, ad):
-    # TODO(rev112) decorator?
-    if not request.user.has_perm('change_ad', ad):
-        raise PermissionDenied()
+        requests.post(request_url, json=accept_join_dict, headers=headers)
+    except requests.RequestException:
+        logger.error("Failed to upload join reply to coordination service")
+    return redirect(current_page)
 
 
 @require_POST
-def control_process(request, pk, proc_id):
-    """
-    Send a control command to an AS element instance.
-    """
-    ad = get_object_or_404(AD, id=pk)
-    _check_user_permissions(request, ad)
+@login_required
+def request_new_as_id(request):
+    current_page = request.META.get('HTTP_REFERER')
+    # check the validity of parameters
+    if not request.POST["inputISDtojoin"].isdigit():
+        messages.error(request, 'ISD to join has to be a number!')
+        return redirect(current_page)
 
-    ad_elements = ad.get_all_element_ids()
-    if proc_id not in ad_elements:
-        return HttpResponseNotFound('Element not found')
+    isd_to_join = int(request.POST["inputISDtojoin"])
 
-    if '_start_process' in request.POST:
-        command = 'START'
-    elif '_stop_process' in request.POST:
-        command = 'STOP'
-    else:
-        return HttpResponseNotFound('Command not found')
+    # get the key and secret necessary to query SCION-coord
+    coord = get_object_or_404(OrganisationAdmin, user_id=request.user.id)
 
-    response = run_remote_command(ad.md_host, proc_id, command,
-                                  use_ansible=False)
-    if is_success(response):
-        return JsonResponse({'status': True})
-    else:
-        return HttpResponseUnavailable(get_failure_errors(response))
+    # generate the sign and encryption keys
+    private_key_sign, public_key_sign = generate_sign_keypair()
+    public_key_encr, private_key_encr = generate_enc_keypair()
 
+    join_request_dict = {"isd_to_join": isd_to_join,
+                         "sigkey": to_b64(public_key_sign),
+                         "enckey": to_b64(public_key_encr)
+                         }
 
-def read_log(request, pk, proc_id):
-    # FIXME(rev112): minor duplication, see control_process()
-    ad = get_object_or_404(AD, id=pk)
-    _check_user_permissions(request, ad)
+    request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                          UPLOAD_JOIN_REQUEST_SVC, coord.key, coord.secret))
+    headers = {'content-type': 'application/json'}
 
-    ad_elements = ad.get_all_element_ids()
-    if proc_id not in ad_elements:
-        return HttpResponseNotFound('Element not found')
-    proc_id = ad.get_full_process_name(proc_id)
+    logger.info("Request = %s\nJoin Request Dict = %s", request_url,
+                join_request_dict)
+    try:
+        r = requests.post(request_url, json=join_request_dict, headers=headers)
+    except requests.RequestException:
+        messages.error(request,
+                       'Failed to submit ISD join request at scion-coord!')
+        return redirect(current_page)
 
-    response = run_remote_command(ad.md_host, proc_id, 'STATUS',
-                                  use_ansible=False)
-    if is_success(response):
-        log_data = get_success_data(response)[0]
-        if '\n' in log_data:  # Don't show first line of output, why?
-            log_data = log_data[log_data.index('\n') + 1:]
-        if log_data == '':
-            log_data = 'No log output to display, OUT file is empty.'
-        return JsonResponse({'data': log_data})
-    else:
-        return HttpResponseUnavailable(get_failure_errors(response))
+    if r.status_code != 200:
+        messages.error(request, 'Submitting join request '
+                                'failed with code %s!' % r.status_code)
+        return redirect(current_page)
+
+    resp = r.json()
+    request_id = resp['id']
+    logger.info("request_id = %s", request_id)
+    JoinRequest.objects.update_or_create(
+        request_id=request_id,
+        created_by=request.user,
+        isd_to_join=isd_to_join,
+        status=REQ_SENT,
+        sig_pub_key=to_b64(public_key_sign),
+        sig_priv_key=to_b64(private_key_sign),
+        enc_pub_key=to_b64(public_key_encr),
+        enc_priv_key=to_b64(private_key_encr)
+    )
+
+    messages.success(request, 'Join Request Submitted Successfully.'
+                              ' Request ID = %s' % request_id)
+    return redirect(current_page)
 
 
 class ConnectionRequestView(FormView):
@@ -303,30 +351,18 @@ class ConnectionRequestView(FormView):
             return self.render_to_response(context)
 
     def _get_ad(self):
-        return get_object_or_404(AD, id=self.kwargs['pk'])
+        return get_object_or_404(AD, as_id=self.kwargs['pk'])
 
     def form_invalid(self, form):
-        print('form is invalid')
+        logger.error('Connection request form is invalid')
         return HttpResponse('Invalid form')
 
     def form_valid(self, form):
         if not self.request.user.is_authenticated():
             return HttpResponseForbidden('Authentication required')
 
-        connect_to = self._get_ad()
-        con_request = form.instance
-        con_request.connect_to = connect_to
-        con_request.created_by = self.request.user
-        con_request.status = 'SENT'
-
-        posted_data = self.request.POST
-
-        con_request.info = posted_data['info']
-        con_request.router_public_ip = posted_data['router_public_ip']
-        con_request.router_public_port = posted_data['router_public_port']
-        con_request.save()
-
-        self.success_url = reverse('sent_requests')
+        logger.info("Submitting Connection Request not yet implemented.")
+        self.success_url = self._get_ad().get_absolute_url()
         return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
@@ -335,147 +371,119 @@ class ConnectionRequestView(FormView):
         return context_data
 
 
-class NewLinkView(FormView):
-    form_class = NewLinkForm
-    template_name = 'ad_manager/new_link.html'
-    success_url = ''
+class ADDetailView(DetailView):
+    model = AD
 
-    def _get_ad(self):
-        if not hasattr(self, 'ad'):
-            self.ad = get_object_or_404(AD, id=self.kwargs['pk'])
-        return self.ad
-
-    def dispatch(self, request, *args, **kwargs):
-        ad = self._get_ad()
-        _check_user_permissions(request, ad)
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs['from_ad'] = self._get_ad()
-        return kwargs
+    def get_object(self):
+        return get_object_or_404(AD, as_id=self.kwargs['as_id'])
 
     def get_context_data(self, **kwargs):
-        context_data = super().get_context_data(**kwargs)
-        context_data['ad'] = self._get_ad()
-        return context_data
+        """
+        Populate 'context' dictionary with the required objects
+        """
+        context = super().get_context_data(**kwargs)
+        ad = context['object']
 
-    def form_valid(self, form):
-        this_ad = self._get_ad()
-        # from_ad = this_ad
-        # to_ad = form.cleaned_data['end_point']
-        # link_type = form.cleaned_data['link_type']
-        #
-        # if link_type == 'PARENT':
-        #     from_ad, to_ad = to_ad, from_ad
-        #
-        # if link_type in ['CHILD', 'PARENT']:
-        #     link_type = 'PARENT_CHILD'
-        #
-        # with transaction.atomic():
-        #     link_ads(from_ad, to_ad, link_type)
+        # Status tab
+        context['routers'] = ad.routerweb_set.select_related()
+        context['path_servers'] = ad.pathserverweb_set.all()
+        context['certificate_servers'] = ad.certificateserverweb_set.all()
+        context['beacon_servers'] = ad.beaconserverweb_set.all()
+        context['sibra_servers'] = ad.sibraserverweb_set.all()
 
-        self.success_url = reverse('ad_detail', args=[this_ad.id])
-        return super().form_valid(form)
+        context['management_interface_ip'] = get_own_local_ip()
+        context['reloaded_topology'] = ad.original_topology
+        flat_string = json.dumps(ad.original_topology, sort_keys=True)
+        # hash for non cryptographic purpose (state comparison for user warning)
+        context['reloaded_topology_hash'] = \
+            hashlib.md5(flat_string.encode('utf-8')).hexdigest()
+        context['as_id'] = ad.as_id
+        context['isd_id'] = ad.isd_id
+        context['isdas'] = str(ISD_AS.from_values(ad.isd_id, ad.as_id))
 
+        # Sort by name numerically
+        lists_to_sort = ['routers', 'path_servers',
+                         'certificate_servers', 'beacon_servers',
+                         'sibra_servers']
+        for list_name in lists_to_sort:
+            context[list_name] = sorted(
+                context[list_name],
+                key=lambda el: el.name if el.name is not None else -1
+            )
 
-def approve_request(ad, ad_request):
-    # Create the new AD
-    new_id = AD.objects.latest('id').id + 1
-    new_ad = AD.objects.create(id=new_id, isd=ad.isd,
-                               md_host=ad_request.router_public_ip)
-    parent_topo_dict = ad.generate_topology_dict()
+        # Permissions
+        context['user_has_perm'] = self.request.user.has_perm('change_ad', ad)
+        # Connection requests tab
+        context['join_requests'] = {}
+        context['received_requests'] = {}
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        new_topo_dict, parent_topo_dict = create_new_ad_files(parent_topo_dict,
-                                                              new_ad.isd.id,
-                                                              new_ad.id,
-                                                              out_dir=temp_dir)
+        try:
+            coord = OrganisationAdmin.objects.get(user_id=self.request.user.id)
+        except OrganisationAdmin.DoesNotExist:
+            logger.error("Retrieving key and secret failed!!.")
+            return context
 
-        # Adjust router ips/ports
-        # if ad_request.router_public_ip is None:
-        #     ad_request.router_public_ip = ad_request.router_bound_ip
+        request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                              POLL_EVENTS_SVC, coord.key, coord.secret))
+        headers = {'content-type': 'application/json'}
+        try:
+            r = requests.post(request_url, json={'isdas': context['isdas']},
+                              headers=headers)
+            if r.status_code == 200:
+                answer = r.json()
+                context['join_requests'] = answer['join_requests']
+                context['received_requests'] = answer['conn_requests']
+                logger.info("join requests = %s", context['join_requests'])
+                logger.info("conn requests = %s", context['received_requests'])
+        except requests.RequestException:
+            logger.info("Retrieving requests from scion-coord failed.")
 
-        if ad_request.router_public_port is None:
-            ad_request.router_public_port = ad_request.router_bound_port
-
-        _, new_topo_router = find_last_router(new_topo_dict)
-        # new_topo_router['Interface']['Addr'] = ad_request.router_bound_ip
-        # new_topo_router['Interface']['UdpPort'] = ad_request.router_bound_port
-
-        _, parent_topo_router = find_last_router(parent_topo_dict)
-        parent_router_if = parent_topo_router['Interface']
-        parent_router_if['ToAddr'] = ad_request.router_public_ip
-        parent_router_if['UdpPort'] = ad_request.router_public_port
-
-        new_ad.fill_from_topology(new_topo_dict, clear=True)
-        ad.fill_from_topology(parent_topo_dict, clear=True)
-
-        # Update the new topology on disk:
-        # Write new config files to disk, regenerate everything else
-        # FIXME(rev112): minor duplication, see ad_connect.create_new_ad_files()
-        gen = ConfigGenerator(out_dir=temp_dir)
-        new_topo_path = gen.path_dict(new_ad.isd.id, new_ad.id)['topo_file_abs']
-        write_file(new_topo_path, json.dumps(new_topo_dict,
-                                             sort_keys=4, indent=4))
-        gen.write_derivatives(new_topo_dict)
-
-        # Resulting package will be stored here
-        package_dir = os.path.join('gen', 'AD' + str(
-            new_ad))  # os.path.join(PACKAGE_DIR_PATH,
-        # 'AD' + str(new_ad)) TODO: replace ad_management functionality
-        if os.path.exists(package_dir):
-            rmtree(package_dir)
-        os.makedirs(package_dir)
-
-        # Prepare package
-        # package_name = 'scion_package_AD{}-{}'.format(new_ad.isd, new_ad.id)
-        # config_dirs = [os.path.join(temp_dir,x) for x in os.listdir(temp_dir)]
-        # ad_request.package_path = prepare_package(out_dir=package_dir,
-        #                                           config_paths=config_dirs,
-        #                                           package_name=package_name)
-        ad_request.new_ad = new_ad
-        ad_request.status = 'APPROVED'
-        ad_request.save()
-
-        # Give permissions to the user
-        request_creator = ad_request.created_by
-        assign_perm('change_ad', request_creator, new_ad)
-
-        new_ad.save()
-        ad.save()
+        return context
 
 
-@transaction.atomic
-@require_POST
-def request_action(request, req_id):
+def as_topo_hash(request, isd_id, as_id):
+    try:
+        ad = AD.objects.get(as_id=as_id,
+                            isd=isd_id)
+        flat_string = json.dumps(ad.original_topology, sort_keys=True)
+        # hash for non cryptographic purpose (state comparison for user warning)
+        topo_hash = hashlib.md5(flat_string.encode('utf-8')).hexdigest()
+        return JsonResponse({'topo_hash': topo_hash})
+    except AD.DoesNotExist:
+        return JsonResponse({'topo_hash': -1})
+
+
+def _check_user_permissions(request, ad):
+    # TODO(rev112) decorator?
+    if not request.user.has_perm('change_ad', ad):
+        raise PermissionDenied()
+
+
+@permission_required('ad_manager.change_organisationadmin', login_url='/login/')
+def coord_service(request):
     """
-    Approve or decline the sent connection request.
-    """
-    ad_request = get_object_or_404(ConnectionRequest, id=req_id)
-    ad = ad_request.connect_to
-    _check_user_permissions(request, ad)
-
-    if '_approve_request' in request.POST:
-        if not ad_request.is_approved():
-            approve_request(ad, ad_request)
-    elif '_decline_request' in request.POST:
-        ad_request.status = 'DECLINED'
-    else:
-        return HttpResponseNotFound('Action not found')
-    ad_request.save()
-    return redirect(reverse('ad_connection_requests', args=[ad.id]))
-
-
-@login_required
-def list_sent_requests(request):
-    """
-    List requests, sent by the current user.
+    Show coordination service related setting to organisation admin
     """
     user = request.user
-    sent_requests = user.connectionrequest_set.all()
-    return render(request, 'ad_manager/sent_requests.html',
-                  {'sent_requests': sent_requests})
+    form = CoordinationServiceSettingsForm(user_id=user.id)
+
+    return render(request, 'ad_manager/coord_service.html',
+                  {'settings_form': form})
+
+
+@require_POST
+@permission_required('ad_manager.change_organisationadmin', login_url='/login/')
+def coord_service_update(request):
+    current_page = request.META.get('HTTP_REFERER')
+    user = request.user
+    form = CoordinationServiceSettingsForm(request.POST, user_id=user.id)
+    if form.is_valid():
+        OrganisationAdmin.objects.update_or_create(
+            key=form.cleaned_data['key'],
+            secret=form.cleaned_data['secret'],
+            is_org_admin=True,
+            user_id=request.user.id)
+    return redirect(current_page)
 
 
 def _get_partial_graph(pov_ad, rank=1):
@@ -509,7 +517,7 @@ def _get_node_object(ad):
 
 
 def network_view_neighbors(request, pk):
-    pov_ad = get_object_or_404(AD, id=pk)
+    pov_ad = get_object_or_404(AD, id=pk)  # TODO(ercanucan): query by as_id
     rank = 2
 
     partial_graph = _get_partial_graph(pov_ad, rank)
@@ -580,7 +588,7 @@ def network_view(request):
 
 
 def wrong_api_call(request):
-    print('Wrong API call')
+    logger.error('Wrong API call')
     return JsonResponse({'data': 'Failure'})
 
 
@@ -720,7 +728,7 @@ def generate_topology(request):
                               isd_as,
                               commit_hash)
 
-    curr_as = get_object_or_404(AD, id=as_id)
+    curr_as = get_object_or_404(AD, as_id=as_id, isd=isd_id)
     # load as usual model (for persistance and display in overview)
     # TODO : hash displayed queryset and curr_as query set and compare
     # allow the user to write back the new configuration only if it hasn't
@@ -738,7 +746,7 @@ def get_own_local_ip():
             s.connect(('192.168.255.255', 22))
             result = s.getsockname()[0]
     except OSError:
-        print('Network is unreachable')
+        logger.error('Network is unreachable')
     return result
 
 
@@ -857,6 +865,7 @@ def create_local_gen(isd_as, tp):
 
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
 
+    # Add the dispatcher folder in sub/web/gen/ if not already there
     dispatcher_folder_path = os.path.join(local_gen_path, 'dispatcher')
     if not os.path.exists(dispatcher_folder_path):
         copytree(os.path.join(PROJECT_ROOT, 'deploy-gen', 'dispatcher'),
@@ -1005,54 +1014,3 @@ def particular_topo_instance(tp, type_key):
                 if internal_port is not None:
                     singular_topo[server_type][entry]['Port'] = internal_port
     return singular_topo
-
-
-def run_remote_command(ip, process_name, command, use_ansible=True):
-
-    if not use_ansible:
-        server = xmlrpc.client.ServerProxy('http://{}:9011'.format(ip))
-        wait_for_result = True
-        result = False
-        if command == 'retrieve_tar':
-            result = server.supervisor.startProcess(process_name,
-                                                    wait_for_result)
-
-        if command == 'STOP':
-            result = server.supervisor.stopProcess(process_name,
-                                                   wait_for_result)
-        if command == 'START':
-            result = server.supervisor.startProcess(process_name,
-                                                    wait_for_result)
-        if command == 'STATUS':
-            offset = 0
-            length = 4000
-            result = server.supervisor.tailProcessStdoutLog(process_name,
-                                                            offset, length)
-        print('Remote operation {} completed: {}'.format(command, result))
-    else:
-        # using the ansibleCLI instead of
-        # duplicating code to use the PlaybookExecutor
-        result = "Call failed"
-        try:
-            result = subprocess.check_call(['ansible-playbook',
-                                            os.path.join(PROJECT_ROOT,
-                                                         'ansible',
-                                                         'deploy-current.yml')],
-                                           cwd=PROJECT_ROOT)
-        except subprocess.CalledProcessError:
-            print(result)
-    return result
-
-
-def run_rpc_command(ip, uuid, management_interface_ip, command, isd_id, as_id):
-    server = xmlrpc.client.ServerProxy('http://{}:9012'.format(ip))
-    result = None
-    if command == 'register':
-        result = server.register(management_interface_ip, isd_id, as_id)
-    elif command == 'retrieve_tar':
-        result = server.retrieve_configuration(uuid, management_interface_ip,
-                                               isd_id, as_id)
-    else:
-        print('Wrong command')
-    print('Remote operation {} completed: {}'.format(command, 'True'))
-    return result

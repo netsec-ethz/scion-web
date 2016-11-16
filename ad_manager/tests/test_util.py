@@ -34,9 +34,10 @@ class TestLinkAds(TestCase):
         }
 
         ip_addresses = []
+        as_id = 1
         for link_type in link_types.keys():
-            ad1 = AD.objects.create(isd=isd)
-            ad2 = AD.objects.create(isd=isd)
+            ad1 = AD.objects.create(isd=isd, as_id=as_id)
+            ad2 = AD.objects.create(isd=isd, as_id=as_id+1)
             link_ads(ad1, ad2, link_type)
 
             ad1_routers = list(ad1.routerweb_set.all())
@@ -64,6 +65,7 @@ class TestLinkAds(TestCase):
 
             ip_addresses += [router1.addr, router1.interface_addr,
                              router2.addr, router2.interface_addr]
+            as_id = as_id + 2
 
         # Check that there are no IP duplicates
         assert len(ip_addresses) == len(set(ip_addresses))

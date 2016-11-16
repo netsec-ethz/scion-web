@@ -15,6 +15,17 @@
     {% endfor %}
   </ul>
 
+  <form method="POST" id="joinISD" action="/as_manager/isds/join_isd">
+    {% csrf_token %}
+    <div class="form-group">
+        <br/>
+        <label class="control-label" class="floor-align-text" for="inputISDtojoin">Create new AS in ISD:</label>
+        <input id="inputISDtojoin" name="inputISDtojoin" type="text">
+        <button type="button" class="btn" onclick="queryForAsId();">Join</button>
+    </div>
+  </form>
+
+  <!--TODO(ercanucan): This form will eventually be removed from scion-web-->
   <form method="POST" action="/as_manager/isds/add_isd">
     {% csrf_token %}
     <div class="form-group">
@@ -24,6 +35,28 @@
         <button type="submit" class="btn">Create ISD</button>
     </div>
   </form>
+
+  <form method="POST" action="/as_manager/isds/poll_join_reply">
+    {% csrf_token %}
+    <div class="form-group">
+        <br/>
+        <button type="submit" class="btn">Fetch Join Replies</button>
+    </div>
+  </form>
+
+  <script>
+    function queryForAsId() {
+        $.ajaxSetup({
+            headers:
+            { 'X-CSRFToken': $("input[name='csrfmiddlewaretoken']").val() }
+        });
+
+        var isd = document.getElementById('inputISDtojoin').value;
+
+        console.log(isd)
+        document.getElementById('joinISD').submit();
+    }
+  </script>
 
   {% include 'ad_manager/partials/pagination_footer.html' %}
 {% endblock %}

@@ -39,6 +39,22 @@ function makeTabsPersistent() {
     });
 }
 
+function setAccordionExpansion() {
+    var expansionSetting = location.hash.indexOf('&expanded_routers');
+    if (expansionSetting > -1) {
+        var accordionElements = $('.accordion.collapse');
+        for (var i=0; i< accordionElements.length; i++) {
+            var elem = accordionElements[i];
+            if ($(elem)[0].id != "routerAccordion") {
+                $(elem).removeClass('in');
+            } else {
+                $(elem).addClass('in');
+            }
+        }
+    }
+    location.hash = location.hash.substr(0, expansionSetting)
+}
+
 function statusControl() {
     // Process START/STOP button clicks
     $('.process-control-form > button').click(function (e) {
@@ -112,6 +128,8 @@ $(document).ready(function () {
     // Topology tab callbacks
     initTopologyCheck();
 
+    setAccordionExpansion();
+
     makeTabsPersistent();
 
     // Update server status when the first tab is opened
@@ -134,7 +152,7 @@ $(document).ready(function () {
 function queryForHashes(datalistId) {
     var gitBaseUrl = "https://api.github.com/repos";
     var organisation = "/netsec-ethz";
-    var repo = "/scion-web/"; // set this to the main scion repo aka /scion/ once it is public
+    var repo = "/scion/";
 
     $(datalistId).children().slice(1).remove(); // remove previous entries
 

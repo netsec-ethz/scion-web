@@ -17,12 +17,10 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django_webtest import WebTest
-from unittest.mock import patch
-
-# SCION
 from guardian.shortcuts import assign_perm
-from ad_manager.util.response_handling import response_success
-from ad_manager.models import ISD, AD, ConnectionRequest
+
+# SCION-WEB
+from ad_manager.models import ISD, AD
 
 
 class BasicWebTest(WebTest):
@@ -37,11 +35,11 @@ class BasicWebTest(WebTest):
 
         self.ads = {}
         for ad in AD.objects.all():
-            self.ads[ad.id] = ad
+            self.ads[ad.as_id] = ad
 
     def _get_ad_detail(self, ad, *args, **kwargs):
         if isinstance(ad, AD):
-            ad = ad.id
+            ad = ad.as_id
         assert isinstance(ad, int)
         return self.app.get(reverse('ad_detail', args=[ad]), *args, **kwargs)
 
@@ -103,7 +101,7 @@ class TestListAds(BasicWebTest):
         assert ad.isd == isd
 
         ad_list = self.app.get(reverse('isd_detail', args=[isd.id]))
-        self.assertContains(ad_list, ad.id)
+        self.assertContains(ad_list, ad.as_id)
         li_tag = ad_list.html.find('a', text='AS 2-3').parent
         self.assertIn('core', li_tag.text)
 
@@ -193,37 +191,6 @@ class TestUsersAndPermissions(BasicWebTestUsers):
         res = home.click('logout').maybe_follow()
         self.assertContains(res, 'Login')
 
-    def test_nonpriv_user_control(self):
-        ad = self.ads[1]
-        bs = ad.beaconserverweb_set.first()
-        ad_detail = self._get_ad_detail(ad)
-
-        # No control buttons
-        self.assertFalse(ad_detail.html.findAll('form', self.CONTROL_CLASS))
-
-        # Action is forbidden
-        control_url = reverse('control_process', args=[ad.id, bs.id_str()])
-        res = self.app.post(control_url, expect_errors=True)
-        self.assertEqual(res.status_code, 403)
-
-    @patch("ad_manager.views.run_remote_command")
-    def test_priv_user_control(self, run_remote_command):
-        ad = self.ads[1]
-        bs = ad.beaconserverweb_set.first()
-        ad_detail = self._get_ad_detail(ad, user=self.admin_user)
-
-        self.assertTrue(ad_detail.html.findAll('form', self.CONTROL_CLASS))
-
-        # Find the bs control form
-        bs_control_form = self._find_form_by_action(ad_detail,
-                                                    'control_process',
-                                                    args=[ad.id, bs.id_str()])
-
-        # Press the "start" button
-        run_remote_command.return_value = response_success('ok')
-        res = bs_control_form.submit('_start_process')
-        self.assertTrue(res.json)
-
 
 class TestConnectionRequests(BasicWebTestUsers):
 
@@ -233,7 +200,7 @@ class TestConnectionRequests(BasicWebTestUsers):
 
     def test_view_nopriv(self):
         ad = self.ads[2]
-        requests_page = self._get_request_page(ad.id)
+        requests_page = self._get_request_page(ad.as_id)
 
         # Anon user
         ad_requests = self.app.get(requests_page)
@@ -247,87 +214,14 @@ class TestConnectionRequests(BasicWebTestUsers):
 
     def test_priv_user(self):
         ad = self.ads[2]
-        requests_page = self._get_request_page(ad.id)
+        requests_page = self._get_request_page(ad.as_id)
 
         # Admin user
         ad_requests = self.app.get(requests_page, user=self.admin_user)
-        self.assertContains(ad_requests, 'Received requests')
+
+        self.assertContains(ad_requests, 'Received connection requests')
 
         # User which has access to the AD
         assign_perm('change_ad', self.user, ad)
         ad_requests = self.app.get(requests_page, user=self.user)
-        self.assertContains(ad_requests, 'Received requests')
-
-    def test_send_request(self):
-        ad = self.ads[2]
-        ad.is_open = False
-        ad.save()
-        requests_page = self._get_request_page(ad.id)
-        sent_requests_page = reverse('sent_requests')
-        self.assertEqual(len(ConnectionRequest.objects.all()), 0)
-
-        # Fill and submit the form
-        ad_requests = self.app.get(requests_page, user=self.admin_user)
-        request_form = ad_requests.click('New request').maybe_follow().form
-        request_form['router_public_ip'] = '127.0.0.20'
-        request_form['router_public_port'] = 12345
-        request_form['info'] = 'test info'
-        request_form.submit()
-        self.assertEqual(len(ConnectionRequest.objects.all()), 1)
-        request = ConnectionRequest.objects.first()
-        self.assertEqual(request.created_by, self.admin_user)
-
-        # Check that the sent request is listed at the 'sent requests' page
-        sent_requests = self.app.get(sent_requests_page, user=self.admin_user)
-        self.assertIn('submitted by admin', sent_requests.html.text)
-        sent_table = sent_requests.html.find(id="sent-requests-tbl")
-        for s in [ad, '127.0.0.20', 12345, 'test info', 'SENT']:
-            self.assertIn(str(s), str(sent_table))
-
-        # Check that the request is listed in the 'received' table
-        # for admins and authorized users
-        assign_perm('change_ad', self.user, ad)
-        ad_requests_admin = self.app.get(requests_page, user=self.admin_user)
-        ad_requests_user = self.app.get(requests_page, user=self.user)
-        for response in [ad_requests_admin, ad_requests_user]:
-            received_table = response.html.find(id="received-requests-tbl")
-            for s in ['127.0.0.20', 'test info', 'SENT', 'admin']:
-                self.assertIn(str(s), str(received_table))
-
-    def test_decline_request(self):
-        ad = self.ads[2]
-        ad_requests_page = self._get_request_page(ad.id)
-        sent_requests_page = reverse('sent_requests')
-
-        request = ConnectionRequest(created_by=self.user, connect_to=ad,
-                                    info='test info', status='SENT',
-                                    router_public_ip='123.123.123.123')
-        request.save()
-
-        ad_requests = self.app.get(ad_requests_page, user=self.admin_user)
-        self.assertContains(ad_requests, '123.123.123.123')
-        sent_requests = self.app.get(sent_requests_page, user=self.user)
-        self.assertContains(sent_requests, '123.123.123.123')
-
-        control_form = self._find_form_by_action(ad_requests,
-                                                 'connection_request_action',
-                                                 args=[request.id])
-        ad_requests = control_form.submit('_decline_request',
-                                          user=self.admin_user).maybe_follow()
-        self.assertContains(ad_requests, 'DECLINED')
-        sent_requests = self.app.get(sent_requests_page, user=self.user)
-        self.assertContains(sent_requests, 'DECLINED')
-
-        self.assertIsNone(request.package_path)
-
-
-class TestNewLink(BasicWebTestUsers):
-
-    def test_permissions(self):
-        ad = self.ads[2]
-        new_link_page = reverse('new_link', args=[ad.id])
-        resp = self.app.get(new_link_page, user=self.admin_user)
-        self.assertContains(resp, 'Link type')
-
-        resp = self.app.get(new_link_page, user=self.user, expect_errors=True)
-        self.assertEqual(resp.status_code, 403)
+        self.assertContains(ad_requests, 'Received connection requests')

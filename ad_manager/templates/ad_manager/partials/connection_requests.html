@@ -1,46 +1,37 @@
 <br />
 
 <p>Send a connection request</p>
-<a href="{% url 'new_connection_request' object.id %}" class="btn btn-default">New request</a>
+<a href="{% url 'new_connection_request' object.as_id %}" class="btn btn-default">New request</a>
 
 {% if user_has_perm %}
   <hr />
-  <h2>Received requests</h2>
+  <h2>Received ISD join requests</h2>
 
-  <table class="table" id="received-requests-tbl">
+  <table class="table" id="received-connection-requests-tbl">
     <thead>
     <tr>
-      <th class="col-md-2">Created by</th>
-      <th>Info</th>
-      <th class="col-md-1">Router IP</th>
-      <th class="col-md-1">Status</th>
+      <th class="col-md-2">Signing key</th>
+      <th class="col-md-2">Encryption key</th>
+      <th class="col-md-3">Info</th>
       <th class="col-md-2">Actions</th>
     </tr>
     </thead>
 
     <tbody>
-    {% for request in received_requests %}
+    {% for request in join_requests %}
       <tr>
-        <td>{{ request.created_by }}</td>
+        <td>{{ request.enckey }}</td>
+        <td>{{ request.sigkey }}</td>
         <td>
           <pre>{{ request.info }}</pre>
-          <div class="collapse" id="info-{{ request.id }}">
-            <div class="well">
-              <b>Public socket</b> {{ request.router_public_ip }} : {{ request.router_public_port }} <br />
-              {% if request.new_ad %}
-                New AS: <a href="{% url 'ad_detail' request.new_ad.id %}">{{ request.new_ad }}</a>
-              {% endif %}
-            </div>
-          </div>
         </td>
-        <td>
-          <a role="button" data-toggle="collapse" href="#info-{{ request.id }}" aria-expanded="false" aria-controls="collapseExample">
-            {{ request.status}}
-          </a>
-        </td>
-        <td>
-          <form method="POST" action="{% url 'connection_request_action' request.id %}" class="request-approve-form">
+        <td class="col-md-3">
+          <form method="POST" action="{% url 'accept_join' isd_as=isdas request_id=request.id %}" class="request-approve-form">
             {% csrf_token %}
+            <input type="text" name="sig_pub_key" value="{{ request.sigkey }}" class="hidden">
+            <input type="text" name="enc_pub_key" value="{{ request.enckey }}" class="hidden">
+            <label class="control-label" class="floor-align-text" for="newASname">Joining AS name:</label>
+            <input id="newASname" name="newASname" type="text" required>
             <button type="submit" class="btn btn-success btn-sm click-confirm" name="_approve_request">
               Approve
             </button>
@@ -49,7 +40,6 @@
             </button>
           </form>
         </td>
-      </tr>
     {% empty %}
       <tr>
         <td colspan="4"><i>No requests</i></td>
@@ -57,4 +47,9 @@
     {% endfor %}
     </tbody>
   </table>
+
+  <hr />
+  <h2>Received connection requests</h2>
+  <!-- TODO(ercanucan): To be implemented -->
+
 {% endif %}

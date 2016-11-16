@@ -21,7 +21,7 @@
   </head>
 
   <body>
-    <nav class="navbar navbar-inverse navbar-fixed-top">
+    <nav class="navbar navbar-inverse navbar-static-top">
       <div class="container">
         <div class="navbar-header">
           <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
@@ -36,7 +36,7 @@
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
             <li><a href="{% url 'list_isds' %}">Home</a></li>
-            <li><a href="{% url 'sent_requests' %}">Submitted requests</a></li>
+            <li><a href="{% url 'coord_service' %}">Coordination service</a></li>
             <li><a href="{% url 'network_view' %}">Network graph</a></li>
           </ul>
 
@@ -65,6 +65,15 @@
         {% block content %}{% endblock %}
       </div>
     </div>
+
+    {% if messages %}
+    <ul class="messages">
+      {% for message in messages %}
+      <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
     <br />
   </body>
 </html>

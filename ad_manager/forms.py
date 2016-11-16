@@ -14,11 +14,14 @@
 
 # External packages
 from django import forms
-
-# SCION
-from ad_manager.models import ConnectionRequest, AD
-
 from django.shortcuts import get_object_or_404
+
+# SCION-WEB
+from ad_manager.models import (
+    AD,
+    ConnectionRequest,
+    OrganisationAdmin,
+)
 
 
 # never use for untrusted uploads
@@ -27,13 +30,49 @@ class UploadFileForm(forms.Form):
     # filename = forms.CharField(max_length=25)  # additional field to rename f
 
 
+class CoordinationServiceSettingsForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        user_id = kwargs.pop('user_id')
+        super().__init__(*args, **kwargs)
+
+        try:
+            coord_settings = OrganisationAdmin.objects.get(user_id=user_id)
+        except OrganisationAdmin.DoesNotExist:
+            coord_settings = OrganisationAdmin()
+            coord_settings.key = 'Not set'
+            coord_settings.secret = 'Not set'
+
+        self.fields['key'] = forms.CharField(widget=forms.TextInput(
+            attrs={'class': 'input-field-coord-key',
+                   'value': coord_settings.key})
+        )
+        self.fields['secret'] = forms.CharField(widget=forms.TextInput(
+            attrs={'class': 'input-field-coord-secret',
+                   'value': coord_settings.secret})
+        )
+
+    class Meta:
+        model = OrganisationAdmin
+        fields = ('key', 'secret')
+        labels = {'Key': 'Secret'}
+
+
 class ConnectionRequestForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         current_as_id = kwargs.pop('pk')
         super(ConnectionRequestForm, self).__init__(*args, **kwargs)
 
+        # TODO(ercanucan): request by as_id
         ad = get_object_or_404(AD, id=current_as_id)
         remote_ip_choices = []
+
+        self.fields['connect_from'] = forms.CharField(
+            widget=forms.HiddenInput(attrs={'value': current_as_id})
+        )
+        self.fields['connect_to'] = forms.CharField(
+            widget=forms.TextInput(attrs={'placeholder':
+                                          'ISD-AS to connect to'})
+        )
 
         if 'BorderRouters' in ad.original_topology.keys():
             for border_router in ad.original_topology['BorderRouters'].values():
@@ -46,10 +85,14 @@ class ConnectionRequestForm(forms.ModelForm):
 
     class Meta:
         model = ConnectionRequest
-        fields = ('info', 'router_public_ip', 'router_public_port')
+        fields = ('connect_to', 'router_public_ip', 'router_public_port',
+                  'mtu', 'bandwidth', 'link_type', 'info')
         # 'router_bound_ip','router_bound_port',
-        labels = {'router_public_ip': 'Router external IP',
-                  'router_public_port': 'Router external port'}
+        labels = {'connect_to': 'Connect to',
+                  'router_public_ip': 'Router external IP',
+                  'router_public_port': 'Router external port',
+                  'mtu': 'MTU',
+                  'link_type': 'link type'}
         # 'router_bound_ip': 'Router bound IP',
 
 
@@ -66,5 +109,6 @@ class NewLinkForm(forms.Form):
         self.from_ad = kwargs.pop('from_ad')
         assert isinstance(self.from_ad, AD)
         end_point_field = self.base_fields['end_point']
-        end_point_field.queryset = AD.objects.exclude(id=self.from_ad.id)
+        end_point_field.queryset = AD.objects.exclude(as_id=self.from_ad.as_id,
+                                                      isd=self.from_ad.isd)
         super().__init__(*args, **kwargs)

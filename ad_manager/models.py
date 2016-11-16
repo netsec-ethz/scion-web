@@ -24,14 +24,21 @@ from django.db import models, IntegrityError
 
 # SCION
 from ad_manager.util.common import empty_dict
+from ad_manager.util.defines import (
+    DEFAULT_BANDWIDTH,
+    SCION_SUGGESTED_PORT,
+)
+
+# SCION-WEB
 from lib.defines import (
     BEACON_SERVICE,
     CERTIFICATE_SERVICE,
+    DEFAULT_MTU,
     PATH_SERVICE,
-    SIBRA_SERVICE
+    SIBRA_SERVICE,
 )
 
-PORT = 50000
+PORT = SCION_SUGGESTED_PORT
 PACKAGE_DIR_PATH = 'gen'
 
 
@@ -50,6 +57,13 @@ class SelectRelatedModelManager(models.Manager):
             return queryset.select_related(*related_fields)
 
 
+class OrganisationAdmin(models.Model):
+    user = models.OneToOneField(User)
+    is_org_admin = models.BooleanField(default=False)
+    key = models.CharField(max_length=260, null=False, blank=True)
+    secret = models.CharField(max_length=260, null=False, blank=True)
+
+
 class ISD(models.Model):
     id = models.IntegerField(primary_key=True)
 
@@ -65,15 +79,26 @@ class ISD(models.Model):
 
 
 class AD(models.Model):
-    id = models.AutoField(primary_key=True)
+    as_id = models.IntegerField(default=-1)
     isd = models.ForeignKey('ISD')
     is_core_ad = models.BooleanField(default=False)
     is_open = models.BooleanField(default=True)
     md_host = models.GenericIPAddressField(default='127.0.0.1')
     original_topology = jsonfield.JSONField(default=empty_dict)
+    sig_pub_key = models.CharField(max_length=100, null=True, blank=True)
+    sig_priv_key = models.CharField(max_length=100, null=True, blank=True)
+    enc_pub_key = models.CharField(max_length=100, null=True, blank=True)
+    enc_priv_key = models.CharField(max_length=100, null=True, blank=True)
+    certificate = models.CharField(max_length=1500, null=True, blank=True)
+    trc = models.CharField(max_length=1500, null=True, blank=True)
 
     # Use custom model manager with select_related()
     objects = SelectRelatedModelManager()
+
+    class Meta:
+        unique_together = (("as_id", "isd"),)
+        verbose_name = 'AD'
+        ordering = ['as_id']
 
     def generate_topology_dict(self):
         """
@@ -82,7 +107,7 @@ class AD(models.Model):
         assert isinstance(self.original_topology, dict)
         out_dict = copy.deepcopy(self.original_topology)
         out_dict.update({
-            'ISDID': int(self.isd_id), 'ADID': int(self.id),
+            'ISDID': int(self.isd_id), 'ADID': int(self.as_id),
             'Core': int(self.is_core_ad),
             'BorderRouters': {}, 'PathServers': {}, 'BeaconServers': {},
             'CertificateServers': {}, 'SibraServers': {},
@@ -145,9 +170,8 @@ class AD(models.Model):
                 isd_as_split = interface["ISD_AS"].split('-')
                 isd_str = isd_as_split[0]
                 as_str = isd_as_split[1]
-
                 try:
-                    neighbor_ad = AD.objects.get(id=as_str,
+                    neighbor_ad = AD.objects.get(as_id=as_str,
                                                  isd=isd_str)
                 except AD.DoesNotExist:
                     if auto_refs:
@@ -159,12 +183,12 @@ class AD(models.Model):
                         except ISD.DoesNotExist:
                             isd = ISD(id=isd_str)
                             isd.save()
-                        as_obj = AD.objects.create(id=as_str, isd=isd,
+                        as_obj = AD.objects.create(as_id=as_str, isd=isd,
                                                    is_core_ad=0,
                                                    is_open=False)
                         as_obj.save()
 
-                        neighbor_ad = AD.objects.get(id=as_str,
+                        neighbor_ad = AD.objects.get(as_id=as_str,
                                                      isd=isd_str)
                     else:
                         raise
@@ -219,21 +243,17 @@ class AD(models.Model):
             raise
 
     def get_absolute_url(self):
-        return reverse('ad_detail', args=[self.id])
+        return reverse('ad_detail', args=[self.as_id])
 
     def get_full_process_name(self, id_str):
         if ':' in id_str:
             return id_str
         else:
             # changed for rpc log retrieval, to match new supervisord names
-            return "as{}-{}:{}".format(self.isd.id, self.id, id_str)
+            return "as{}-{}:{}".format(self.isd.id, self.as_id, id_str)
 
     def __str__(self):
-        return '{}-{}'.format(self.isd.id, self.id)
-
-    class Meta:
-        verbose_name = 'AD'
-        ordering = ['id']
+        return '{}-{}'.format(self.isd.id, self.as_id)
 
 
 class SCIONWebElement(models.Model):
@@ -303,13 +323,13 @@ class RouterWeb(SCIONWebElement):
     def id_str(self):
         return "er{}-{}er{}-{}".format(self.ad.isd_id, self.ad_id,
                                        self.neighbor_ad.isd_id,
-                                       self.neighbor_ad.id)
+                                       self.neighbor_ad.as_id)
 
     def get_dict(self):
         out_dict = super(RouterWeb, self).get_dict()
         out_dict['Interface'] = {'NeighborType': self.neighbor_type,
                                  'NeighborISD': int(self.neighbor_ad.isd_id),
-                                 'NeighborAD': int(self.neighbor_ad.id),
+                                 'NeighborAD': int(self.neighbor_ad.as_id),
                                  'Addr': str(self.interface_addr),
                                  'AddrType': 'IPV4',
                                  'ToAddr': str(self.interface_toaddr),
@@ -332,22 +352,51 @@ class SibraServerWeb(SCIONWebElement):
         unique_together = (("ad", "addr"),)
 
 
-class ConnectionRequest(models.Model):
-    STATUS_OPTIONS = ['NONE', 'SENT', 'APPROVED', 'DECLINED']
-
+class JoinRequest(models.Model):
+    STATUS_OPTIONS = ['NONE', 'SENT', 'ACCEPTED', 'DECLINED']
+    request_id = models.IntegerField(primary_key=True)
     created_by = models.ForeignKey(User)
-    connect_to = models.ForeignKey(AD, related_name='received_requests')
-    new_ad = models.ForeignKey(AD, blank=True, null=True)
-    info = models.TextField()
-    router_public_ip = models.GenericIPAddressField()
-    router_public_port = models.IntegerField(default=int(PORT))
+
+    isd_to_join = models.IntegerField(default=-1)
     status = models.CharField(max_length=20,
                               choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
                               default='NONE')
-    # TODO(rev112) change to FilePathField?
-    package_path = models.CharField(max_length=1000, blank=True, null=True)
 
-    related_fields = ('new_ad__isd', 'connect_to__isd', 'created_by')
+    sig_pub_key = models.CharField(max_length=100, null=True, blank=True)
+    sig_priv_key = models.CharField(max_length=100, null=True, blank=True)
+    enc_pub_key = models.CharField(max_length=100, null=True, blank=True)
+    enc_priv_key = models.CharField(max_length=100, null=True, blank=True)
+
+    certificate = models.CharField(max_length=1000, null=True, blank=True)
+    trc = models.CharField(max_length=500, null=True, blank=True)
+
+    def is_accepted(self):
+        return self.status == 'ACCEPTED'
+
+
+class ConnectionRequest(models.Model):
+    STATUS_OPTIONS = ['NONE', 'SENT', 'APPROVED', 'DECLINED']
+    LINK_TYPE = ['PARENT', 'CHILD', 'PEER', 'ROUTING']
+
+    # request_id assigned by the coordination service
+    request_id = models.IntegerField(null=True)
+
+    created_by = models.ForeignKey(User)
+    connect_to = models.CharField(max_length=100, null=True, blank=True)
+    connect_from = models.ForeignKey(AD, blank=True, null=True)
+    info = models.TextField()
+    router_public_ip = models.GenericIPAddressField()
+    router_public_port = models.IntegerField(default=int(PORT))
+    mtu = models.IntegerField(null=True, default=DEFAULT_MTU)
+    bandwidth = models.IntegerField(null=True, default=DEFAULT_BANDWIDTH)
+    link_type = models.CharField(max_length=20,
+                                 choices=zip(LINK_TYPE, LINK_TYPE),
+                                 default='CHILD')
+    status = models.CharField(max_length=20,
+                              choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
+                              default='NONE')
+
+    related_fields = ('connect_from__isd', 'created_by')
     objects = SelectRelatedModelManager()
 
     def is_approved(self):
