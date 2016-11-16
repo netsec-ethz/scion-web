@@ -18,6 +18,7 @@ import hashlib
 import json
 import logging
 import os
+import posixpath
 import requests
 import socket
 import subprocess
@@ -187,9 +188,8 @@ def poll_join_reply(web_req):
     for req in open_join_requests:
         jr_id = req.request_id
         logger.info('Pending request = %s', jr_id)
-        request_url = reduce(urljoin, [COORD_SERVICE_URI, POLL_JOIN_REPLY_SVC,
-                             os.path.join(coord.key, coord.secret)])
-
+        request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                              POLL_JOIN_REPLY_SVC, coord.key, coord.secret))
         logger.info('url = %s' % request_url)
         headers = {'content-type': 'application/json'}
         try:
@@ -237,7 +237,7 @@ def accept_join_request(request, isd_as, request_id):
     """
     current_page = request.META.get('HTTP_REFERER')
     coord = get_object_or_404(OrganisationAdmin, user_id=request.user.id)
-    logger.info("new AS name = %s \nisd_as = %s", request.POST['newASname'],
+    logger.info("new AS name = %s isd_as = %s", request.POST['newASname'],
                 isd_as)
 
     joining_as = request.POST['newASname']
@@ -278,7 +278,7 @@ def accept_join_request(request, isd_as, request_id):
 
 @require_POST
 @login_required
-def new_as_id(request):
+def request_new_as_id(request):
     current_page = request.META.get('HTTP_REFERER')
     # check the validity of parameters
     if not request.POST["inputISDtojoin"].isdigit():
@@ -299,8 +299,8 @@ def new_as_id(request):
                          "enckey": to_b64(public_key_encr)
                          }
 
-    request_url = reduce(urljoin, [COORD_SERVICE_URI, UPLOAD_JOIN_REQUEST_SVC,
-                         os.path.join(coord.key, coord.secret)])
+    request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                          UPLOAD_JOIN_REQUEST_SVC, coord.key, coord.secret))
     headers = {'content-type': 'application/json'}
 
     logger.info("Request = %s\nJoin Request Dict = %s", request_url,
@@ -375,6 +375,9 @@ class ConnectionRequestView(FormView):
 class ADDetailView(DetailView):
     model = AD
 
+    def get_object(self):
+        return get_object_or_404(AD, as_id=self.kwargs['as_id'])
+
     def get_context_data(self, **kwargs):
         """
         Populate 'context' dictionary with the required objects
@@ -397,8 +400,7 @@ class ADDetailView(DetailView):
             hashlib.md5(flat_string.encode('utf-8')).hexdigest()
         context['as_id'] = ad.as_id
         context['isd_id'] = ad.isd_id
-        isdas = '-'.join([str(ad.isd_id), str(ad.as_id)])
-        context['isdas'] = isdas
+        context['isdas'] = str(ISD_AS.from_values(ad.isd_id, ad.as_id))
 
         # Sort by name numerically
         lists_to_sort = ['routers', 'path_servers',
@@ -429,7 +431,7 @@ class ADDetailView(DetailView):
         request_url = reduce(urljoin, [base_url, get_all_requests, key, secret])
         headers = {'content-type': 'application/json'}
         try:
-            r = requests.post(request_url, json={'isdas': isdas},
+            r = requests.post(request_url, json={'isdas': context['isdas']},
                               headers=headers)
             if r.status_code == 200:
                 answer = r.json()
