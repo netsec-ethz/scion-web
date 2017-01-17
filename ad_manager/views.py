@@ -23,6 +23,7 @@ import requests
 import socket
 import subprocess
 import tarfile
+import time
 import yaml
 from collections import deque
 from copy import deepcopy
@@ -42,6 +43,7 @@ from django.core.urlresolvers import reverse
 from django.http import (
     HttpResponse,
     HttpResponseForbidden,
+    HttpResponseNotFound,
     JsonResponse,
 )
 from django.shortcuts import redirect, get_object_or_404, render
@@ -51,6 +53,7 @@ from django.views.generic import ListView, DetailView, FormView
 
 # SCION
 from lib.util import (
+    iso_timestamp,
     read_file,
     write_file,
 )
@@ -92,6 +95,8 @@ from ad_manager.util.defines import (
     POLL_JOIN_REPLY_SVC,
     POLL_EVENTS_SVC,
     SCION_SUGGESTED_PORT,
+    UPLOAD_CONN_REQUEST_SVC,
+    UPLOAD_CONN_REPLY_SVC,
     UPLOAD_JOIN_REQUEST_SVC,
     UPLOAD_JOIN_REPLY_SVC,
 )
@@ -125,6 +130,7 @@ SERVICE_EXECUTABLES = (
 
 REQ_SENT = 'SENT'
 REQ_APPROVED = 'APPROVED'
+REQ_DECLINED = 'DECLINED'
 logger = logging.getLogger("scion-web")
 
 
@@ -180,15 +186,16 @@ def poll_join_reply(web_req):
     try:
         coord = OrganisationAdmin.objects.get(user_id=web_req.user.id)
     except OrganisationAdmin.DoesNotExist:
-        logger.error("Retrieving key and secret failed.")
+        logger.error("Retrieving account_id and secret failed.")
         return redirect(current_page)
 
     open_join_requests = JoinRequest.objects.filter(status=REQ_SENT)
     for req in open_join_requests:
-        jr_id = req.request_id
+        jr_id = req.id
         logger.info('Pending request = %s', jr_id)
         request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
-                              POLL_JOIN_REPLY_SVC, coord.key, coord.secret))
+                              POLL_JOIN_REPLY_SVC, coord.account_id,
+                              coord.secret))
         logger.info('url = %s' % request_url)
         headers = {'content-type': 'application/json'}
         try:
@@ -209,67 +216,94 @@ def poll_join_reply(web_req):
 def handle_join_reply(reply, web_req, jr_id):
     logger.info("resp = %s", reply.json())
     join_reply = reply.json()
+    logger.info("join_reply = %s" % join_reply)
 
-    new_as = ISD_AS(join_reply['assigned_isdas'])
+    if join_reply == {}:
+        logger.info("Empty join reply for join request %s.", jr_id)
+        return
+    if join_reply['Status'] == REQ_APPROVED:
+        # get the join request object which belong to this request
+        # so that we can save the keys into the AS table.
+        jr = JoinRequest.objects.get(id=jr_id)
+        new_as = ISD_AS(join_reply['JoiningIA'])
+        # TODO(ercanucan): create the ISD in DB if it's not yet in DB
+        AD.objects.update_or_create(
+            as_id=int(new_as[1]),
+            isd=ISD.objects.get(id=int(new_as[0])),
+            is_core_ad=join_reply['IsCore'],
+            is_open=False,
+            certificate=join_reply['JoiningIACertificate'],
+            trc=join_reply['TRC'],
+            sig_pub_key=jr.sig_pub_key,
+            sig_priv_key=jr.sig_priv_key,
+            enc_pub_key=jr.enc_pub_key,
+            enc_priv_key=jr.enc_priv_key
+        )
+        messages.success(web_req, 'Created new AS with ID %s.' % new_as)
+    else:
+        messages.info(web_req, 'Your join request with ID %s is declined '
+                               'by AS %s.' % (jr_id, join_reply['RespondIA']))
 
-    # TODO(ercanucan): create the ISD in DB if it's not yet in DB
-    AD.objects.update_or_create(
-        as_id=int(new_as[1]),
-        isd=ISD.objects.get(id=int(new_as[0])),
-        is_core_ad=False,
-        is_open=False,
-        certificate=join_reply['certificate'],
-        trc=join_reply['trc']
-    )
-    messages.success(web_req, 'Created new AS with ID %s.' % new_as)
-
-    # change join request status to APPROVED
-    JoinRequest.objects.filter(request_id=jr_id).update(status=REQ_APPROVED)
+    # update join request's status
+    JoinRequest.objects.filter(id=jr_id).update(status=join_reply['Status'])
 
 
 @login_required
-def accept_join_request(request, isd_as, request_id):
+def send_join_reply(request, status, isd_as, request_id):
     """
-    Accepts the join request, assigns a new AS ID to
-    the requesting party and creates the certificate.
-    This function is only executed by a core AS.
+    Accepts or declines the join request. In case of accept, it assigns a new
+    AS ID to the requesting party and creates the certificate. This function
+    is only executed by a core AS.
     """
     current_page = request.META.get('HTTP_REFERER')
     coord = get_object_or_404(OrganisationAdmin, user_id=request.user.id)
-    logger.info("new AS name = %s isd_as = %s", request.POST['newASname'],
-                isd_as)
-
-    joining_as = request.POST['newASname']
-    sig_pub_key = from_b64(request.POST['sig_pub_key'])
-    enc_pub_key = from_b64(request.POST['enc_pub_key'])
     own_isdas = ISD_AS(isd_as)
-    signing_as = AD.objects.get(as_id=own_isdas[1],
-                                isd=own_isdas[0])
-    signing_as_sig_priv_key = from_b64(signing_as.sig_priv_key)
-    signing_as_trc = str(signing_as.trc)
-    joining_isdas = ISD_AS.from_values(own_isdas[0], joining_as)
+    if status == REQ_APPROVED:
+        logger.info("new AS name = %s isd_as = %s", request.POST['newASname'],
+                    isd_as)
+        joining_as = request.POST['newASname']
+        is_core = request.POST['join_as_a_core']
+        sig_pub_key = from_b64(request.POST['sig_pub_key'])
+        enc_pub_key = from_b64(request.POST['enc_pub_key'])
+        requester = request.POST['requester']
+        signing_as = AD.objects.get(as_id=own_isdas[1], isd=own_isdas[0])
+        signing_as_sig_priv_key = from_b64(signing_as.sig_priv_key)
+        signing_as_trc = str(signing_as.trc)
+        joining_ia = ISD_AS.from_values(own_isdas[0], joining_as)
+        certificate = Certificate.from_values(
+            str(joining_ia), str(own_isdas), INITIAL_CERT_VERSION, "", False,
+            enc_pub_key, sig_pub_key, signing_as_sig_priv_key
+        )
+        join_reply_dict = {"RequestId": int(request_id),
+                           "Status": REQ_APPROVED,
+                           "JoiningIA": str(joining_ia),
+                           "IsCore": is_core == "True",
+                           "RespondIA": str(own_isdas),
+                           "JoiningIACertificate": str(certificate),
+                           "RespondIACertificate": str(signing_as.certificate),
+                           "TRC": signing_as_trc,
+                           "RequesterId": requester
+                           }
+        logger.info("accept join dict = %s", join_reply_dict)
+    else:
+        join_reply_dict = {"RequestId": int(request_id),
+                           "Status": REQ_DECLINED,
+                           "JoiningIA": "",
+                           "IsCore": "",
+                           "RespondIA": str(own_isdas),
+                           "JoiningIACertificate": "",
+                           "RespondIACertificate": "",
+                           "TRC": "",
+                           "RequesterId": requester
+                           }
+        logger.info("decline join dict = %s", join_reply_dict)
 
-    certificate = Certificate.from_values(
-        str(joining_isdas), sig_pub_key, enc_pub_key, str(own_isdas),
-        signing_as_sig_priv_key, INITIAL_CERT_VERSION,
-    )
-
-    accept_join_dict = {"isdas": str(own_isdas),
-                        "join_reply":
-                            {
-                                "request_id": int(request_id),
-                                "joining_isdas": str(joining_isdas),
-                                "signing_isdas": str(own_isdas),
-                                "certificate": str(certificate),
-                                "trc": signing_as_trc
-                            }
-                        }
-    logger.info("accept join dict = %s", accept_join_dict)
     request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
-                          UPLOAD_JOIN_REPLY_SVC, coord.key, coord.secret))
+                          UPLOAD_JOIN_REPLY_SVC, coord.account_id,
+                          coord.secret))
     headers = {'content-type': 'application/json'}
     try:
-        requests.post(request_url, json=accept_join_dict, headers=headers)
+        requests.post(request_url, json=join_reply_dict, headers=headers)
     except requests.RequestException:
         logger.error("Failed to upload join reply to coordination service")
     return redirect(current_page)
@@ -277,29 +311,64 @@ def accept_join_request(request, isd_as, request_id):
 
 @require_POST
 @login_required
+def join_request_action(request, isd_as, request_id):
+    """
+    Approve or decline the sent connection request.
+    """
+    posted_data = request.POST
+
+    logger.info('Posted data = %s', posted_data)
+
+    if '_approve_request' in request.POST:
+        logger.info("Approving JOIN REQUEST")
+        return send_join_reply(request, REQ_APPROVED, isd_as, request_id)
+    elif '_decline_request' in request.POST:
+        logger.info("Declining JOIN REQUEST")
+        return send_join_reply(request, REQ_DECLINED, isd_as, request_id)
+
+    return HttpResponseNotFound('Invalid join request action')
+
+
+@require_POST
+@login_required
 def request_new_as_id(request):
     current_page = request.META.get('HTTP_REFERER')
     # check the validity of parameters
-    if not request.POST["inputISDtojoin"].isdigit():
+    if not request.POST["inputISDToJoin"].isdigit():
         messages.error(request, 'ISD to join has to be a number!')
         return redirect(current_page)
 
-    isd_to_join = int(request.POST["inputISDtojoin"])
+    isd_to_join = int(request.POST["inputISDToJoin"])
+    join_as_a_core = request.POST["inputJoinAsACore"]
 
-    # get the key and secret necessary to query SCION-coord
+    # get the account_id and secret necessary to query SCION-coord
     coord = get_object_or_404(OrganisationAdmin, user_id=request.user.id)
 
     # generate the sign and encryption keys
     private_key_sign, public_key_sign = generate_sign_keypair()
     public_key_encr, private_key_encr = generate_enc_keypair()
 
-    join_request_dict = {"isd_to_join": isd_to_join,
-                         "sigkey": to_b64(public_key_sign),
-                         "enckey": to_b64(public_key_encr)
+    req = JoinRequest.objects.create(
+        created_by=request.user,
+        isd_to_join=isd_to_join,
+        join_as_a_core=(join_as_a_core == "True"),
+        status=REQ_SENT,
+        sig_pub_key=to_b64(public_key_sign),
+        sig_priv_key=to_b64(private_key_sign),
+        enc_pub_key=to_b64(public_key_encr),
+        enc_priv_key=to_b64(private_key_encr)
+    )
+
+    join_request_dict = {"RequestId": req.id,
+                         "IsdToJoin": isd_to_join,
+                         "JoinAsACoreAS": join_as_a_core == "True",
+                         "SigPubKey": to_b64(public_key_sign),
+                         "EncPubKey": to_b64(public_key_encr)
                          }
 
     request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
-                          UPLOAD_JOIN_REQUEST_SVC, coord.key, coord.secret))
+                          UPLOAD_JOIN_REQUEST_SVC, coord.account_id,
+                          coord.secret))
     headers = {'content-type': 'application/json'}
 
     logger.info("Request = %s\nJoin Request Dict = %s", request_url,
@@ -316,22 +385,8 @@ def request_new_as_id(request):
                                 'failed with code %s!' % r.status_code)
         return redirect(current_page)
 
-    resp = r.json()
-    request_id = resp['id']
-    logger.info("request_id = %s", request_id)
-    JoinRequest.objects.update_or_create(
-        request_id=request_id,
-        created_by=request.user,
-        isd_to_join=isd_to_join,
-        status=REQ_SENT,
-        sig_pub_key=to_b64(public_key_sign),
-        sig_priv_key=to_b64(private_key_sign),
-        enc_pub_key=to_b64(public_key_encr),
-        enc_priv_key=to_b64(private_key_encr)
-    )
-
     messages.success(request, 'Join Request Submitted Successfully.'
-                              ' Request ID = %s' % request_id)
+                              ' Request ID = %s' % req.id)
     return redirect(current_page)
 
 
@@ -360,15 +415,149 @@ class ConnectionRequestView(FormView):
     def form_valid(self, form):
         if not self.request.user.is_authenticated():
             return HttpResponseForbidden('Authentication required')
+        # get the account_id and secret necessary to query SCION-coord
+        coord = get_object_or_404(OrganisationAdmin,
+                                  user_id=self.request.user.id)
+        # create connection_request db object
+        conn_req = self.create_req_obj(form)
+        # prepare connection request dict to send
+        conn_req_dict = self.prepare_req_dic(conn_req)
 
-        logger.info("Submitting Connection Request not yet implemented.")
+        logger.info("conn_req_dict = %s", conn_req_dict)
+        # upload the req to scion-coord
+        request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                              UPLOAD_CONN_REQUEST_SVC, coord.account_id,
+                              coord.secret))
+
+        logger.info("request_url=%s", request_url)
+        headers = {'contenttype': 'application/json'}
+        try:
+            r = requests.post(request_url, json=conn_req_dict, headers=headers)
+            resp = r.json()
+            logging.info("Response to Upload Connection Request=%s", resp)
+            # TODO(ercanucan): check status code and give feedback to the user
+        except requests.RequestException:
+            logging.error("Uploading connection request to scion-coord failed.")
+        # save the object into DB
+        conn_req.status = REQ_SENT
+        # update the success URL
         self.success_url = self._get_ad().get_absolute_url()
         return super().form_valid(form)
+
+    def create_req_obj(self, form):
+        form_data = self.request.POST
+        logger.info("Connection Request Form Data=%s", form_data)
+        conn_req = form.instance
+        conn_req.connect_to = form_data['connect_to']
+        logger.info("connect_from=%s", form_data['connect_from'])
+        connect_from = form_data['connect_from']
+        conn_req.connect_from = get_object_or_404(AD, as_id=connect_from)
+        conn_req.created_by = self.request.user
+        conn_req.router_public_ip = form_data['router_public_ip']
+        conn_req.router_public_port = form_data['router_public_port']
+        conn_req.overlay_type = form_data['overlay_type']
+        conn_req.mtu = form_data['mtu']
+        conn_req.bandwidth = form_data['bandwidth']
+        conn_req.link_type = form_data['link_type']
+        conn_req.info = form_data['info']
+        conn_req.save()
+        return conn_req
+
+    def prepare_req_dic(self, conn_req):
+        isd_as = ISD_AS.from_values(self._get_ad().isd.id,
+                                    self._get_ad().as_id)
+        conn_req_dict = {"RequestId": conn_req.id,
+                         "Info": conn_req.info,
+                         "RequestIA": str(isd_as),
+                         "RespondIA": conn_req.connect_to,
+                         "IP": conn_req.router_public_ip,
+                         "Port": int(conn_req.router_public_port),
+                         "OverlayType": conn_req.overlay_type,
+                         "MTU": int(conn_req.mtu),
+                         "Bandwidth": int(conn_req.bandwidth),
+                         "LinkType": conn_req.link_type,
+                         "Timestamp": iso_timestamp(int(time.time())),
+                         "Signature": "",
+                         "Certificate": self._get_ad().certificate}
+        # TODO(ercanucan): generate and set the signature
+        return conn_req_dict
 
     def get_context_data(self, **kwargs):
         context_data = super().get_context_data(**kwargs)
         context_data['ad'] = self._get_ad()
         return context_data
+
+
+@require_POST
+def connection_request_action(request, req_id):
+    """
+    Approve or decline the sent connection request.
+    """
+    posted_data = request.POST
+    respond_ia = ISD_AS(posted_data['RespondIA'])
+
+    logger.info('Posted data = %s', posted_data)
+
+    respond_as = get_object_or_404(AD, isd=respond_ia[0],
+                                   as_id=respond_ia[1])
+    _check_user_permissions(request, respond_as)
+
+    if '_approve_request' in request.POST:
+        send_connection_reply(request, req_id, REQ_APPROVED, respond_as,
+                              posted_data)
+        #  Create/update topology
+        return redirect(
+            reverse('ad_detail_topology_routers', args=[respond_as.as_id]))
+    elif '_decline_request' in request.POST:
+        send_connection_reply(request, req_id, REQ_DECLINED, respond_as,
+                              posted_data)
+        return redirect(
+            reverse('ad_connection_requests', args=[respond_as.as_id]))
+
+    return HttpResponseNotFound('Invalid connection request action')
+
+
+@login_required
+def send_connection_reply(request, req_id, status, respond_as, posted_data):
+    coord = get_object_or_404(OrganisationAdmin,
+                              user_id=request.user.id)
+    # The AS requesting the connection and AS accepting the connection should
+    # agree on MTU and bandwidth of a link
+    conn_reply_dict = {"RequestId": int(req_id),
+                       "Status": status,
+                       "RequestIA": posted_data['RequestIA'],
+                       "RespondIA": str(respond_as)}
+    if status == REQ_APPROVED:
+        negotiated_mtu = min(posted_data['accepted_mtu'],
+                             posted_data['requested_mtu'])
+        negotiated_bandwidth = min(posted_data['accepted_bandwidth'],
+                                   posted_data['requested_bandwidth'])
+        conn_reply_dict["IP"] = posted_data['router_public_ip']
+        conn_reply_dict["Port"] = int(posted_data['router_public_port'])
+        conn_reply_dict["OverlayType"] = posted_data['accepted_overlay_type']
+        conn_reply_dict["MTU"] = int(negotiated_mtu)
+        conn_reply_dict["Bandwidth"] = int(negotiated_bandwidth)
+        conn_reply_dict["Certificate"] = str(respond_as.certificate)
+    else:
+        conn_reply_dict["IP"] = ""
+        conn_reply_dict["Port"] = 0
+        conn_reply_dict["OverlayType"] = ""
+        conn_reply_dict["MTU"] = 0
+        conn_reply_dict["Bandwidth"] = 0
+        conn_reply_dict["Certificate"] = ""
+
+    logger.info("conn_reply_dict = %s", conn_reply_dict)
+    request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                          UPLOAD_CONN_REPLY_SVC, coord.account_id,
+                          coord.secret))
+    headers = {'content-type': 'application/json'}
+    try:
+        r = requests.post(request_url, json=conn_reply_dict, headers=headers)
+        resp = r.json()
+        logging.info("Response to Upload Connection Reply=%s", resp)
+        # TODO(ercanucan): check status code and give feedback to the user
+    except:
+        logger.error("Sending connection reply to scion-coord failed.")
 
 
 class ADDetailView(DetailView):
@@ -416,27 +605,32 @@ class ADDetailView(DetailView):
         # Connection requests tab
         context['join_requests'] = {}
         context['received_requests'] = {}
+        context['received_replies'] = {}
 
         try:
             coord = OrganisationAdmin.objects.get(user_id=self.request.user.id)
         except OrganisationAdmin.DoesNotExist:
-            logger.error("Retrieving key and secret failed!!.")
+            logger.error("Retrieving account_id and secret failed!!.")
             return context
 
         request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
-                              POLL_EVENTS_SVC, coord.key, coord.secret))
+                              POLL_EVENTS_SVC, coord.account_id, coord.secret))
         headers = {'content-type': 'application/json'}
+        logger.info("Polling Events for %s", context['isdas'])
         try:
-            r = requests.post(request_url, json={'isdas': context['isdas']},
+            r = requests.post(request_url, json={'IsdAs': context['isdas']},
                               headers=headers)
             if r.status_code == 200:
                 answer = r.json()
-                context['join_requests'] = answer['join_requests']
-                context['received_requests'] = answer['conn_requests']
+                context['join_requests'] = answer['JoinRequests']
+                context['received_requests'] = answer['ConnRequests']
+                context['received_replies'] = answer['ConnReplies']
                 logger.info("join requests = %s", context['join_requests'])
                 logger.info("conn requests = %s", context['received_requests'])
+                logger.info("conn replies = %s", context['received_replies'])
+            # TODO(ercanucan): error handling if status code is not 200
         except requests.RequestException:
-            logger.info("Retrieving requests from scion-coord failed.")
+            logger.error("Retrieving requests from scion-coord failed.")
 
         return context
 
@@ -478,11 +672,12 @@ def coord_service_update(request):
     user = request.user
     form = CoordinationServiceSettingsForm(request.POST, user_id=user.id)
     if form.is_valid():
-        OrganisationAdmin.objects.update_or_create(
-            key=form.cleaned_data['key'],
-            secret=form.cleaned_data['secret'],
-            is_org_admin=True,
-            user_id=request.user.id)
+        acc, created = OrganisationAdmin.objects.get_or_create(user_id=user.id)
+        if created:
+            acc.is_org_admin = True
+        acc.account_id = form.cleaned_data['account_id']
+        acc.secret = form.cleaned_data['secret']
+        acc.save()
     return redirect(current_page)
 
 
@@ -909,33 +1104,22 @@ def create_local_gen(isd_as, tp):
     types_keys = zip(types, dict_keys)
     zk_name_counter = 1
 
-    for service_type, type_key in types_keys:
-        executable_name = lkx[service_type]
+    for serv_type, type_key in types_keys:
+        executable_name = lkx[serv_type]
         replicas = tp[type_key].keys()  # SECURITY WARNING:allows arbitrary path
         # the user can enter arbitrary paths for his output
         # Mitigation: make path at least relative
         executable_name = os.path.normpath('/'+executable_name).lstrip('/')
         for serv_name in replicas:
-            config = configparser.ConfigParser()
             # replace serv_name if zookeeper special case (they have only ids)
-            if service_type == 'zookeeper_service':
+            if serv_type == 'zookeeper_service':
                 serv_name = '{}{}-{}-{}'.format('zk', isd_id,
                                                 as_id, zk_name_counter)
                 zk_name_counter += 1
-            config['program:' + serv_name] = \
-                {'startsecs': '5',
-                 'command': '"bin/{0}" "{1}" "gen/ISD{2}/AS{3}/{1}"'.format(
-                     executable_name, serv_name, isd_id, as_id),
-                 'startretries': '0',
-                 'stdout_logfile': 'logs/' + str(serv_name) + '.OUT',
-                 'redirect_stderr': 'true',
-                 'autorestart': 'false',
-                 'environment': 'PYTHONPATH=.',
-                 'autostart': 'false',
-                 'stdout_logfile_maxbytes': '0'}
-
+            config = prep_supervisord_conf(executable_name, serv_type,
+                                           serv_name, isd_id, as_id)
             # replace command entry if zookeeper special case
-            if service_type == 'zookeeper_service':
+            if serv_type == 'zookeeper_service':
                 zk_config_path = os.path.join(PROJECT_ROOT,
                                               'topology',
                                               'Zookeeper.yml')
@@ -981,7 +1165,7 @@ def create_local_gen(isd_as, tp):
             tmpl = Template(read_file(os.path.join(PROJECT_ROOT,
                                                    "topology/zlog.tmpl")))
             cfg = os.path.join(node_path, "%s.zlog.conf" % serv_name)
-            write_file(cfg, tmpl.substitute(name=service_type, elem=serv_name))
+            write_file(cfg, tmpl.substitute(name=serv_type, elem=serv_name))
 
             # Generating only the needed intermediate parts
             # not used as for now we generator.py all certs and keys resources
@@ -1014,3 +1198,35 @@ def particular_topo_instance(tp, type_key):
                 if internal_port is not None:
                     singular_topo[server_type][entry]['Port'] = internal_port
     return singular_topo
+
+
+def prep_supervisord_conf(executable_name, serv_type, serv_name,
+                          isd_id, as_id):
+    """
+    Prepares the supervisord configuration for the infrastructure elements
+    and returns it as a ConfigParser object.
+    """
+    config = configparser.ConfigParser()
+    env_tmpl = 'PYTHONPATH=.,ZLOG_CFG="gen/ISD%s/AS%s/%s/%s.zlog.conf"'
+    if serv_type == 'router':  # go router
+        env_tmpl += ',GODEBUG="cgocheck=0"'
+        cmd_tmpl = ('bash -c \'exec "bin/border" "-id" "%s" "-confd" ' +
+                    '"gen/ISD%s/AS%s/%s" &>logs/%s.OUT\'')
+        cmd = cmd_tmpl % (serv_name, isd_id, as_id, serv_name, serv_name)
+    else:  # other infrastructure elements
+        cmd_tmpl = ('bash -c \'exec "bin/%s" "%s" ' +
+                    '"gen/ISD%s/AS%s/%s" &>logs/%s.OUT\'')
+        cmd = cmd_tmpl % (executable_name, serv_name, isd_id, as_id,
+                          serv_name, serv_name)
+    env = env_tmpl % (isd_id, as_id, serv_name, serv_name)
+    config['program:' + serv_name] = \
+        {'priority': '100',
+         'environment': env,
+         'stdout_logfile': 'NONE',
+         'autostart': 'false',
+         'stderr_logfile': 'NONE',
+         'command':  cmd,
+         'startretries': '0',
+         'startsecs': '5',
+         'autorestart': 'false'}
+    return config

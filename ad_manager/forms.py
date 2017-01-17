@@ -39,12 +39,12 @@ class CoordinationServiceSettingsForm(forms.Form):
             coord_settings = OrganisationAdmin.objects.get(user_id=user_id)
         except OrganisationAdmin.DoesNotExist:
             coord_settings = OrganisationAdmin()
-            coord_settings.key = 'Not set'
+            coord_settings.account_id = 'Not set'
             coord_settings.secret = 'Not set'
 
-        self.fields['key'] = forms.CharField(widget=forms.TextInput(
-            attrs={'class': 'input-field-coord-key',
-                   'value': coord_settings.key})
+        self.fields['account_id'] = forms.CharField(widget=forms.TextInput(
+            attrs={'class': 'input-field-coord-account_id',
+                   'value': coord_settings.account_id})
         )
         self.fields['secret'] = forms.CharField(widget=forms.TextInput(
             attrs={'class': 'input-field-coord-secret',
@@ -53,8 +53,8 @@ class CoordinationServiceSettingsForm(forms.Form):
 
     class Meta:
         model = OrganisationAdmin
-        fields = ('key', 'secret')
-        labels = {'Key': 'Secret'}
+        fields = ('account_id', 'secret')
+        labels = {'AccountId': 'Secret'}
 
 
 class ConnectionRequestForm(forms.ModelForm):
@@ -62,9 +62,8 @@ class ConnectionRequestForm(forms.ModelForm):
         current_as_id = kwargs.pop('pk')
         super(ConnectionRequestForm, self).__init__(*args, **kwargs)
 
-        # TODO(ercanucan): request by as_id
-        ad = get_object_or_404(AD, id=current_as_id)
-        remote_ip_choices = []
+        ad = get_object_or_404(AD, as_id=current_as_id)
+        ip_choices = []
 
         self.fields['connect_from'] = forms.CharField(
             widget=forms.HiddenInput(attrs={'value': current_as_id})
@@ -77,22 +76,23 @@ class ConnectionRequestForm(forms.ModelForm):
         if 'BorderRouters' in ad.original_topology.keys():
             for border_router in ad.original_topology['BorderRouters'].values():
                 val = border_router['Interface']['ToAddr']
-                remote_ip_choices.append((val, val))
+                ip_choices.append((val, val))
 
         self.fields['router_public_ip'] = forms.ChoiceField(
-            choices=remote_ip_choices
+            choices=ip_choices
         )
 
     class Meta:
         model = ConnectionRequest
         fields = ('connect_to', 'router_public_ip', 'router_public_port',
-                  'mtu', 'bandwidth', 'link_type', 'info')
+                  'overlay_type', 'mtu', 'bandwidth', 'link_type', 'info')
         # 'router_bound_ip','router_bound_port',
         labels = {'connect_to': 'Connect to',
                   'router_public_ip': 'Router external IP',
                   'router_public_port': 'Router external port',
+                  'overlay_type': 'Overlay type',
                   'mtu': 'MTU',
-                  'link_type': 'link type'}
+                  'link_type': 'Link type'}
         # 'router_bound_ip': 'Router bound IP',
 
 

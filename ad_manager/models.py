@@ -60,7 +60,7 @@ class SelectRelatedModelManager(models.Manager):
 class OrganisationAdmin(models.Model):
     user = models.OneToOneField(User)
     is_org_admin = models.BooleanField(default=False)
-    key = models.CharField(max_length=260, null=False, blank=True)
+    account_id = models.CharField(max_length=260, null=False, blank=True)
     secret = models.CharField(max_length=260, null=False, blank=True)
 
 
@@ -172,7 +172,7 @@ class AD(models.Model):
                 as_str = isd_as_split[1]
                 try:
                     neighbor_ad = AD.objects.get(as_id=as_str,
-                                                 isd=isd_str)
+                                                 isd_id=isd_str)
                 except AD.DoesNotExist:
                     if auto_refs:
                         # Handles missing references
@@ -183,13 +183,13 @@ class AD(models.Model):
                         except ISD.DoesNotExist:
                             isd = ISD(id=isd_str)
                             isd.save()
-                        as_obj = AD.objects.create(as_id=as_str, isd=isd,
+                        as_obj = AD.objects.create(as_id=as_str, isd_id=isd,
                                                    is_core_ad=0,
                                                    is_open=False)
                         as_obj.save()
 
                         neighbor_ad = AD.objects.get(as_id=as_str,
-                                                     isd=isd_str)
+                                                     isd_id=isd_str)
                     else:
                         raise
 
@@ -354,10 +354,10 @@ class SibraServerWeb(SCIONWebElement):
 
 class JoinRequest(models.Model):
     STATUS_OPTIONS = ['NONE', 'SENT', 'ACCEPTED', 'DECLINED']
-    request_id = models.IntegerField(primary_key=True)
     created_by = models.ForeignKey(User)
 
     isd_to_join = models.IntegerField(default=-1)
+    join_as_a_core = models.BooleanField(default=False)
     status = models.CharField(max_length=20,
                               choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
                               default='NONE')
@@ -377,9 +377,7 @@ class JoinRequest(models.Model):
 class ConnectionRequest(models.Model):
     STATUS_OPTIONS = ['NONE', 'SENT', 'APPROVED', 'DECLINED']
     LINK_TYPE = ['PARENT', 'CHILD', 'PEER', 'ROUTING']
-
-    # request_id assigned by the coordination service
-    request_id = models.IntegerField(null=True)
+    OVERLAY_TYPE = ['IP', 'UDP/IP']
 
     created_by = models.ForeignKey(User)
     connect_to = models.CharField(max_length=100, null=True, blank=True)
@@ -392,6 +390,9 @@ class ConnectionRequest(models.Model):
     link_type = models.CharField(max_length=20,
                                  choices=zip(LINK_TYPE, LINK_TYPE),
                                  default='CHILD')
+    overlay_type = models.CharField(max_length=20,
+                                    choices=zip(OVERLAY_TYPE, OVERLAY_TYPE),
+                                    default='UDP/IP')
     status = models.CharField(max_length=20,
                               choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
                               default='NONE')

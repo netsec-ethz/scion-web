@@ -20,15 +20,13 @@ from ad_manager import views
 
 api_patterns_internal = patterns(
     '',
-    url(r'^api/v1/internal/isd/(?P<isd_id>\d+)/as/(?P<as_id>\d+)/topo_hash/?$',
+    url(r'^api/v1/internal/isd/(?P<isd_id>\d+)/as/(?P<as_id>\d+)/topo_hash$',
         views.as_topo_hash, name='topo_hash'),
-    url(r'^api/v1/internal/get_new_as_id/isd/(?P<isd_id>\d+)/?$',
-        views.request_new_as_id, name='request_new_as_id'),
     url(r'^api/v1/internal/update_coord_settings/?$',
         views.coord_service_update, name='coord_service_update'),
-    url(r'^api/v1/internal/acceptJoin/isd-as/(?P<isd_as>\d+-\d+)'
+    url(r'^api/v1/internal/join_requests/isd-as/(?P<isd_as>\d+-\d+)'
         '/request/(?P<request_id>\d+)/?$',
-        views.accept_join_request, name='accept_join'),
+        views.join_request_action, name='join_request_action'),
     url(r'^api/v1/internal/.*$',
         views.wrong_api_call, name='wrong_api_call'),
 )
@@ -84,6 +82,8 @@ connection_request_patterns = patterns(
     '',
     url(r'^connection_requests/new/(?P<pk>\d+)/?$',
         views.ConnectionRequestView.as_view(), name='new_connection_request'),
+    url(r'^connection_requests/(?P<req_id>\d+)/action/?$',
+        views.connection_request_action, name='connection_request_action'),
 )
 
 misc = patterns(

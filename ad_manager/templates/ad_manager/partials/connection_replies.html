@@ -1,0 +1,46 @@
+<br />
+
+{% if user_has_perm %}
+
+  <hr />
+  <h2>Received connection replies</h2>
+    <table class="table" id="received-connection-replies-tbl">
+    <thead>
+    <tr>
+      <th class="col-md-2">Status</th>
+      <th class="col-md-2">Requester AS</th>
+      <th class="col-md-2">Replying AS</th>
+      <th class="col-md-2">Router IP</th>
+      <th class="col-md-2">Overlay type</th>
+      <th class="col-md-1">MTU</th>
+      <th class="col-md-1">Bandwidth</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    {% for request in received_replies %}
+      <tr class="request-id-{{ request.Id }}">
+        <td class="request-id hidden">{{ request.Id }}</td>
+        <td class="status">{{ request.Status }}</td>
+        <td class="requester-isd-as" value="{{ request.RequestIA }}">{{ request.RequestIA }}</td>
+        <td class="replying-isd-as" value="{{ request.RespondIA }}">{{ request.RespondIA }}</td>
+        <td class="requester-certificate hidden">{{ request.Certificate }}</td>
+        <td>
+            <div class="well requester-ip-port">
+              {{ request.IP }} : <span id="port">{{ request.Port }}</span> <br />
+            </div>
+        </td>
+        <td class="overlay_type">{{ request.OverlayType }}</td>
+        <td class="mtu">{{ request.MTU }}</td>
+        <td class="bandwidth">{{ request.Bandwidth }}</td>
+        <td class="signature hidden">{{ request.Signature }}</td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="4"><i>No requests</i></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+{% endif %}
