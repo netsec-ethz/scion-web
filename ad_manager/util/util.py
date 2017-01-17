@@ -16,7 +16,7 @@ import base64
 
 
 def to_b64(bytes_input):
-    return base64.b64encode(bytes_input).decode('utf-8')
+    return base64.b64encode(bytes_input).decode()
 
 
 def from_b64(string_input):
