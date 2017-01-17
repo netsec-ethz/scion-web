@@ -1,7 +1,7 @@
 function checkFreshness(isd_id, as_id) {
     var csrftoken = $("input[name='csrfmiddlewaretoken']").attr('value');
     var xmlhttp = new XMLHttpRequest();
-    var url = "../api/v1/internal/isd/" + isd_id + "/as/" + as_id + "/topo_hash";
+    var url = "../api/v1/internal/isd/" + isd_id + "/as/" + as_id + "/topo_hash/";
     var submit = false;
     xmlhttp.onreadystatechange = function () {
         // check if XMLHttpRequest is ready and HTTP status code is 200

@@ -19,8 +19,13 @@
     {% csrf_token %}
     <div class="form-group">
         <br/>
-        <label class="control-label" class="floor-align-text" for="inputISDtojoin">Create new AS in ISD:</label>
-        <input id="inputISDtojoin" name="inputISDtojoin" type="text">
+        <label class="control-label" class="floor-align-text" for="inputISDToJoin">Create new AS in ISD:</label>
+        <input id="inputISDToJoin" name="inputISDToJoin" type="text">
+        <label class="control-label" class="floor-align-text" for="inputJoinAsACore">Join as a Core AS:</label>
+        <select id="inputJoinAsACore" name="inputJoinAsACore" required>
+            <option value="False" selected>False</option>
+            <option value="True">True</option>
+        </select>
         <button type="button" class="btn" onclick="queryForAsId();">Join</button>
     </div>
   </form>
@@ -50,10 +55,6 @@
             headers:
             { 'X-CSRFToken': $("input[name='csrfmiddlewaretoken']").val() }
         });
-
-        var isd = document.getElementById('inputISDtojoin').value;
-
-        console.log(isd)
         document.getElementById('joinISD').submit();
     }
   </script>
