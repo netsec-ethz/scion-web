@@ -1,3 +1,19 @@
+<!--
+ * Copyright 2017 ETH Zurich
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+-->
+
 {% extends "ad_manager/base.html" %}
 {% load bootstrap3 %}
 
@@ -66,21 +82,6 @@
         $(uploadInput).find('#id_file').click();
         $(uploadInput).find('#id_file').change(function (){
             document.getElementById(id).submit();
-        });
-    }
-
-    function queryForAsId(isd) {
-        $.ajaxSetup({
-            headers:
-            { 'X-CSRFToken': $("input[name='csrfmiddlewaretoken']").val() }
-        });
-
-        var url = "../../api/v1/internal/get_new_as_id/isd/" + isd + "/";
-        $.post( url, function( data ) {
-          data = data['join_replies'];
-          for (var i=0; i<data.length; i++) {
-            $('#new_as_id_field').append('<option request_id="' + data[i]['request_id'] + '" value="' + data[i]['isdas'] + '"></option>');
-          }
         });
     }
 

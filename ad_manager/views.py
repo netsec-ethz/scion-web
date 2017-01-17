@@ -13,28 +13,26 @@
 # limitations under the License.
 
 # Stdlib
+import base64
 import configparser
 import hashlib
 import json
 import logging
 import os
 import posixpath
-import requests
 import socket
 import subprocess
 import tarfile
+import time
 import yaml
 from collections import deque
 from copy import deepcopy
-from shutil import (
-    copy,
-    copytree,
-    rmtree,
-)
+from shutil import rmtree
 from string import Template
 from urllib.parse import urljoin
 
 # External packages
+from Crypto import Random
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -42,6 +40,7 @@ from django.core.urlresolvers import reverse
 from django.http import (
     HttpResponse,
     HttpResponseForbidden,
+    HttpResponseNotFound,
     JsonResponse,
 )
 from django.shortcuts import redirect, get_object_or_404, render
@@ -50,26 +49,42 @@ from django.views.decorators.http import require_POST
 from django.views.generic import ListView, DetailView, FormView
 
 # SCION
-from lib.util import (
-    read_file,
-    write_file,
-)
-from lib.crypto.certificate import Certificate
 from lib.crypto.asymcrypto import (
     generate_sign_keypair,
     generate_enc_keypair,
 )
+from lib.crypto.certificate import Certificate
+from lib.crypto.certificate_chain import CertificateChain
+from lib.crypto.trc import TRC
 from lib.defines import (
+    AS_CONF_FILE,
     BEACON_SERVICE,
     CERTIFICATE_SERVICE,
+    DEFAULT_MTU,
+    GEN_PATH,
     PATH_SERVICE,
+    PROJECT_ROOT,
     ROUTER_SERVICE,
     SIBRA_SERVICE,
 )
-from lib.defines import DEFAULT_MTU
-from lib.defines import GEN_PATH, PROJECT_ROOT
 from lib.packet.scion_addr import ISD_AS
-from scripts.reload_data import reload_data_from_files
+from lib.types import LinkType
+from lib.util import (
+    copy_file,
+    get_cert_chain_file_path,
+    get_enc_key_file_path,
+    get_sig_key_file_path,
+    get_trc_file_path,
+    iso_timestamp,
+    read_file,
+    write_file,
+)
+from topology.generator import (
+    DEFAULT_PATH_POLICY_FILE,
+    INITIAL_CERT_VERSION,
+    INITIAL_TRC_VERSION,
+    PATH_POLICY_FILE,
+)
 
 # SCION-WEB
 from ad_manager.forms import (
@@ -79,22 +94,29 @@ from ad_manager.forms import (
 )
 from ad_manager.models import (
     AD,
+    ConnectionRequest,
     ISD,
     JoinRequest,
     OrganisationAdmin,
+    RouterWeb,
 )
 from ad_manager.util.hostfile_generator import generate_ansible_hostfile
-from ad_manager.util.util import to_b64, from_b64
+from ad_manager.util.util import (
+    from_b64,
+    post_req_to_scion_coord,
+    to_b64,
+)
 from ad_manager.util.defines import (
     COORD_SERVICE_URI,
-    DEFAULT_BANDWIDTH,
-    INITIAL_CERT_VERSION,
     POLL_JOIN_REPLY_SVC,
     POLL_EVENTS_SVC,
     SCION_SUGGESTED_PORT,
+    UPLOAD_CONN_REQUEST_SVC,
+    UPLOAD_CONN_REPLY_SVC,
     UPLOAD_JOIN_REQUEST_SVC,
     UPLOAD_JOIN_REPLY_SVC,
 )
+from scripts.reload_data import reload_data_from_files
 
 
 GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
@@ -123,8 +145,11 @@ SERVICE_EXECUTABLES = (
     SIBRA_EXECUTABLE,
 )
 
+# Requests status
 REQ_SENT = 'SENT'
 REQ_APPROVED = 'APPROVED'
+REQ_DECLINED = 'DECLINED'
+
 logger = logging.getLogger("scion-web")
 
 
@@ -174,164 +199,203 @@ class ISDDetailView(ListView):
 
 @require_POST
 @login_required
-def poll_join_reply(web_req):
-    logger.info("Polling Join Reply")
-    current_page = web_req.META.get('HTTP_REFERER')
-    try:
-        coord = OrganisationAdmin.objects.get(user_id=web_req.user.id)
-    except OrganisationAdmin.DoesNotExist:
-        logger.error("Retrieving key and secret failed.")
-        return redirect(current_page)
-
-    open_join_requests = JoinRequest.objects.filter(status=REQ_SENT)
-    for req in open_join_requests:
-        jr_id = req.request_id
-        logger.info('Pending request = %s', jr_id)
-        request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
-                              POLL_JOIN_REPLY_SVC, coord.key, coord.secret))
-        logger.info('url = %s' % request_url)
-        headers = {'content-type': 'application/json'}
-        try:
-            r = requests.post(request_url, json={'request_id': jr_id},
-                              headers=headers)
-        except requests.RequestException:
-            logger.info("Retrieving requests from scion-coord failed.")
-
-        if r.status_code == 200:
-            handle_join_reply(r, web_req, jr_id)
-        else:
-            logger.error("Poll Join Reply for request %s return with code %s",
-                         jr_id, r.status_code)
-
-    return redirect(current_page)
-
-
-def handle_join_reply(reply, web_req, jr_id):
-    logger.info("resp = %s", reply.json())
-    join_reply = reply.json()
-
-    new_as = ISD_AS(join_reply['assigned_isdas'])
-
-    # TODO(ercanucan): create the ISD in DB if it's not yet in DB
-    AD.objects.update_or_create(
-        as_id=int(new_as[1]),
-        isd=ISD.objects.get(id=int(new_as[0])),
-        is_core_ad=False,
-        is_open=False,
-        certificate=join_reply['certificate'],
-        trc=join_reply['trc']
-    )
-    messages.success(web_req, 'Created new AS with ID %s.' % new_as)
-
-    # change join request status to APPROVED
-    JoinRequest.objects.filter(request_id=jr_id).update(status=REQ_APPROVED)
-
-
-@login_required
-def accept_join_request(request, isd_as, request_id):
+def poll_join_reply(request):
     """
-    Accepts the join request, assigns a new AS ID to
-    the requesting party and creates the certificate.
-    This function is only executed by a core AS.
+    Polls the join replies from SCION Coordination Service.
+    :param HttpRequest request: Django Http Request passed on via the urls.py
+    :returns: HTTP Response returned to the user.
+    :rtype: HttpResponse
     """
     current_page = request.META.get('HTTP_REFERER')
-    coord = get_object_or_404(OrganisationAdmin, user_id=request.user.id)
-    logger.info("new AS name = %s isd_as = %s", request.POST['newASname'],
-                isd_as)
-
-    joining_as = request.POST['newASname']
-    sig_pub_key = from_b64(request.POST['sig_pub_key'])
-    enc_pub_key = from_b64(request.POST['enc_pub_key'])
-    own_isdas = ISD_AS(isd_as)
-    signing_as = AD.objects.get(as_id=own_isdas[1],
-                                isd=own_isdas[0])
-    signing_as_sig_priv_key = from_b64(signing_as.sig_priv_key)
-    signing_as_trc = str(signing_as.trc)
-    joining_isdas = ISD_AS.from_values(own_isdas[0], joining_as)
-
-    certificate = Certificate.from_values(
-        str(joining_isdas), sig_pub_key, enc_pub_key, str(own_isdas),
-        signing_as_sig_priv_key, INITIAL_CERT_VERSION,
-    )
-
-    accept_join_dict = {"isdas": str(own_isdas),
-                        "join_reply":
-                            {
-                                "request_id": int(request_id),
-                                "joining_isdas": str(joining_isdas),
-                                "signing_isdas": str(own_isdas),
-                                "certificate": str(certificate),
-                                "trc": signing_as_trc
-                            }
-                        }
-    logger.info("accept join dict = %s", accept_join_dict)
-    request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
-                          UPLOAD_JOIN_REPLY_SVC, coord.key, coord.secret))
-    headers = {'content-type': 'application/json'}
     try:
-        requests.post(request_url, json=accept_join_dict, headers=headers)
-    except requests.RequestException:
-        logger.error("Failed to upload join reply to coordination service")
+        coord = OrganisationAdmin.objects.get(user_id=request.user.id)
+    except OrganisationAdmin.DoesNotExist:
+        logger.error("Retrieving account_id and secret failed.")
+        return redirect(current_page)
+    open_join_requests = JoinRequest.objects.filter(status=REQ_SENT)
+    for req in open_join_requests:
+        jr_id = req.id
+        logger.info('Pending request = %s', jr_id)
+        request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                              POLL_JOIN_REPLY_SVC, coord.account_id,
+                              coord.secret))
+        logger.info('url = %s' % request_url)
+        r, error = post_req_to_scion_coord(request_url, {'request_id': jr_id},
+                                           "poll join reply %s" % jr_id)
+        if error is not None:
+            return error
+        handle_join_reply(request, r, jr_id)
     return redirect(current_page)
+
+
+def handle_join_reply(request, reply, jr_id):
+    """
+    Handles the join reply coming through the SCION Coordination
+    Service.
+    :param HttpRequest request: Django Http Request passed on via the urls.py
+    :param dict reply: Join Reply represented as dictionary.
+    :param int jr_id: The ID of the join request.
+    """
+    join_reply = reply.json()
+    if join_reply == {}:
+        logger.info("Empty join reply for join request %s.", jr_id)
+        return
+    if join_reply['Status'] == REQ_APPROVED:
+        # get the join request object which belong to this request
+        # so that we can save the keys into the AS table.
+        jr = JoinRequest.objects.get(id=jr_id)
+        new_as = ISD_AS(join_reply['JoiningIA'])
+        master_as_key = base64.b64encode(Random.new().read(16))
+        isd, _ = ISD.objects.get_or_create(id=int(new_as[0]))
+        AD.objects.update_or_create(
+            as_id=new_as[1],
+            isd=isd,
+            is_core_ad=join_reply['IsCore'],
+            is_open=False,
+            certificate=join_reply['JoiningIACertificate'],
+            trc=join_reply['TRC'],
+            sig_pub_key=jr.sig_pub_key,
+            sig_priv_key=jr.sig_priv_key,
+            enc_pub_key=jr.enc_pub_key,
+            enc_priv_key=jr.enc_priv_key,
+            master_as_key=master_as_key.decode("utf-8")
+        )
+        messages.success(request, 'Created new AS: %s.' % new_as)
+    else:
+        messages.info(request, 'Your join request with ID %s is declined '
+                               'by AS %s.' % (jr_id, join_reply['RespondIA']))
+    # update join request's status based on the received join reply
+    JoinRequest.objects.filter(id=jr_id).update(status=join_reply['Status'])
 
 
 @require_POST
 @login_required
-def request_new_as_id(request):
+def join_request_action(request, isd_as, request_id):
+    """
+    Approve or decline the join request.
+    :param HttpRequest request: Django HTTP request passed on through urls.py
+    :param str isd_as: ISD-AS who approves or declines the request
+    :param str request_id: The ID of the Join Request in question.
+    :returns: Django HTTP Response object.
+    :rtype: HttpResponse.
+    """
+    if '_approve_request' in request.POST:
+        return send_join_reply(request, REQ_APPROVED, isd_as, request_id)
+    elif '_decline_request' in request.POST:
+        return send_join_reply(request, REQ_DECLINED, isd_as, request_id)
+    return HttpResponseNotFound('Invalid join request action')
+
+
+@login_required
+def send_join_reply(request, status, isd_as, request_id):
+    """
+    Accepts or declines the join request. In case of accept, it assigns a new
+    AS ID to the requesting party and creates the certificate. This function
+    is only executed by a core AS.
+    """
+    current_page = request.META.get('HTTP_REFERER')
+    coord = get_object_or_404(OrganisationAdmin, user_id=request.user.id)
+    own_isdas = ISD_AS(isd_as)
+    own_as_obj = AD.objects.get(as_id=own_isdas[1], isd=own_isdas[0])
+    if not own_as_obj.is_core_ad:
+        logging.error("%s has to be a core AS to send join reply" % own_as_obj)
+        return redirect(current_page)
+    join_rep_dict = {
+        'RequestId': int(request_id),
+        'Status': status,
+        'RespondIA': str(own_isdas),
+        'RequesterId': request.POST['requester']
+    }
+    if status == REQ_APPROVED:
+        prep_approved_join_reply(request, join_rep_dict, own_isdas, own_as_obj)
+    else:
+        logger.debug("Declining Join Request = %s", join_rep_dict)
+    request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                          UPLOAD_JOIN_REPLY_SVC, coord.account_id,
+                          coord.secret))
+    _, error = post_req_to_scion_coord(request_url, join_rep_dict,
+                                       "join reply %s" % request_id)
+    if error is not None:
+        return error
+    return redirect(current_page)
+
+
+def prep_approved_join_reply(request, join_rep_dict, own_isdas, own_as_obj):
+    """
+    Prepares the join reply for the APPROVED case.
+    """
+    logger.info("New AS ID = %s", request.POST['newASId'])
+    joining_as = request.POST['newASId']
+    is_core = request.POST['join_as_a_core']
+    sig_pub_key = from_b64(request.POST['sig_pub_key'])
+    enc_pub_key = from_b64(request.POST['enc_pub_key'])
+    signing_as_sig_priv_key = from_b64(own_as_obj.sig_priv_key)
+    joining_ia = ISD_AS.from_values(own_isdas[0], joining_as)
+    cert = Certificate.from_values(
+        str(joining_ia), str(own_isdas), INITIAL_CERT_VERSION, "", False,
+        enc_pub_key, sig_pub_key, signing_as_sig_priv_key
+    )
+    respond_ia_chain = CertificateChain.from_raw(own_as_obj.certificate)
+    request_ia_chain = CertificateChain([cert, respond_ia_chain.certs[0]])
+    join_rep_dict['JoiningIA'] = str(joining_ia)
+    join_rep_dict['IsCore'] = is_core.lower() == "true"
+    join_rep_dict['RespondIA'] = str(own_isdas)
+    join_rep_dict['JoiningIACertificate'] = request_ia_chain.to_json()
+    join_rep_dict['RespondIACertificate'] = respond_ia_chain.to_json()
+    join_rep_dict['TRC'] = TRC.from_raw(own_as_obj.trc).to_json()
+    logger.debug("Accepting Join Request = %s", join_rep_dict)
+
+
+@require_POST
+@login_required
+def request_join_isd(request):
+    """
+    Sends the join request to SCION Coordination Service.
+    :param HttpRequest request: Django HTTP request passed on through urls.py.
+    :returns: Django HTTP Response object.
+    :rtype: HttpResponse.
+    """
     current_page = request.META.get('HTTP_REFERER')
     # check the validity of parameters
-    if not request.POST["inputISDtojoin"].isdigit():
+    if not request.POST["inputISDToJoin"].isdigit():
         messages.error(request, 'ISD to join has to be a number!')
         return redirect(current_page)
-
-    isd_to_join = int(request.POST["inputISDtojoin"])
-
-    # get the key and secret necessary to query SCION-coord
+    isd_to_join = int(request.POST["inputISDToJoin"])
+    join_as_a_core = request.POST["inputJoinAsACore"]
+    # get the account_id and secret necessary to query SCION-coord.
     coord = get_object_or_404(OrganisationAdmin, user_id=request.user.id)
-
     # generate the sign and encryption keys
     private_key_sign, public_key_sign = generate_sign_keypair()
     public_key_encr, private_key_encr = generate_enc_keypair()
-
-    join_request_dict = {"isd_to_join": isd_to_join,
-                         "sigkey": to_b64(public_key_sign),
-                         "enckey": to_b64(public_key_encr)
-                         }
-
-    request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
-                          UPLOAD_JOIN_REQUEST_SVC, coord.key, coord.secret))
-    headers = {'content-type': 'application/json'}
-
-    logger.info("Request = %s\nJoin Request Dict = %s", request_url,
-                join_request_dict)
-    try:
-        r = requests.post(request_url, json=join_request_dict, headers=headers)
-    except requests.RequestException:
-        messages.error(request,
-                       'Failed to submit ISD join request at scion-coord!')
-        return redirect(current_page)
-
-    if r.status_code != 200:
-        messages.error(request, 'Submitting join request '
-                                'failed with code %s!' % r.status_code)
-        return redirect(current_page)
-
-    resp = r.json()
-    request_id = resp['id']
-    logger.info("request_id = %s", request_id)
-    JoinRequest.objects.update_or_create(
-        request_id=request_id,
+    join_req = JoinRequest.objects.create(
         created_by=request.user,
         isd_to_join=isd_to_join,
-        status=REQ_SENT,
+        join_as_a_core=join_as_a_core.lower() == "true",
         sig_pub_key=to_b64(public_key_sign),
         sig_priv_key=to_b64(private_key_sign),
         enc_pub_key=to_b64(public_key_encr),
         enc_priv_key=to_b64(private_key_encr)
     )
-
+    join_req_dict = {
+        "RequestId": join_req.id,
+        "IsdToJoin": isd_to_join,
+        "JoinAsACoreAS": join_req.join_as_a_core,
+        "SigPubKey": to_b64(public_key_sign),
+        "EncPubKey": to_b64(public_key_encr)
+    }
+    request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                          UPLOAD_JOIN_REQUEST_SVC, coord.account_id,
+                          coord.secret))
+    _, error = post_req_to_scion_coord(request_url, join_req_dict,
+                                       "join request %s" % join_req.id)
+    if error is not None:
+        return error
+    logger.info("Request = %s, Join Request Dict = %s", request_url,
+                join_req_dict)
+    join_req.status = REQ_SENT
+    join_req.save()
     messages.success(request, 'Join Request Submitted Successfully.'
-                              ' Request ID = %s' % request_id)
+                     ' Request ID = %s' % join_req.id)
     return redirect(current_page)
 
 
@@ -360,15 +424,169 @@ class ConnectionRequestView(FormView):
     def form_valid(self, form):
         if not self.request.user.is_authenticated():
             return HttpResponseForbidden('Authentication required')
-
-        logger.info("Submitting Connection Request not yet implemented.")
+        # get the account_id and secret necessary to query SCION-coord
+        coord = get_object_or_404(OrganisationAdmin,
+                                  user_id=self.request.user.id)
+        # create connection_request db object
+        con_req = self.create_req_obj(form)
+        # prepare connection request dictionary to send
+        con_req_dict = self.prepare_req_dict(con_req)
+        logger.info("Sending Connection Request: %s", con_req_dict)
+        # upload the req to scion-coord
+        request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                              UPLOAD_CONN_REQUEST_SVC, coord.account_id,
+                              coord.secret))
+        _, error = post_req_to_scion_coord(
+            request_url, con_req_dict, "connection request %s" % con_req.id)
+        if error is not None:
+            return error
+        logging.info("Connection request %s successfully sent.",
+                     con_req_dict['RequestId'])
+        # set the status of the connection request to SENT
+        con_req.status = REQ_SENT
+        con_req.save()
+        # update the success URL
         self.success_url = self._get_ad().get_absolute_url()
         return super().form_valid(form)
+
+    def create_req_obj(self, form):
+        """
+        Creates the connection request object based on the form values and
+        saves it into the database.
+        :param ConnectionRequestForm form: The form containing the connection
+        information
+        :returns: Connection request object.
+        :rtype: ConnectionRequest
+        """
+        data = self.request.POST
+        con_req = form.instance
+        con_req.connect_to = data['connect_to']
+        connect_from = data['connect_from']
+        con_req.connect_from = get_object_or_404(AD, as_id=connect_from)
+        con_req.created_by = self.request.user
+        con_req.router_info = data['router_info']
+        con_req.overlay_type = data['overlay_type']
+        con_req.router_public_ip = data['router_info'].split(':')[0]
+        if "UDP" in con_req.overlay_type:
+            con_req.router_public_port = data['router_info'].split(':')[1]
+        else:
+            con_req.router_public_port = None
+        con_req.mtu = data['mtu']
+        con_req.bandwidth = data['bandwidth']
+        con_req.link_type = data['link_type']
+        con_req.info = data['info']
+        con_req.save()
+        return con_req
+
+    def prepare_req_dict(self, con_req):
+        """
+        Prepares the connection request as a dictionary to be sent to the SCION
+        coordination service.
+        :param ConnectionRequest con_req: Connection request object.
+        :returns: Connection request as a dictionary.
+        :rtype: dict
+        """
+        isd_as = ISD_AS.from_values(self._get_ad().isd.id,
+                                    self._get_ad().as_id)
+        cert_chain = CertificateChain.from_raw(self._get_ad().certificate)
+        con_req_dict = {
+            "RequestId": con_req.id,
+            "Info": con_req.info,
+            "RequestIA": str(isd_as),
+            "RespondIA": con_req.connect_to,
+            "IP": con_req.router_public_ip,
+            "OverlayType": con_req.overlay_type,
+            "MTU": int(con_req.mtu),
+            "Bandwidth": int(con_req.bandwidth),
+            "Timestamp": iso_timestamp(time.time()),
+            "Signature": "",  # TODO(ercanucan): generate and set the signature
+            "Certificate": cert_chain.to_json()
+        }
+        if con_req.router_public_port:
+            con_req_dict["Port"] = int(con_req.router_public_port)
+        # Adjust the link type for the receiving party (i.e if the requestIA
+        # wants to have the respondIA as a PARENT, then the respondIA should
+        # see it as a request to have a CHILD AS.
+        if con_req.link_type == LinkType.PARENT:
+            con_req_dict["LinkType"] = LinkType.CHILD
+        elif con_req.link_type == LinkType.CHILD:
+            con_req_dict["LinkType"] = LinkType.PARENT
+        else:
+            con_req_dict["LinkType"] = con_req.link_type
+        return con_req_dict
 
     def get_context_data(self, **kwargs):
         context_data = super().get_context_data(**kwargs)
         context_data['ad'] = self._get_ad()
         return context_data
+
+
+@require_POST
+def connection_request_action(request, con_req_id):
+    """
+    Responds to the received connection request with a connection reply.
+    :param HttpRequest request: Django HTTP request.
+    :param str con_req_id: The ID of the connection request
+    :returns: HttpResponse depending on the outcome of sending the connection
+    reply
+    :rtype: HttpResponse
+    """
+    posted_data = request.POST
+    respond_ia = ISD_AS(posted_data['RespondIA'])
+    respond_as = get_object_or_404(AD, isd=respond_ia[0],
+                                   as_id=respond_ia[1])
+    _check_user_permissions(request, respond_as)
+    if '_approve_request' in request.POST:
+        send_connection_reply(request, con_req_id, REQ_APPROVED, respond_as,
+                              posted_data)
+        return redirect(reverse('ad_detail_topology_routers',
+                                args=[respond_as.as_id]))
+    elif '_decline_request' in request.POST:
+        send_connection_reply(request, con_req_id, REQ_DECLINED, respond_as,
+                              posted_data)
+        return redirect(reverse('ad_connection_requests',
+                                args=[respond_as.as_id]))
+    return HttpResponseNotFound('Invalid connection request action')
+
+
+@login_required
+def send_connection_reply(request, con_req_id, status, respond_as, data):
+    """
+    Sends connection reply to SCION Coordination Service.
+    :param HttpRequest request: Django HTTP Request.
+    :param str con_req_id: The ID of the connection request to be replied to.
+    :param str status: The status of the the request. (e.g APPROVED)
+    :param str respond_as: The AS responding to the connection request.
+    :param dict data: Dictionary object containing the reply parameters.
+    """
+    coord = get_object_or_404(OrganisationAdmin,
+                              user_id=request.user.id)
+    con_rep_dict = {
+        "RequestId": int(con_req_id),
+        "Status": status,
+        "RequestIA": data['RequestIA'],
+        "RespondIA": str(respond_as)
+    }
+    if status == REQ_APPROVED:
+        router_info = data['router_info']
+        overlay_type = data['accepted_overlay_type']
+        con_rep_dict["IP"] = router_info.split(':')[0]
+        if "UDP" in overlay_type:
+            con_rep_dict["Port"] = int(router_info.split(':')[1])
+        con_rep_dict["OverlayType"] = overlay_type
+        con_rep_dict["MTU"] = int(data['accepted_mtu'])
+        con_rep_dict["Bandwidth"] = int(data['accepted_bandwidth'])
+        cert_chain = CertificateChain.from_raw(respond_as.certificate)
+        con_rep_dict["Certificate"] = cert_chain.to_json()
+    request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                          UPLOAD_CONN_REPLY_SVC, coord.account_id,
+                          coord.secret))
+    _, error = post_req_to_scion_coord(request_url, con_rep_dict,
+                                       "connection reply %s" % con_req_id)
+    if error is not None:
+        return error
+    logging.info("Connection reply %s successfully sent.",
+                 con_rep_dict['RequestId'])
 
 
 class ADDetailView(DetailView):
@@ -410,35 +628,79 @@ class ADDetailView(DetailView):
                 context[list_name],
                 key=lambda el: el.name if el.name is not None else -1
             )
-
         # Permissions
         context['user_has_perm'] = self.request.user.has_perm('change_ad', ad)
         # Connection requests tab
         context['join_requests'] = {}
         context['received_requests'] = {}
-
+        context['received_conn_replies'] = {}
         try:
             coord = OrganisationAdmin.objects.get(user_id=self.request.user.id)
         except OrganisationAdmin.DoesNotExist:
-            logger.error("Retrieving key and secret failed!!.")
+            logger.error("Retrieving account_id and secret failed!!.")
             return context
-
         request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
-                              POLL_EVENTS_SVC, coord.key, coord.secret))
-        headers = {'content-type': 'application/json'}
-        try:
-            r = requests.post(request_url, json={'isdas': context['isdas']},
-                              headers=headers)
-            if r.status_code == 200:
-                answer = r.json()
-                context['join_requests'] = answer['join_requests']
-                context['received_requests'] = answer['conn_requests']
-                logger.info("join requests = %s", context['join_requests'])
-                logger.info("conn requests = %s", context['received_requests'])
-        except requests.RequestException:
-            logger.info("Retrieving requests from scion-coord failed.")
-
+                              POLL_EVENTS_SVC, coord.account_id, coord.secret))
+        logger.info("Polling Events for %s", context['isdas'])
+        r, error = post_req_to_scion_coord(
+            request_url, {'IsdAs': context['isdas']},
+            "poll events for ISD-AS %s" % context['isdas'])
+        if error is not None:
+            messages.error(self.request, 'Could not poll events from SCION '
+                           'Coordination Service!')
+            return context
+        resp = r.json()
+        context['join_requests'] = resp['JoinRequests']
+        context['received_requests'] = resp['ConnRequests']
+        context['received_conn_replies'] = resp['ReceivedConnReplies']
         return context
+
+
+@login_required
+def add_to_topology(request):
+    """
+    Adds the router information which comes with a connection reply
+    into the topology of the AS.
+    :param HttpRequest request: Django HTTP request.
+    """
+    con_reply = json.loads(request.body.decode('utf-8'))
+    # find the corresponding connection request from DB
+    try:
+        con_req = ConnectionRequest.objects.get(id=con_reply['RequestId'])
+    except ConnectionRequest.DoesNotExist:
+        logger.error("Connection request for reply with ID %s not found",
+                     con_reply['RequestId'])
+        return HttpResponseNotFound("Connection request for reply %s not found"
+                                    % con_reply['RequestId'])
+    # find the corresponding router
+    ip = con_req.router_public_ip
+    port = con_req.router_public_port
+    try:
+        router = RouterWeb.objects.get(addr=ip, interface_port=port)
+    except RouterWeb.DoesNotExist:
+        logger.error("Router for connection reply with ID %s not found.",
+                     con_reply['RequestId'])
+        return HttpResponseNotFound("Router for connection reply with ID %s "
+                                    "not found." % con_reply['RequestId'])
+    isd_id, as_id = ISD_AS(con_reply['RequestIA'])
+    try:
+        req_ia = AD.objects.get(isd_id=isd_id, as_id=as_id)
+    except AD.DoesNotExist:
+        logger.error("AS %s was not found." % con_reply['RequestIA'])
+        return HttpResponseNotFound("AS %s was not found"
+                                    % con_reply['RequestIA'])
+    topo = req_ia.original_topology
+    interface = topo['BorderRouters'][router.name]['Interface']
+    interface['ToAddr'] = con_reply['IP']
+    if "UDP" in con_reply['OverlayType']:
+        interface['ToUdpPort'] = con_reply['Port']
+    # TODO(ercanucan): verify the other parameters of the request as well?
+    req_ia.save()
+    # write the updated topology file
+    create_local_gen(con_reply['RequestIA'], topo)
+    # save the data into DB
+    req_ia.fill_from_topology(topo, clear=True)
+    return HttpResponse("Successfully added to topology of %s" % router.name)
 
 
 def as_topo_hash(request, isd_id, as_id):
@@ -478,11 +740,12 @@ def coord_service_update(request):
     user = request.user
     form = CoordinationServiceSettingsForm(request.POST, user_id=user.id)
     if form.is_valid():
-        OrganisationAdmin.objects.update_or_create(
-            key=form.cleaned_data['key'],
-            secret=form.cleaned_data['secret'],
-            is_org_admin=True,
-            user_id=request.user.id)
+        acc, created = OrganisationAdmin.objects.get_or_create(user_id=user.id)
+        if created:
+            acc.is_org_admin = True
+        acc.account_id = form.cleaned_data['account_id']
+        acc.secret = form.cleaned_data['secret']
+        acc.save()
     return redirect(current_page)
 
 
@@ -634,25 +897,21 @@ def name_entry_dict_router(tp):
     for i in range(len(name_list)):
         if address_list[i] == '':
             continue  # don't include empty entries
-        ret_dict[name_list[i]] = {'Addr': address_list[i],
-                                  'Port': st_int(port_list[i],
-                                                 SCION_SUGGESTED_PORT),
-                                  'Interface':
-                                      {'Addr': interface_list[i],
-                                       'Bandwidth': st_int(bandwidth_list[i],
-                                                           DEFAULT_BANDWIDTH),
-                                       'IFID': st_int(if_id_list[i], 1),
-                                       'ISD_AS': remote_name_list[i],
-                                       'LinkType': interface_type_list[i],
-                                       'MTU': st_int(link_mtu_list[i],
-                                                     DEFAULT_MTU),
-                                       'ToAddr': remote_address_list[i],
-                                       'ToUdpPort':
-                                       st_int(remote_port_list[i],
-                                              SCION_SUGGESTED_PORT),
-                                       'UdpPort': st_int(own_port_list[i],
-                                                         SCION_SUGGESTED_PORT)}
-                                  }
+        ret_dict[name_list[i]] = {
+            'Addr': address_list[i],
+            'Port': st_int(port_list[i], None),
+            'Interface': {
+                'Addr': interface_list[i],
+                'Bandwidth': st_int(bandwidth_list[i], None),
+                'IFID': st_int(if_id_list[i], None),
+                'ISD_AS': remote_name_list[i],
+                'LinkType': interface_type_list[i],
+                'MTU': st_int(link_mtu_list[i], None),
+                'ToAddr': remote_address_list[i],
+                'ToUdpPort': st_int(remote_port_list[i], None),
+                'UdpPort': st_int(own_port_list[i], None)
+            }
+        }
     return ret_dict
 
 
@@ -850,65 +1109,29 @@ def lookup_dict_executables():
 
 def create_local_gen(isd_as, tp):
     """
-    creates the usual gen folder structure for an ISD/AS under web_scion/gen,
+    Creates the usual gen folder structure for an ISD/AS under web_scion/gen,
     ready for Ansible deployment
-    Args:
-        isd_as: isd-as string
-        tp: the topology parameter file as a dict of dicts
-
+    :param str isd_as: ISD-AS as a string
+    :param dict tp: the topology parameter file as a dict of dicts
     """
     # looks up the name of the executable for the service,
     # certificate server -> 'cert_server', ...
     lkx = lookup_dict_executables()
-
     isd_id, as_id = ISD_AS(isd_as)
-
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
-
-    # Add the dispatcher folder in sub/web/gen/ if not already there
-    dispatcher_folder_path = os.path.join(local_gen_path, 'dispatcher')
-    if not os.path.exists(dispatcher_folder_path):
-        copytree(os.path.join(PROJECT_ROOT, 'deploy-gen', 'dispatcher'),
-                 dispatcher_folder_path)
-
-    # TODO: Cert distribution needs integration with scion-coord,
-    # using bruteforce copying over some gen certs and
-    # matching keys to get Ansible testing
-    # before integration with scion-coord
-    shared_files_path = os.path.join(local_gen_path, 'shared_files')
-
-    rmtree(os.path.join(shared_files_path), True)  # rm shared_files & content
-    # populate the shared_files folder with the relevant files for this AS
-    certgen_path = os.path.join(PROJECT_ROOT,
-                                'deploy-gen/ISD{}/AS{}/endhost/'.format(isd_id,
-                                                                        as_id))
-    copytree(certgen_path, shared_files_path)
-    # remove files that are not shared
-    try:
-        os.remove(os.path.join(shared_files_path, 'supervisord.conf'))
-    except OSError:
-        pass
-    try:
-        os.remove(os.path.join(shared_files_path, 'topology.yml'))
-    except OSError:
-        pass
+    write_dispatcher_config(local_gen_path)
     try:
         as_path = 'ISD{}/AS{}/'.format(isd_id, as_id)
         as_path = os.path.join(local_gen_path, as_path)
         rmtree(as_path, True)
     except OSError:
         pass
-
     types = ['beacon_server', 'certificate_server', 'router', 'path_server',
-             'sibra_server', 'zookeeper_service']  # 'domain_server', # tmp fix
-    # until the discovery replaces it
-
+             'sibra_server', 'zookeeper_service']
     dict_keys = ['BeaconServers', 'CertificateServers', 'BorderRouters',
                  'PathServers', 'SibraServers', 'Zookeepers']
-
     types_keys = zip(types, dict_keys)
     zk_name_counter = 1
-
     for service_type, type_key in types_keys:
         executable_name = lkx[service_type]
         replicas = tp[type_key].keys()  # SECURITY WARNING:allows arbitrary path
@@ -916,81 +1139,28 @@ def create_local_gen(isd_as, tp):
         # Mitigation: make path at least relative
         executable_name = os.path.normpath('/'+executable_name).lstrip('/')
         for instance_name in replicas:
-            # replace instance_name if zookeeper special case
-            # (they have only ids)
+            # replace instance_name for zookeeper (they have only ids)
             if service_type == 'zookeeper_service':
-                instance_name = '{}{}-{}-{}'.format('zk', isd_id,
-                                                    as_id, zk_name_counter)
+                instance_name = 'zk%s-%s-%s' % (isd_id, as_id, zk_name_counter)
                 zk_name_counter += 1
             config = prep_supervisord_conf(executable_name, service_type,
                                            instance_name, isd_id, as_id)
-            # replace command entry if zookeeper special case
-            if service_type == 'zookeeper_service':
-                zk_config_path = os.path.join(PROJECT_ROOT,
-                                              'topology',
-                                              'Zookeeper.yml')
-                zk_config = {}
-                with open(zk_config_path, 'r') as stream:
-                    try:
-                        zk_config = yaml.load(stream)
-                    except (yaml.YAMLError, KeyError):
-                        zk_config = ''  # TODO: give user feedback, add TC
-                class_path = zk_config['Environment']['CLASSPATH']
-                zoomain_env = zk_config['Environment']['ZOOMAIN']
-                command_string = '"java" "-cp" ' \
-                                 '"gen/{1}/{2}/{0}:{3}" ' \
-                                 '"-Dzookeeper.' \
-                                 'log.file=logs/{0}.log" ' \
-                                 '"{4}" ' \
-                                 '"gen/ISD{1}/AS{2}/{0}/' \
-                                 'zoo.cfg"'.format(instance_name,
-                                                   isd_id,
-                                                   as_id,
-                                                   class_path,
-                                                   zoomain_env)
-                config['program:' + instance_name]['command'] = command_string
-
-            node_path = 'ISD{}/AS{}/{}'.format(isd_id, as_id, instance_name)
-            node_path = os.path.join(local_gen_path, node_path)
-            # os.makedirs(node_path, exist_ok=True)
-            if not os.path.exists(node_path):
-                copytree(os.path.join(shared_files_path), node_path)
-            conf_file_path = os.path.join(node_path, 'supervisord.conf')
-            with open(conf_file_path, 'w') as configfile:
-                config.write(configfile)
-
-            # copy AS topology.yml file into node
-            one_of_topology_path = os.path.join(node_path, 'topology.yml')
-            one_of_topology = particular_topo_instance(tp, type_key)
-            with open(one_of_topology_path, 'w') as file:
-                yaml.dump(one_of_topology, file, default_flow_style=False)
-            # copy(yaml_topo_path, node_path)  # Do not share global topology
-            # as each node get its own topology file
-
-            # create zlog file
-            tmpl = Template(read_file(os.path.join(PROJECT_ROOT,
-                                                   "topology/zlog.tmpl")))
-            cfg = os.path.join(node_path, "%s.zlog.conf" % instance_name)
-            write_file(cfg, tmpl.substitute(name=service_type,
-                                            elem=instance_name))
-
-            # Generating only the needed intermediate parts
-            # not used as for now we generator.py all certs and keys resources
-
-    # Add endhost folder for all ASes
-    node_path = 'ISD{}/AS{}/{}'.format(isd_id, as_id, 'endhost')
-    node_path = os.path.join(local_gen_path, node_path)
-    if not os.path.exists(node_path):
-        copytree(os.path.join(shared_files_path), node_path)
-    copy(yaml_topo_path, node_path)
+            instance_path = 'ISD%s/AS%s/%s' % (isd_id, as_id, instance_name)
+            instance_path = os.path.join(local_gen_path, instance_path)
+            write_certs_trc_keys(isd_id, as_id, instance_path)
+            write_as_conf_and_path_policy(isd_id, as_id, instance_path)
+            write_supervisord_config(config, instance_path)
+            write_topology_file(tp, type_key, instance_path)
+            write_zlog_file(service_type, instance_name, instance_path)
+    write_endhost_config(tp, isd_id, as_id, local_gen_path)
 
 
-def particular_topo_instance(tp, type_key):
+def topo_instance(tp, type_key):
     #  Little trow away logic handling the NATed case until topo represents
     # internal and external addresses
 
     singular_topo = deepcopy(tp)
-
+    remove_incomplete_router_info(singular_topo)
     for server_type in singular_topo.keys():  # services know only internal
         if server_type.endswith("Servers") or server_type == 'Zookeepers':
             for entry in singular_topo[server_type]:
@@ -998,13 +1168,29 @@ def particular_topo_instance(tp, type_key):
                     'AddrInternal')
                 internal_port = singular_topo[server_type][entry].pop(
                     'PortInternal')
-                if type_key == 'BorderRouters':
-                    continue  # Border routers only know about external
+                if type_key in ('BorderRouters', 'endhost'):
+                    continue  # Routers and endhost only know about external
                 if internal_address != '':
                     singular_topo[server_type][entry]['Addr'] = internal_address
                 if internal_port is not None:
                     singular_topo[server_type][entry]['Port'] = internal_port
     return singular_topo
+
+
+def remove_incomplete_router_info(topo):
+    """
+    Prevents the incomplete router info being written into the topology file
+    if the remote address of the router is not available yet. Remote address
+    will be available when a connection request is approved.
+    :param dict topo: AS topology as a dictionary
+    """
+    routers = topo['BorderRouters']
+    complete_routers = {}
+    for name, router in routers.items():
+        if (router['Interface']['ToAddr'] != '' and
+                router['Interface']['ToUdpPort'] != ''):
+            complete_routers[name] = router
+    topo['BorderRouters'] = complete_routers
 
 
 def prep_supervisord_conf(executable_name, service_type, instance_name,
@@ -1028,6 +1214,8 @@ def prep_supervisord_conf(executable_name, service_type, instance_name,
                     '"gen/ISD%s/AS%s/%s" &>logs/%s.OUT\'')
         cmd = cmd_tmpl % (instance_name, isd_id, as_id,
                           instance_name, instance_name)
+    elif service_type == 'zookeeper_service':
+        cmd = prep_zk_supervisord_cmd(instance_name, isd_id, as_id)
     else:  # other infrastructure elements
         cmd_tmpl = ('bash -c \'exec "bin/%s" "%s" '
                     '"gen/ISD%s/AS%s/%s" &>logs/%s.OUT\'')
@@ -1046,3 +1234,177 @@ def prep_supervisord_conf(executable_name, service_type, instance_name,
         'autorestart': 'false'
     }
     return config
+
+
+def prep_zk_supervisord_cmd(instance_name, isd_id, as_id):
+    """
+    Generates the supervisord command for Zookeeper instances.
+    :param str instance_name: the instance of the service (e.g. zk1-8-1)
+    :param str isd_id: the ISD the service belongs to.
+    :param str as_id: the AS the service belongs to.
+    :returns str: Command section of Zookeeper supervisord config.
+    :rtype str
+    """
+    zk_config_path = os.path.join(PROJECT_ROOT,
+                                  'topology',
+                                  'Zookeeper.yml')
+    zk_config = {}
+    with open(zk_config_path, 'r') as stream:
+        zk_config = yaml.load(stream)
+    class_path = zk_config['Environment']['CLASSPATH']
+    zoomain_env = zk_config['Environment']['ZOOMAIN']
+    zk_path = "gen/ISD%s/AS%s/%s" % (isd_id, as_id, instance_name)
+    class_path = "%s:%s" % (zk_path, class_path)
+    log_file = "-Dzookeeper.log.filename=logs/%s.log" % instance_name
+    cmd_parts = [
+       "java", "-cp", class_path, log_file, '"%s"' % zoomain_env,
+       os.path.join(zk_path, "zoo.cfg")
+    ]
+    return " ".join(cmd_parts)
+
+
+def prep_dispatcher_supervisord_conf():
+    """
+    Prepares the supervisord configuration for dispatcher.
+    :returns: supervisord configuration as a ConfigParser object
+    :rtype: ConfigParser
+    """
+    config = configparser.ConfigParser()
+    env = 'PYTHONPATH=.,ZLOG_CFG="gen/dispatcher/dispatcher.zlog.conf"'
+    cmd = """bash -c 'exec bin/dispatcher &>logs/dispatcher.OUT'"""
+    config['program:dispatcher'] = {
+        'priority': '50',
+        'environment': env,
+        'stdout_logfile': 'NONE',
+        'autostart': 'false',
+        'stderr_logfile': 'NONE',
+        'command':  cmd,
+        'startretries': '0',
+        'startsecs': '1',
+        'autorestart': 'false'
+    }
+    return config
+
+
+def write_topology_file(tp, type_key, instance_path):
+    """
+    Writes the topology file into the instance's location.
+    :param dict tp: the topology as a dict of dicts.
+    :param str type_key: key to describe service type.
+    :param instance_path: the folder to write the file into.
+    """
+    path = os.path.join(instance_path, 'topology.yml')
+    topo = topo_instance(tp, type_key)
+    with open(path, 'w') as file:
+        yaml.dump(topo, file, default_flow_style=False)
+
+
+def write_endhost_config(tp, isd_id, as_id, local_gen_path):
+    """
+    Writes the endhost folder into the given location.
+    :param dict tp: the topology as a dict of dicts.
+    :param str isd_id: ISD the AS belongs to.
+    :param str as_id: AS for endhost folder will be created.
+    :param local_gen_path: the location to create the endhost folder in.
+    """
+    endhost_path = os.path.join(local_gen_path,
+                                'ISD%s/AS%s/%s' % (isd_id, as_id, 'endhost'))
+    if not os.path.exists(endhost_path):
+        os.makedirs(endhost_path)
+    write_certs_trc_keys(isd_id, as_id, endhost_path)
+    write_as_conf_and_path_policy(isd_id, as_id, endhost_path)
+    write_topology_file(tp, 'endhost', endhost_path)
+
+
+def write_dispatcher_config(local_gen_path):
+    """
+    Creates the supervisord and zlog files for the dispatcher and writes
+    them into the dispatcher folder.
+    :param str local_gen_path: the location to create the dispatcher folder in.
+    """
+    disp_folder_path = os.path.join(local_gen_path, 'dispatcher')
+    if not os.path.exists(disp_folder_path):
+        os.makedirs(disp_folder_path)
+    disp_supervisord_conf = prep_dispatcher_supervisord_conf()
+    write_supervisord_config(disp_supervisord_conf, disp_folder_path)
+    write_zlog_file('dispatcher', 'dispatcher', disp_folder_path)
+
+
+def write_zlog_file(service_type, instance_name, instance_path):
+    """
+    Creates and writes the zlog configuration file for the given element.
+    :param str service_type: the type of the service (e.g. beacon_server).
+    :param str instance_name: the instance of the service (e.g. br1-8-1).
+    """
+    tmpl = Template(read_file(os.path.join(PROJECT_ROOT,
+                                           "topology/zlog.tmpl")))
+    cfg = os.path.join(instance_path, "%s.zlog.conf" % instance_name)
+    write_file(cfg, tmpl.substitute(name=service_type,
+                                    elem=instance_name))
+
+
+def write_supervisord_config(config, instance_path):
+    """
+    Writes the given supervisord config into the provided location.
+    :param ConfigParser config: supervisord configuration to write.
+    :param instance_path: the folder to write the config into.
+    """
+    if not os.path.exists(instance_path):
+        os.makedirs(instance_path)
+    conf_file_path = os.path.join(instance_path, 'supervisord.conf')
+    with open(conf_file_path, 'w') as configfile:
+        config.write(configfile)
+
+
+def write_certs_trc_keys(isd_id, as_id, instance_path):
+    """
+    Writes the certificate and the keys for the given service
+    instance of the given AS.
+    :param str isd_id: ISD the AS belongs to.
+    :param str as_id: AS for which the certs, TRC and keys will be written.
+    :param str instance_path: Location (in the file system) to write
+    the configuration into.
+    """
+    try:
+        ia = AD.objects.get(isd_id=isd_id, as_id=as_id)
+    except AD.DoesNotExist:
+        logger.error("AS %s-%s was not found." % (isd_id, as_id))
+        return
+    # write keys
+    sig_path = get_sig_key_file_path(instance_path)
+    enc_path = get_enc_key_file_path(instance_path)
+    write_file(sig_path, ia.sig_priv_key)
+    write_file(enc_path, ia.enc_priv_key)
+    # write cert
+    cert_chain_path = get_cert_chain_file_path(
+        instance_path, ISD_AS.from_values(isd_id, as_id), INITIAL_CERT_VERSION)
+    write_file(cert_chain_path, ia.certificate)
+    # write trc
+    trc_path = get_trc_file_path(instance_path, isd_id, INITIAL_TRC_VERSION)
+    write_file(trc_path, ia.trc)
+
+
+def write_as_conf_and_path_policy(isd_id, as_id, instance_path):
+    """
+    Writes AS configuration (i.e. as.yml) and path policy files.
+    :param str isd_id: ISD the AS belongs to.
+    :param str as_id: AS for which the configuration should be written.
+    :param str instance_path: Location (in the file system) to write
+    the configuration into.
+    """
+    try:
+        ia = AD.objects.get(isd_id=isd_id, as_id=as_id)
+    except AD.DoesNotExist:
+        logger.error("AS %s-%s was not found." % (isd_id, as_id))
+        return
+    conf = {
+        'MasterASKey': ia.master_as_key,
+        'RegisterTime': 5,
+        'PropagateTime': 5,
+        'CertChainVersion': 0,
+        'RegisterPath': True,
+    }
+    conf_file = os.path.join(instance_path, AS_CONF_FILE)
+    write_file(conf_file, yaml.dump(conf, default_flow_style=False))
+    path_policy_file = os.path.join(PROJECT_ROOT, DEFAULT_PATH_POLICY_FILE)
+    copy_file(path_policy_file, os.path.join(instance_path, PATH_POLICY_FILE))

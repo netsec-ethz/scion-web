@@ -60,7 +60,7 @@ class SelectRelatedModelManager(models.Manager):
 class OrganisationAdmin(models.Model):
     user = models.OneToOneField(User)
     is_org_admin = models.BooleanField(default=False)
-    key = models.CharField(max_length=260, null=False, blank=True)
+    account_id = models.CharField(max_length=260, null=False, blank=True)
     secret = models.CharField(max_length=260, null=False, blank=True)
 
 
@@ -89,8 +89,9 @@ class AD(models.Model):
     sig_priv_key = models.CharField(max_length=100, null=True, blank=True)
     enc_pub_key = models.CharField(max_length=100, null=True, blank=True)
     enc_priv_key = models.CharField(max_length=100, null=True, blank=True)
-    certificate = models.CharField(max_length=1500, null=True, blank=True)
-    trc = models.CharField(max_length=1500, null=True, blank=True)
+    master_as_key = models.CharField(max_length=100, null=True, blank=True)
+    certificate = models.TextField(null=True, blank=True)
+    trc = models.TextField(null=True, blank=True)
 
     # Use custom model manager with select_related()
     objects = SelectRelatedModelManager()
@@ -172,7 +173,7 @@ class AD(models.Model):
                 as_str = isd_as_split[1]
                 try:
                     neighbor_ad = AD.objects.get(as_id=as_str,
-                                                 isd=isd_str)
+                                                 isd_id=isd_str)
                 except AD.DoesNotExist:
                     if auto_refs:
                         # Handles missing references
@@ -183,13 +184,13 @@ class AD(models.Model):
                         except ISD.DoesNotExist:
                             isd = ISD(id=isd_str)
                             isd.save()
-                        as_obj = AD.objects.create(as_id=as_str, isd=isd,
+                        as_obj = AD.objects.create(as_id=as_str, isd_id=isd,
                                                    is_core_ad=0,
                                                    is_open=False)
                         as_obj.save()
 
                         neighbor_ad = AD.objects.get(as_id=as_str,
-                                                     isd=isd_str)
+                                                     isd_id=isd_str)
                     else:
                         raise
 
@@ -263,7 +264,7 @@ class AD(models.Model):
 
 class SCIONWebElement(models.Model):
     addr = models.GenericIPAddressField()
-    port = models.IntegerField(default=None)
+    port = models.IntegerField()
     addr_internal = models.GenericIPAddressField(default=None, null=True)
     port_internal = models.IntegerField(default=None, null=True)
     ad = models.ForeignKey(AD)
@@ -322,9 +323,11 @@ class RouterWeb(SCIONWebElement):
 
     interface_id = models.IntegerField()
     interface_addr = models.GenericIPAddressField()
-    interface_toaddr = models.GenericIPAddressField()
-    interface_port = models.IntegerField(default=int(PORT))
-    interface_toport = models.IntegerField(default=int(PORT))
+    interface_port = models.IntegerField()
+    # Allow the toaddr and toport be null since the user might not yet
+    # have the complete remote router information.
+    interface_toaddr = models.GenericIPAddressField(null=True)
+    interface_toport = models.IntegerField(null=True)
 
     def id_str(self):
         return "er{}-{}er{}-{}".format(self.ad.isd_id, self.ad_id,
@@ -360,10 +363,10 @@ class SibraServerWeb(SCIONWebElement):
 
 class JoinRequest(models.Model):
     STATUS_OPTIONS = ['NONE', 'SENT', 'ACCEPTED', 'DECLINED']
-    request_id = models.IntegerField(primary_key=True)
     created_by = models.ForeignKey(User)
 
     isd_to_join = models.IntegerField(default=-1)
+    join_as_a_core = models.BooleanField(default=False)
     status = models.CharField(max_length=20,
                               choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
                               default='NONE')
@@ -383,9 +386,7 @@ class JoinRequest(models.Model):
 class ConnectionRequest(models.Model):
     STATUS_OPTIONS = ['NONE', 'SENT', 'APPROVED', 'DECLINED']
     LINK_TYPE = ['PARENT', 'CHILD', 'PEER', 'ROUTING']
-
-    # request_id assigned by the coordination service
-    request_id = models.IntegerField(null=True)
+    OVERLAY_TYPE = ['IPv4', 'IPv6', 'UDP/IPv4', 'UDP/IPv6']
 
     created_by = models.ForeignKey(User)
     connect_to = models.CharField(max_length=100, null=True, blank=True)
@@ -393,11 +394,17 @@ class ConnectionRequest(models.Model):
     info = models.TextField()
     router_public_ip = models.GenericIPAddressField()
     router_public_port = models.IntegerField(default=int(PORT))
+    # router_info is the IP (and port) shown in the ConnectionRequest form
+    # to select from.
+    router_info = models.TextField(null=True)
     mtu = models.IntegerField(null=True, default=DEFAULT_MTU)
     bandwidth = models.IntegerField(null=True, default=DEFAULT_BANDWIDTH)
     link_type = models.CharField(max_length=20,
                                  choices=zip(LINK_TYPE, LINK_TYPE),
                                  default='CHILD')
+    overlay_type = models.CharField(max_length=20,
+                                    choices=zip(OVERLAY_TYPE, OVERLAY_TYPE),
+                                    default='UDP/IPv4')
     status = models.CharField(max_length=20,
                               choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
                               default='NONE')
