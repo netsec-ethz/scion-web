@@ -279,12 +279,14 @@ function gatherIPsforCloudEngines() {
     var ipList = [];
     var parent = $('.cloudEngineItemList');
 
-    $(".server-address-input").each(function () {
+    $(".server-address-input").each(function() {
         var ipAddress = $(this).val();
         ipAddress = ipAddress.split('/')[0];
-        var unique = $.inArray(ipAddress, ipList) == -1;
-        if (unique) {
-            ipList.push(ipAddress);
+        if (ipAddress.length > 0) {
+            var unique = $.inArray(ipAddress, ipList) == -1;
+            if (unique) {
+                ipList.push(ipAddress);
+            }
         }
     });
 
