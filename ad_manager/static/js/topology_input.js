@@ -1,7 +1,7 @@
 function checkFreshness(isd_id, as_id) {
     var csrftoken = $("input[name='csrfmiddlewaretoken']").attr('value');
     var xmlhttp = new XMLHttpRequest();
-    var url = "../../api/v1/internal/isd/" + isd_id + "/as/" + as_id + "/topo_hash";
+    var url = "../api/v1/internal/isd/" + isd_id + "/as/" + as_id + "/topo_hash";
     var submit = false;
     xmlhttp.onreadystatechange = function () {
         // check if XMLHttpRequest is ready and HTTP status code is 200
@@ -13,7 +13,7 @@ function checkFreshness(isd_id, as_id) {
                 var changes = res['topo_hash'] != reloadedTopologyHash;
                 // check if force submitting is enabled
                 var forceSubmit = $('#forceSubmit:checked').length > 0;
-                
+
                 if (changes && !forceSubmit) {
                     overlayAlert("The data has changed, please reload the page or force submit.", 3000);
                     $('#forceSubmitDiv').removeClass('hidden');
@@ -104,14 +104,14 @@ function toggleInput(elem) {
         $(clone).find('.server-name-input').attr('value', newName);
         // reset IP
         $(clone).find('.server-address-input').val('');
-        
+
         // Auto-increment IFID if it is router element
         if (clone.attr('class').indexOf('routerItem') > -1) {
             var currentIFID = $(clone).find('.ifid-input').attr('value');
             var newIFID = parseInt(currentIFID) + 1;
             $(clone).find('.ifid-input').attr('value', newIFID);
         }
-        
+
         // append the cloned and cleaned item
         accordion.append(clone);
         //var test = $(clone).children(':first').prop('tagName');
