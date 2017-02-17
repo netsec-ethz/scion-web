@@ -861,9 +861,7 @@ def create_local_gen(isd_as, tp):
     # certificate server -> 'cert_server', ...
     lkx = lookup_dict_executables()
 
-    ia = ISD_AS(isd_as)
-    isd_id = ia[0]
-    as_id = ia[1]
+    isd_id, as_id = ISD_AS(isd_as)
 
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
 
@@ -911,22 +909,23 @@ def create_local_gen(isd_as, tp):
     types_keys = zip(types, dict_keys)
     zk_name_counter = 1
 
-    for serv_type, type_key in types_keys:
-        executable_name = lkx[serv_type]
+    for service_type, type_key in types_keys:
+        executable_name = lkx[service_type]
         replicas = tp[type_key].keys()  # SECURITY WARNING:allows arbitrary path
         # the user can enter arbitrary paths for his output
         # Mitigation: make path at least relative
         executable_name = os.path.normpath('/'+executable_name).lstrip('/')
-        for serv_name in replicas:
-            # replace serv_name if zookeeper special case (they have only ids)
-            if serv_type == 'zookeeper_service':
-                serv_name = '{}{}-{}-{}'.format('zk', isd_id,
-                                                as_id, zk_name_counter)
+        for service_name in replicas:
+            # replace service_name if zookeeper special case
+            # (they have only ids)
+            if service_type == 'zookeeper_service':
+                service_name = '{}{}-{}-{}'.format('zk', isd_id,
+                                                   as_id, zk_name_counter)
                 zk_name_counter += 1
-            config = prep_supervisord_conf(executable_name, serv_type,
-                                           serv_name, isd_id, as_id)
+            config = prep_supervisord_conf(executable_name, service_type,
+                                           service_name, isd_id, as_id)
             # replace command entry if zookeeper special case
-            if serv_type == 'zookeeper_service':
+            if service_type == 'zookeeper_service':
                 zk_config_path = os.path.join(PROJECT_ROOT,
                                               'topology',
                                               'Zookeeper.yml')
@@ -944,14 +943,14 @@ def create_local_gen(isd_as, tp):
                                  'log.file=logs/{0}.log" ' \
                                  '"{4}" ' \
                                  '"gen/ISD{1}/AS{2}/{0}/' \
-                                 'zoo.cfg"'.format(serv_name,
+                                 'zoo.cfg"'.format(service_name,
                                                    isd_id,
                                                    as_id,
                                                    class_path,
                                                    zoomain_env)
-                config['program:' + serv_name]['command'] = command_string
+                config['program:' + service_name]['command'] = command_string
 
-            node_path = 'ISD{}/AS{}/{}'.format(isd_id, as_id, serv_name)
+            node_path = 'ISD{}/AS{}/{}'.format(isd_id, as_id, service_name)
             node_path = os.path.join(local_gen_path, node_path)
             # os.makedirs(node_path, exist_ok=True)
             if not os.path.exists(node_path):
@@ -971,8 +970,9 @@ def create_local_gen(isd_as, tp):
             # create zlog file
             tmpl = Template(read_file(os.path.join(PROJECT_ROOT,
                                                    "topology/zlog.tmpl")))
-            cfg = os.path.join(node_path, "%s.zlog.conf" % serv_name)
-            write_file(cfg, tmpl.substitute(name=serv_type, elem=serv_name))
+            cfg = os.path.join(node_path, "%s.zlog.conf" % service_name)
+            write_file(cfg, tmpl.substitute(name=service_type,
+                                            elem=service_name))
 
             # Generating only the needed intermediate parts
             # not used as for now we generator.py all certs and keys resources
@@ -1007,14 +1007,14 @@ def particular_topo_instance(tp, type_key):
     return singular_topo
 
 
-def prep_supervisord_conf(executable_name, serv_type, serv_name,
+def prep_supervisord_conf(executable_name, service_type, service_name,
                           isd_id, as_id):
     """
     Prepares the supervisord configuration for the infrastructure elements
     and returns it as a ConfigParser object.
     :param str executable_name: the name of the executable.
-    :param str serv_type: the type of the service (e.g. beacon_server).
-    :param str serv_name: the name of the service (e.g br1-8-1).
+    :param str service_type: the type of the service (e.g. beacon_server).
+    :param str service_name: the name of the service (e.g. br1-8-1).
     :param str isd_id: the ISD the service belongs to.
     :param str as_id: the AS the service belongs to.
     :returns: supervisord configuration as a ConfigParser object
@@ -1022,18 +1022,19 @@ def prep_supervisord_conf(executable_name, serv_type, serv_name,
     """
     config = configparser.ConfigParser()
     env_tmpl = 'PYTHONPATH=.,ZLOG_CFG="gen/ISD%s/AS%s/%s/%s.zlog.conf"'
-    if serv_type == 'router':  # go router
+    if service_type == 'router':  # go router
         env_tmpl += ',GODEBUG="cgocheck=0"'
         cmd_tmpl = ('bash -c \'exec "bin/border" "-id" "%s" "-confd" ' +
                     '"gen/ISD%s/AS%s/%s" &>logs/%s.OUT\'')
-        cmd = cmd_tmpl % (serv_name, isd_id, as_id, serv_name, serv_name)
+        cmd = cmd_tmpl % (service_name, isd_id, as_id,
+                          service_name, service_name)
     else:  # other infrastructure elements
         cmd_tmpl = ('bash -c \'exec "bin/%s" "%s" ' +
                     '"gen/ISD%s/AS%s/%s" &>logs/%s.OUT\'')
-        cmd = cmd_tmpl % (executable_name, serv_name, isd_id, as_id,
-                          serv_name, serv_name)
-    env = env_tmpl % (isd_id, as_id, serv_name, serv_name)
-    config['program:' + serv_name] = {
+        cmd = cmd_tmpl % (executable_name, service_name, isd_id, as_id,
+                          service_name, service_name)
+    env = env_tmpl % (isd_id, as_id, service_name, service_name)
+    config['program:' + service_name] = {
         'priority': '100',
         'environment': env,
         'stdout_logfile': 'NONE',
