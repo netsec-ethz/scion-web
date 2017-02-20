@@ -252,9 +252,10 @@ function reloadRouterInterfaceSection(interface_obj, itemSelector) {
                 // we need to test if the AS is core, so that in case the link type is routing, the option gets added
                 checkShowCoreOption();
                 // remove all previous selected options for this select
-                $(linkType).find("option").removeProp("selected");
+                $(linkType).find("option").removeAttr('selected');
                 // set selected option
-                $(linkType).find('option[value="' + value + '"]').attr('selected', 'selected');
+                $(linkType).find('option[value="' + value + '"]').attr('selected', 'selected'); // in HTML for form submission
+                $(linkType).find('option[value="' + value + '"]').prop('selected', 'selected'); // in DOM for displaying
                 break;
             case 'MTU':
                 $(itemSelector + '#inputLinkMTU').attr('value', value);
