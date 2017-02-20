@@ -195,6 +195,7 @@ class AD(models.Model):
 
                 RouterWeb.objects.update_or_create(
                     addr=router["Addr"], ad=self,
+                    port=router["Port"],
                     addr_internal='',
                     port_internal=None,
                     name=name, neighbor_ad=neighbor_ad,
@@ -209,6 +210,7 @@ class AD(models.Model):
             for name, bs in beacon_servers.items():
                 BeaconServerWeb.objects.\
                     update_or_create(addr=bs["Addr"],
+                                     port=bs["Port"],
                                      addr_internal=bs["AddrInternal"],
                                      port_internal=bs["PortInternal"],
                                      name=name,
@@ -217,6 +219,7 @@ class AD(models.Model):
             for name, cs in certificate_servers.items():
                 CertificateServerWeb.objects.\
                     update_or_create(addr=cs["Addr"],
+                                     port=cs["Port"],
                                      addr_internal=cs["AddrInternal"],
                                      port_internal=cs["PortInternal"],
                                      name=name,
@@ -225,6 +228,7 @@ class AD(models.Model):
             for name, ps in path_servers.items():
                 PathServerWeb.objects.\
                     update_or_create(addr=ps["Addr"],
+                                     port=ps["Port"],
                                      addr_internal=ps["AddrInternal"],
                                      port_internal=ps["PortInternal"],
                                      name=name,
@@ -233,6 +237,7 @@ class AD(models.Model):
             for name, sb in sibra_servers.items():
                 SibraServerWeb.objects.\
                     update_or_create(addr=sb["Addr"],
+                                     port=sb["Port"],
                                      addr_internal=sb["AddrInternal"],
                                      port_internal=sb["PortInternal"],
                                      name=name,
@@ -258,6 +263,7 @@ class AD(models.Model):
 
 class SCIONWebElement(models.Model):
     addr = models.GenericIPAddressField()
+    port = models.IntegerField(default=None)
     addr_internal = models.GenericIPAddressField(default=None, null=True)
     port_internal = models.IntegerField(default=None, null=True)
     ad = models.ForeignKey(AD)
@@ -284,7 +290,7 @@ class BeaconServerWeb(SCIONWebElement):
 
     class Meta:
         verbose_name = 'Beacon server'
-        unique_together = (("ad", "addr"),)
+        unique_together = (("ad", "addr", "port"),)
 
 
 class CertificateServerWeb(SCIONWebElement):
@@ -292,7 +298,7 @@ class CertificateServerWeb(SCIONWebElement):
 
     class Meta:
         verbose_name = 'Certificate server'
-        unique_together = (("ad", "addr"),)
+        unique_together = (("ad", "addr", "port"),)
 
 
 class PathServerWeb(SCIONWebElement):
@@ -300,7 +306,7 @@ class PathServerWeb(SCIONWebElement):
 
     class Meta:
         verbose_name = 'Path server'
-        unique_together = (("ad", "addr"),)
+        unique_together = (("ad", "addr", "port"),)
 
 
 class RouterWeb(SCIONWebElement):
@@ -341,7 +347,7 @@ class RouterWeb(SCIONWebElement):
 
     class Meta:
         verbose_name = 'Router'
-        unique_together = (("ad", "addr"),)
+        unique_together = (("ad", "addr", "port"),)
 
 
 class SibraServerWeb(SCIONWebElement):
@@ -349,7 +355,7 @@ class SibraServerWeb(SCIONWebElement):
 
     class Meta:
         verbose_name = 'SIBRA server'
-        unique_together = (("ad", "addr"),)
+        unique_together = (("ad", "addr", "port"),)
 
 
 class JoinRequest(models.Model):
