@@ -341,7 +341,7 @@ class RouterWeb(SCIONWebElement):
 
     class Meta:
         verbose_name = 'Router'
-        unique_together = (("ad", "addr"),)
+        unique_together = (("ad", "addr", "interface_port"),)
 
 
 class SibraServerWeb(SCIONWebElement):
