@@ -16,6 +16,7 @@
 import configparser
 import json
 import os
+from collections import defaultdict
 
 # SCION
 from lib.defines import (BEACON_SERVICE,
@@ -67,24 +68,20 @@ def fill_router_section(config, section_name, val, isd_id, as_id):
     :param str as_id: the AS the service belongs to.
     """
     add_new_section(config, section_name)
-    base_tags = "isd=" + str(isd_id) + " as=" + str(as_id) + " instances="
-    addr2instances = {}
-    addr2name = {}
+    addr2instances = defaultdict(list)
+    addr2name = defaultdict(list)
     for router_name, addr in val:
         # remove subnet if exists
         addr = addr.split('/')[0]
         # extract the instance id from the router name
         _, _, instance_id = router_name[2:].split('-')
-        if addr in addr2instances:
-            addr2instances[addr].append(instance_id)
-            addr2name[addr].append(router_name)
-        else:
-            addr2instances[addr] = [instance_id]
-            addr2name[addr] = [router_name]
+        addr2instances[addr].append(instance_id)
+        addr2name[addr].append(router_name)
 
     for addr, instances in addr2instances.items():
-        config[section_name][addr] = (base_tags + "'" + json.dumps(instances) +
-                                      "' # " + str(addr2name[addr]))
+        config[section_name][addr] = "isd=%s as=%s instances='%s' # %s" % \
+                                     (isd_id, as_id, json.dumps(instances),
+                                      addr2name[addr])
 
 
 def set_cloud_providers(config, topology_params):
