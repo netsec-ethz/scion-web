@@ -14,7 +14,9 @@
 
 # Stdlib
 import configparser
+import json
 import os
+from collections import defaultdict
 
 # SCION
 from lib.defines import (BEACON_SERVICE,
@@ -23,6 +25,8 @@ from lib.defines import (BEACON_SERVICE,
                          ROUTER_SERVICE,
                          SIBRA_SERVICE,
                          PROJECT_ROOT)
+from lib.packet.scion_addr import ISD_AS
+
 
 ZOOKEEPER_SERVICE = "zk"  # TODO: make PR to add into lib.defines as it used to
 WEB_ROOT = os.path.join(PROJECT_ROOT, 'sub', 'web')
@@ -51,30 +55,33 @@ def fill_section(config, section_name, val, tags, hostname_lookup):
                                                                hostname)
 
 
-def fill_router_section(config, section_name, val, remote_isd_as,
-                        base_tags, prefix, hostname_lookup):
-    server_index = 0
+def fill_router_section(config, section_name, val, isd_id, as_id):
+    """
+    Fills in the router section of the Ansible hostfile.
+    Each line in this section has a list of dictionaries for the set of routers
+    running on the host. An example looks like the following:
+    127.0.0.1 isd=1 as=1 instances='["1", "7"]' # ['br1-1-1', 'br1-1-7']
+    :param ConfigParser config: Hostfile configuration to be filled in
+    :param str section_name: The name of the section (e.g. border_routers)
+    :param list val: A list of tuples (router_name, address)
+    :param str isd_id: the ISD the service belongs to.
+    :param str as_id: the AS the service belongs to.
+    """
     add_new_section(config, section_name)
-    remote_isd, remote_as = zip(
-        *map(lambda ip: ip.split('-'), remote_isd_as)
-    )
-    for (serv_id, entry) in val:
-        tags = base_tags + 'to_isd={}' ' to_as={} {}'.format(
-            remote_isd[server_index],
-            remote_as[server_index],
-            prefix)
-        server_index += 1
-        entry = entry.split('/')[0]  # remove subnet size
-        try:
-            hostname = hostname_lookup[entry]
-        except KeyError:
-            hostname = serv_id  # no hostname defined, use identifier
-        try:
-            isd_id, as_id, instance_id = serv_id.split('-')
-        except ValueError:
-            instance_id = server_index
-        config[section_name][entry] = tags + '={} # {}'.format(instance_id,
-                                                               hostname)
+    addr2instances = defaultdict(list)
+    addr2name = defaultdict(list)
+    for router_name, addr in val:
+        # remove subnet if exists
+        addr = addr.split('/')[0]
+        # extract the instance id from the router name
+        _, _, instance_id = router_name[2:].split('-')
+        addr2instances[addr].append(instance_id)
+        addr2name[addr].append(router_name)
+
+    for addr, instances in addr2instances.items():
+        config[section_name][addr] = "isd=%s as=%s instances='%s' # %s" % \
+                                     (isd_id, as_id, json.dumps(instances),
+                                      addr2name[addr])
 
 
 def set_cloud_providers(config, topology_params):
@@ -113,7 +120,7 @@ def generate_ansible_hostfile(topology_params, mockup_dict, isd_as,
     # Write Ansible hostfile
     config = configparser.ConfigParser(allow_no_value=True, delimiters=' ',
                                        inline_comment_prefixes='#')
-    isd_id, as_id = isd_as.split('-')
+    isd_id, as_id = ISD_AS(isd_as)
     host_file_path = os.path.join(WEB_ROOT, 'gen',
                                   'ISD' + str(isd_id), 'AS' + str(as_id),
                                   'host.{}-{}'.format(isd_id, as_id))
@@ -140,13 +147,8 @@ def generate_ansible_hostfile(topology_params, mockup_dict, isd_as,
                                             lkp[service_type])
             fill_section(config, section_name, val, tags, hostname_lookup)
         elif service_type == 'router':
-            interfaces = get_section_attr(mockup_dict, key+'s', 'Interface')
-            remote_isd_as = [x['ISD_AS'] for (_, x) in interfaces]
             section_name = 'border_routers'
-            tags = 'isd={} as={} '.format(isd_id,
-                                          as_id)
-            fill_router_section(config, section_name, val, remote_isd_as,
-                                tags, lkp[service_type], hostname_lookup)
+            fill_router_section(config, section_name, val, isd_id, as_id)
         elif service_type == 'zookeeper_service':
             section_name = 'zookeepers'
             tags = 'isd={} as={} {}'.format(isd_id,
