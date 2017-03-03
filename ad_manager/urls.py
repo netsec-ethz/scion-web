@@ -55,7 +55,7 @@ isd_patterns = patterns(
     url(r'^isds/add_isd/?$',
         views.add_isd, name='add_isd'),
     url(r'^isds/join_isd/?$',
-        views.request_new_as_id, name='join_isd'),
+        views.request_join_isd, name='join_isd'),
     url(r'^isds/poll_join_reply/?$',
         views.poll_join_reply, name='poll_join_reply'),
     url(r'^isds/(?P<pk>\d+)/?$',

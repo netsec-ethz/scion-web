@@ -264,7 +264,7 @@ class AD(models.Model):
 
 class SCIONWebElement(models.Model):
     addr = models.GenericIPAddressField()
-    port = models.IntegerField(default=None)
+    port = models.IntegerField()
     addr_internal = models.GenericIPAddressField(default=None, null=True)
     port_internal = models.IntegerField(default=None, null=True)
     ad = models.ForeignKey(AD)
@@ -386,7 +386,7 @@ class JoinRequest(models.Model):
 class ConnectionRequest(models.Model):
     STATUS_OPTIONS = ['NONE', 'SENT', 'APPROVED', 'DECLINED']
     LINK_TYPE = ['PARENT', 'CHILD', 'PEER', 'ROUTING']
-    OVERLAY_TYPE = ['IP', 'UDP/IP']
+    OVERLAY_TYPE = ['IPv4', 'IPv6', 'UDP/IPv4', 'UDP/IPv6']
 
     created_by = models.ForeignKey(User)
     connect_to = models.CharField(max_length=100, null=True, blank=True)
@@ -404,7 +404,7 @@ class ConnectionRequest(models.Model):
                                  default='CHILD')
     overlay_type = models.CharField(max_length=20,
                                     choices=zip(OVERLAY_TYPE, OVERLAY_TYPE),
-                                    default='UDP/IP')
+                                    default='UDP/IPv4')
     status = models.CharField(max_length=20,
                               choices=zip(STATUS_OPTIONS, STATUS_OPTIONS),
                               default='NONE')

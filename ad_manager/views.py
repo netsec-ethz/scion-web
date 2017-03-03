@@ -20,7 +20,6 @@ import json
 import logging
 import os
 import posixpath
-import requests
 import socket
 import subprocess
 import tarfile
@@ -42,7 +41,6 @@ from django.http import (
     HttpResponse,
     HttpResponseForbidden,
     HttpResponseNotFound,
-    HttpResponseServerError,
     JsonResponse,
 )
 from django.shortcuts import redirect, get_object_or_404, render
@@ -102,7 +100,11 @@ from ad_manager.models import (
     RouterWeb,
 )
 from ad_manager.util.hostfile_generator import generate_ansible_hostfile
-from ad_manager.util.util import to_b64, from_b64
+from ad_manager.util.util import (
+    from_b64,
+    post_req_to_scion_coord,
+    to_b64,
+)
 from ad_manager.util.defines import (
     COORD_SERVICE_URI,
     POLL_JOIN_REPLY_SVC,
@@ -217,19 +219,10 @@ def poll_join_reply(request):
                               POLL_JOIN_REPLY_SVC, coord.account_id,
                               coord.secret))
         logger.info('url = %s' % request_url)
-        headers = {'content-type': 'application/json'}
-        try:
-            r = requests.post(request_url, json={'request_id': jr_id},
-                              headers=headers)
-        except requests.RequestException:
-            logging.error("Failed to connect to SCION Coordination Service.")
-            return HttpResponseServerError("Failed to connect to SCION "
-                                           "coordination Service.")
-        if r.status_code != 200:
-            logging.error("Polling join reply failed with status"
-                          " code %s", r.status_code)
-            return HttpResponse("Polling join reply returned %s" %
-                                r.status_code, status=r.status_code)
+        r, error = post_req_to_scion_coord(request_url, {'request_id': jr_id},
+                                           "poll join reply %s" % jr_id)
+        if error is not None:
+            return error
         handle_join_reply(request, r, jr_id)
     return redirect(current_page)
 
@@ -254,7 +247,7 @@ def handle_join_reply(request, reply, jr_id):
         master_as_key = base64.b64encode(Random.new().read(16))
         isd, _ = ISD.objects.get_or_create(id=int(new_as[0]))
         AD.objects.update_or_create(
-            as_id=int(new_as[1]),
+            as_id=new_as[1],
             isd=isd,
             is_core_ad=join_reply['IsCore'],
             is_open=False,
@@ -302,6 +295,10 @@ def send_join_reply(request, status, isd_as, request_id):
     current_page = request.META.get('HTTP_REFERER')
     coord = get_object_or_404(OrganisationAdmin, user_id=request.user.id)
     own_isdas = ISD_AS(isd_as)
+    own_as_obj = AD.objects.get(as_id=own_isdas[1], isd=own_isdas[0])
+    if not own_as_obj.is_core_ad:
+        logging.error("%s has to be a core AS to send join reply" % own_as_obj)
+        return redirect(current_page)
     join_rep_dict = {
         'RequestId': int(request_id),
         'Status': status,
@@ -309,51 +306,48 @@ def send_join_reply(request, status, isd_as, request_id):
         'RequesterId': request.POST['requester']
     }
     if status == REQ_APPROVED:
-        logger.info("New AS name = %s", request.POST['newASname'])
-        joining_as = request.POST['newASname']
-        is_core = request.POST['join_as_a_core']
-        sig_pub_key = from_b64(request.POST['sig_pub_key'])
-        enc_pub_key = from_b64(request.POST['enc_pub_key'])
-        signing_as = AD.objects.get(as_id=own_isdas[1], isd=own_isdas[0])
-        signing_as_sig_priv_key = from_b64(signing_as.sig_priv_key)
-        signing_as_trc = str(signing_as.trc)
-        joining_ia = ISD_AS.from_values(own_isdas[0], joining_as)
-        cert = Certificate.from_values(
-            str(joining_ia), str(own_isdas), INITIAL_CERT_VERSION, "", False,
-            enc_pub_key, sig_pub_key, signing_as_sig_priv_key
-        )
-        respond_ia_chain = CertificateChain.from_raw(signing_as.certificate)
-        request_ia_chain = CertificateChain([cert, respond_ia_chain.certs[0]])
-        join_rep_dict['JoiningIA'] = str(joining_ia)
-        join_rep_dict['IsCore'] = is_core == "True"
-        join_rep_dict['RespondIA'] = str(own_isdas)
-        join_rep_dict['JoiningIACertificate'] = request_ia_chain.to_json()
-        join_rep_dict['RespondIACertificate'] = str(signing_as.certificate)
-        join_rep_dict['TRC'] = signing_as_trc
-        logger.debug("Accepting Join Request = %s", join_rep_dict)
+        prep_approved_join_reply(request, join_rep_dict, own_isdas, own_as_obj)
     else:
         logger.debug("Declining Join Request = %s", join_rep_dict)
     request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
                           UPLOAD_JOIN_REPLY_SVC, coord.account_id,
                           coord.secret))
-    headers = {'content-type': 'application/json'}
-    try:
-        r = requests.post(request_url, json=join_rep_dict, headers=headers)
-    except requests.RequestException:
-        logging.error("Failed to connect to SCION Coordination Service.")
-        return HttpResponseServerError("Failed to connect to SCION "
-                                       "coordination Service.")
-    if r.status_code != 200:
-        logging.error("Sending join reply %s failed with status code %s",
-                      join_rep_dict['RequestId'], r.status_code)
-        return HttpResponse("Sending join reply returned %s" %
-                            r.status_code, status=r.status_code)
+    _, error = post_req_to_scion_coord(request_url, join_rep_dict,
+                                       "join reply %s" % request_id)
+    if error is not None:
+        return error
     return redirect(current_page)
+
+
+def prep_approved_join_reply(request, join_rep_dict, own_isdas, own_as_obj):
+    """
+    Prepares for join reply for the APPROVED case.
+    """
+    logger.info("New AS ID = %s", request.POST['newASId'])
+    joining_as = request.POST['newASId']
+    is_core = request.POST['join_as_a_core']
+    sig_pub_key = from_b64(request.POST['sig_pub_key'])
+    enc_pub_key = from_b64(request.POST['enc_pub_key'])
+    signing_as_sig_priv_key = from_b64(own_as_obj.sig_priv_key)
+    joining_ia = ISD_AS.from_values(own_isdas[0], joining_as)
+    cert = Certificate.from_values(
+        str(joining_ia), str(own_isdas), INITIAL_CERT_VERSION, "", False,
+        enc_pub_key, sig_pub_key, signing_as_sig_priv_key
+    )
+    respond_ia_chain = CertificateChain.from_raw(own_as_obj.certificate)
+    request_ia_chain = CertificateChain([cert, respond_ia_chain.certs[0]])
+    join_rep_dict['JoiningIA'] = str(joining_ia)
+    join_rep_dict['IsCore'] = is_core.lower() == "true"
+    join_rep_dict['RespondIA'] = str(own_isdas)
+    join_rep_dict['JoiningIACertificate'] = request_ia_chain.to_json()
+    join_rep_dict['RespondIACertificate'] = own_as_obj.certificate
+    join_rep_dict['TRC'] = own_as_obj.trc
+    logger.debug("Accepting Join Request = %s", join_rep_dict)
 
 
 @require_POST
 @login_required
-def request_new_as_id(request):
+def request_join_isd(request):
     """
     Sends the join request to SCION Coordination Service.
     :param HttpRequest request: Django HTTP request passed on through urls.py.
@@ -375,7 +369,7 @@ def request_new_as_id(request):
     join_req = JoinRequest.objects.create(
         created_by=request.user,
         isd_to_join=isd_to_join,
-        join_as_a_core=(join_as_a_core == "True"),
+        join_as_a_core=join_as_a_core.lower() == "true",
         sig_pub_key=to_b64(public_key_sign),
         sig_priv_key=to_b64(private_key_sign),
         enc_pub_key=to_b64(public_key_encr),
@@ -391,20 +385,12 @@ def request_new_as_id(request):
     request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
                           UPLOAD_JOIN_REQUEST_SVC, coord.account_id,
                           coord.secret))
-    headers = {'content-type': 'application/json'}
+    _, error = post_req_to_scion_coord(request_url, join_req_dict,
+                                       "join request %s" % join_req.id)
+    if error is not None:
+        return error
     logger.info("Request = %s, Join Request Dict = %s", request_url,
                 join_req_dict)
-    try:
-        r = requests.post(request_url, json=join_req_dict, headers=headers)
-    except requests.RequestException:
-        logging.error("Failed to connect to SCION Coordination Service.")
-        return HttpResponseServerError("Failed to connect to SCION "
-                                       "coordination Service.")
-    if r.status_code != 200:
-        logging.error("Sending join request %s failed with status"
-                      " code %s", join_req_dict['RequestId'], r.status_code)
-        return HttpResponse("Sending connection reply returned %s" %
-                            r.status_code, status=r.status_code)
     join_req.status = REQ_SENT
     join_req.save()
     messages.success(request, 'Join Request Submitted Successfully.'
@@ -443,24 +429,16 @@ class ConnectionRequestView(FormView):
         # create connection_request db object
         con_req = self.create_req_obj(form)
         # prepare connection request dictionary to send
-        con_req_dict = self.prepare_req_dic(con_req)
+        con_req_dict = self.prepare_req_dict(con_req)
         logger.info("Sending Connection Request: %s", con_req_dict)
         # upload the req to scion-coord
         request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
                               UPLOAD_CONN_REQUEST_SVC, coord.account_id,
                               coord.secret))
-        headers = {'contenttype': 'application/json'}
-        try:
-            r = requests.post(request_url, json=con_req_dict, headers=headers)
-        except requests.RequestException:
-            logging.error("Failed to connect to SCION Coordination Service.")
-            return HttpResponseServerError("Failed to connect to SCION "
-                                           "coordination Service.")
-        if r.status_code != 200:
-            logging.error("Sending connection request %s failed with status"
-                          " code %s", con_req_dict['RequestId'], r.status_code)
-            return HttpResponse("Sending connection request returned %s" %
-                                r.status_code, status=r.status_code)
+        _, error = post_req_to_scion_coord(
+            request_url, con_req_dict, "connection request %s" % con_req.id)
+        if error is not None:
+            return error
         logging.info("Connection request %s successfully sent.",
                      con_req_dict['RequestId'])
         # set the status of the connection request to SENT
@@ -488,7 +466,7 @@ class ConnectionRequestView(FormView):
         con_req.router_info = data['router_info']
         con_req.overlay_type = data['overlay_type']
         con_req.router_public_ip = data['router_info'].split(':')[0]
-        if con_req.overlay_type == ConnectionRequest.OVERLAY_TYPE[1]:  # UDP/IP
+        if "UDP" in con_req.overlay_type:
             con_req.router_public_port = data['router_info'].split(':')[1]
         else:
             con_req.router_public_port = None
@@ -499,7 +477,7 @@ class ConnectionRequestView(FormView):
         con_req.save()
         return con_req
 
-    def prepare_req_dic(self, con_req):
+    def prepare_req_dict(self, con_req):
         """
         Prepares the connection request as a dictionary to be sent to the SCION
         coordination service.
@@ -518,7 +496,7 @@ class ConnectionRequestView(FormView):
             "OverlayType": con_req.overlay_type,
             "MTU": int(con_req.mtu),
             "Bandwidth": int(con_req.bandwidth),
-            "Timestamp": iso_timestamp(int(time.time())),
+            "Timestamp": iso_timestamp(time.time()),
             "Signature": "",  # TODO(ercanucan): generate and set the signature
             "Certificate": self._get_ad().certificate
         }
@@ -591,28 +569,19 @@ def send_connection_reply(request, con_req_id, status, respond_as, data):
         router_info = data['router_info']
         overlay_type = data['accepted_overlay_type']
         con_rep_dict["IP"] = router_info.split(':')[0]
-        if overlay_type == ConnectionRequest.OVERLAY_TYPE[1]:
-            # UDP/IP
+        if "UDP" in overlay_type:
             con_rep_dict["Port"] = int(router_info.split(':')[1])
         con_rep_dict["OverlayType"] = overlay_type
         con_rep_dict["MTU"] = int(data['accepted_mtu'])
         con_rep_dict["Bandwidth"] = int(data['accepted_bandwidth'])
-        con_rep_dict["Certificate"] = str(respond_as.certificate)
+        con_rep_dict["Certificate"] = respond_as.certificate
     request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
                           UPLOAD_CONN_REPLY_SVC, coord.account_id,
                           coord.secret))
-    headers = {'content-type': 'application/json'}
-    try:
-        r = requests.post(request_url, json=con_rep_dict, headers=headers)
-    except requests.RequestException:
-        logging.error("Failed to connect to SCION Coordination Service.")
-        return HttpResponseServerError("Failed to connect to SCION "
-                                       "coordination Service.")
-    if r.status_code != 200:
-        logging.error("Sending connection reply %s failed with status"
-                      " code %s", con_rep_dict['RequestId'], r.status_code)
-        return HttpResponse("Sending connection reply returned %s" %
-                            r.status_code, status=r.status_code)
+    _, error = post_req_to_scion_coord(request_url, con_rep_dict,
+                                       "connection reply %s" % con_req_id)
+    if error is not None:
+        return error
     logging.info("Connection reply %s successfully sent.",
                  con_rep_dict['RequestId'])
 
@@ -669,20 +638,14 @@ class ADDetailView(DetailView):
             return context
         request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
                               POLL_EVENTS_SVC, coord.account_id, coord.secret))
-        headers = {'content-type': 'application/json'}
         logger.info("Polling Events for %s", context['isdas'])
-        try:
-            r = requests.post(request_url, json={'IsdAs': context['isdas']},
-                              headers=headers)
-        except requests.RequestException:
-            logging.error("Failed to connect to SCION Coordination Service.")
-            return HttpResponseServerError("Failed to connect to SCION "
-                                           "coordination Service.")
-        if r.status_code != 200:
-            logging.error("Polling events failed with status code %s",
-                          r.status_code)
-            return HttpResponse("Polling events failed with status code %s" %
-                                r.status_code, status=r.status_code)
+        r, error = post_req_to_scion_coord(
+            request_url, {'IsdAs': context['isdas']},
+            "poll events for ISD-AS %s" % context['isdas'])
+        if error is not None:
+            messages.error(self.request, 'Could not poll events from SCION '
+                           'Coordination Service!')
+            return context
         resp = r.json()
         context['join_requests'] = resp['JoinRequests']
         context['received_requests'] = resp['ConnRequests']
@@ -1189,7 +1152,7 @@ def create_local_gen(isd_as, tp):
     write_endhost_config(tp, isd_id, as_id, local_gen_path)
 
 
-def particular_topo_instance(tp, type_key):
+def topo_instance(tp, type_key):
     #  Little trow away logic handling the NATed case until topo represents
     # internal and external addresses
 
@@ -1219,9 +1182,11 @@ def remove_incomplete_router_info(topo):
     :param dict topo: AS topology as a dictionary
     """
     routers = topo['BorderRouters']
-    complete_routers = {name: router for name, router in routers.items()
-                        if router['Interface']['ToAddr'] != '' and
-                        router['Interface']['ToUdpPort'] != ''}
+    complete_routers = {}
+    for name, router in routers.items():
+        if (router['Interface']['ToAddr'] != '' and
+                router['Interface']['ToUdpPort'] != ''):
+            complete_routers[name] = router
     topo['BorderRouters'] = complete_routers
 
 
@@ -1285,12 +1250,14 @@ def prep_zk_supervisord_cmd(instance_name, isd_id, as_id):
         zk_config = yaml.load(stream)
     class_path = zk_config['Environment']['CLASSPATH']
     zoomain_env = zk_config['Environment']['ZOOMAIN']
-    cmd_tmpl = ('"java" "-cp" "gen/%s/%s/%s:%s" '
-                '"-Dzookeeper.log.file=logs/%s.log" "%s" '
-                '"gen/ISD%s/AS%s/%s/zoo.cfg"')
-    cmd = cmd_tmpl % (isd_id, as_id, instance_name, class_path, instance_name,
-                      zoomain_env, isd_id, as_id, instance_name)
-    return cmd
+    zk_path = "gen/ISD%s/AS%s/%s" % (isd_id, as_id, instance_name)
+    class_path = "%s:%s" % (zk_path, class_path)
+    log_file = "-Dzookeeper.log.filename=logs/%s.log" % instance_name
+    cmd_parts = [
+       "java", "-cp", class_path, log_file, '"%s"' % zoomain_env,
+       os.path.join(zk_path, "zoo.cfg")
+    ]
+    return " ".join(cmd_parts)
 
 
 def prep_dispatcher_supervisord_conf():
@@ -1301,7 +1268,7 @@ def prep_dispatcher_supervisord_conf():
     """
     config = configparser.ConfigParser()
     env = 'PYTHONPATH=.,ZLOG_CFG="gen/dispatcher/dispatcher.zlog.conf"'
-    cmd = 'bash -c \'exec "bin/dispatcher" &>logs/dispatcher.OUT\''
+    cmd = """bash -c 'exec bin/dispatcher &>logs/dispatcher.OUT'"""
     config['program:dispatcher'] = {
         'priority': '50',
         'environment': env,
@@ -1323,10 +1290,10 @@ def write_topology_file(tp, type_key, instance_path):
     :param str type_key: key to describe service type.
     :param instance_path: the folder to write the file into.
     """
-    one_of_topology_path = os.path.join(instance_path, 'topology.yml')
-    one_of_topology = particular_topo_instance(tp, type_key)
-    with open(one_of_topology_path, 'w') as file:
-        yaml.dump(one_of_topology, file, default_flow_style=False)
+    path = os.path.join(instance_path, 'topology.yml')
+    topo = topo_instance(tp, type_key)
+    with open(path, 'w') as file:
+        yaml.dump(topo, file, default_flow_style=False)
 
 
 def write_endhost_config(tp, isd_id, as_id, local_gen_path):
@@ -1406,10 +1373,8 @@ def write_certs_trc_keys(isd_id, as_id, instance_path):
     write_file(sig_path, ia.sig_priv_key)
     write_file(enc_path, ia.enc_priv_key)
     # write cert
-    cert_chain_path = get_cert_chain_file_path(instance_path,
-                                               ISD_AS.from_values(isd_id,
-                                                                  as_id),
-                                               INITIAL_CERT_VERSION)
+    cert_chain_path = get_cert_chain_file_path(
+        instance_path, ISD_AS.from_values(isd_id, as_id), INITIAL_CERT_VERSION)
     write_file(cert_chain_path, ia.certificate)
     # write trc
     trc_path = get_trc_file_path(instance_path, isd_id, INITIAL_TRC_VERSION)
