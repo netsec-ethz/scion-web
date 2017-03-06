@@ -15,9 +15,16 @@
 # External packages
 from django.test import TestCase
 
-# SCION
+# SCION-WEB
 from ad_manager.models import AD, ISD
-from ad_manager.util.ad_connect import link_ads
+from ad_manager.util.ad_connect import (
+    CORE_CONNECTION,
+    PARENT_CHILD_CONNECTION,
+    PEER_CONNECTION,
+    link_ads,
+)
+# SCION
+from lib.types import LinkType
 
 
 class TestLinkAds(TestCase):
@@ -26,19 +33,17 @@ class TestLinkAds(TestCase):
     """
     def test_basic(self):
         isd = ISD.objects.create(id=1)
-
-        link_types = {
-            'ROUTING': ['ROUTING', 'ROUTING'],
-            'PEER': ['PEER', 'PEER'],
-            'PARENT_CHILD': ['CHILD', 'PARENT'],
-        }
-
         ip_addresses = []
         as_id = 1
-        for link_type in link_types.keys():
+        test_connections = {
+            CORE_CONNECTION: [LinkType.CORE, LinkType.CORE],
+            PEER_CONNECTION: [LinkType.PEER, LinkType.PEER],
+            PARENT_CHILD_CONNECTION: [LinkType.CHILD, LinkType.PARENT],
+        }
+        for connection in test_connections.keys():
             ad1 = AD.objects.create(isd=isd, as_id=as_id)
             ad2 = AD.objects.create(isd=isd, as_id=as_id+1)
-            link_ads(ad1, ad2, link_type)
+            link_ads(ad1, ad2, connection)
 
             ad1_routers = list(ad1.routerweb_set.all())
             ad2_routers = list(ad2.routerweb_set.all())
@@ -59,7 +64,7 @@ class TestLinkAds(TestCase):
             assert router1.interface_toport == router2.interface_port
             assert router2.interface_toport == router1.interface_port
 
-            neighbor_type1, neighbor_type2 = link_types[link_type]
+            neighbor_type1, neighbor_type2 = test_connections[connection]
             assert router1.neighbor_type == neighbor_type1
             assert router2.neighbor_type == neighbor_type2
 

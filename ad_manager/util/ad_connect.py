@@ -32,6 +32,7 @@ from ad_manager.models import (
     AD)
 from ad_manager.util.common import is_private_address
 from lib.defines import PROJECT_ROOT
+from lib.types import LinkType
 from lib.util import read_file, write_file, get_trc_file_path
 from topology.generator import (
     ConfigGenerator,
@@ -39,9 +40,18 @@ from topology.generator import (
     DEFAULT_ZK_CONFIG,
 )
 
+
+# values to be used for generating test data
 IP_ADDRESS_BASE = '127.0.0.1'
-PORT = 50000
+TEST_UDP_PORT = 50000
+TEST_PORT = 31041
 GEN_PATH = os.path.join(PROJECT_ROOT, 'gen')
+
+
+# test connection types
+CORE_CONNECTION = 'CORE_CORE'
+PARENT_CHILD_CONNECTION = 'PARENT_CHILD'  # First AS is parent of the second
+PEER_CONNECTION = 'PEER_PEER'
 
 
 def find_last_router(topo_dict):
@@ -107,6 +117,10 @@ def ip_generator():
 
 
 def create_next_router(topo_dict, ip_gen):
+    """
+    Creates a test router dictionary with generated IP addresses
+    and test values.
+    """
     router_item = find_last_router(topo_dict)
     if router_item:
         _, last_router = router_item
@@ -132,23 +146,16 @@ def create_next_router(topo_dict, ip_gen):
             'Interface': {
                 'AddrType': 'IPV4',
                 'Addr': str(ip_address_pub),
-                'UdpPort': int(PORT),
-                'ToUdpPort': int(PORT),
+                'UdpPort': TEST_UDP_PORT,
+                'ToUdpPort': TEST_UDP_PORT,
                 'IFID': router_index,
             }
         }
-
+    new_router['Port'] = TEST_PORT
     return str(router_index), new_router
 
 
-def link_topologies(first_topo, second_topo, link_type):
-    """
-
-    link_type:
-    ROUTING -- both are ROUTING
-    PEER -- both are PEER
-    PARENT_CHILD -- first_topo is now a parent of second_topo
-    """
+def link_topologies(first_topo, second_topo, connection_type):
     first_topo = copy.deepcopy(first_topo)
     second_topo = copy.deepcopy(second_topo)
     ip_gen = ip_generator()
@@ -175,15 +182,15 @@ def link_topologies(first_topo, second_topo, link_type):
     second_router_if['ISD_AS'] = '{}-{}'.format(first_topo['ISDID'],
                                                 first_ad_id)
 
-    if link_type == 'ROUTING':
-        first_router_if['LinkType'] = 'ROUTING'
-        second_router_if['LinkType'] = 'ROUTING'
-    elif link_type == 'PEER':
-        first_router_if['LinkType'] = 'PEER'
-        second_router_if['LinkType'] = 'PEER'
-    elif link_type == 'PARENT_CHILD':
-        first_router_if['LinkType'] = 'CHILD'
-        second_router_if['LinkType'] = 'PARENT'
+    if connection_type == CORE_CONNECTION:
+        first_router_if['LinkType'] = LinkType.CORE
+        second_router_if['LinkType'] = LinkType.CORE
+    elif connection_type == PEER_CONNECTION:
+        first_router_if['LinkType'] = LinkType.PEER
+        second_router_if['LinkType'] = LinkType.PEER
+    elif connection_type == PARENT_CHILD_CONNECTION:
+        first_router_if['LinkType'] = LinkType.CHILD
+        second_router_if['LinkType'] = LinkType.PARENT
     else:
         raise ValueError('Invalid link type')
 
@@ -193,14 +200,14 @@ def link_topologies(first_topo, second_topo, link_type):
     return first_topo, second_topo
 
 
-def link_ads(first_ad, second_ad, link_type):
+def link_ads(first_ad, second_ad, connection_type):
     """Needs transaction!"""
     assert isinstance(first_ad, AD)
     assert isinstance(second_ad, AD)
     first_topo = first_ad.generate_topology_dict()
     second_topo = second_ad.generate_topology_dict()
     first_topo, second_topo = link_topologies(first_topo, second_topo,
-                                              link_type)
+                                              connection_type)
 
     first_ad.fill_from_topology(first_topo, clear=True)
     second_ad.fill_from_topology(second_topo, clear=True)

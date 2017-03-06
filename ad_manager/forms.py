@@ -16,6 +16,9 @@
 from django import forms
 from django.shortcuts import get_object_or_404
 
+# SCION
+from lib.types import LinkType
+
 # SCION-WEB
 from ad_manager.models import (
     AD,
@@ -96,7 +99,8 @@ class ConnectionRequestForm(forms.ModelForm):
 
 
 class NewLinkForm(forms.Form):
-    link_types = ['PARENT', 'CHILD', 'PEER', 'ROUTING']
+    link_types = [LinkType.PARENT, LinkType.CHILD,
+                  LinkType.PEER, LinkType.CORE]
 
     end_point = forms.ModelChoiceField(
         queryset=AD.objects.none(),
