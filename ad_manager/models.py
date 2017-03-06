@@ -314,7 +314,7 @@ class RouterWeb(SCIONWebElement):
         ('CHILD',) * 2,
         ('PARENT',) * 2,
         ('PEER',) * 2,
-        ('ROUTING',) * 2,
+        ('CORE',) * 2,
     )
 
     neighbor_ad = models.ForeignKey(AD, related_name='neighbors')
@@ -382,7 +382,7 @@ class JoinRequest(models.Model):
 
 class ConnectionRequest(models.Model):
     STATUS_OPTIONS = ['NONE', 'SENT', 'APPROVED', 'DECLINED']
-    LINK_TYPE = ['PARENT', 'CHILD', 'PEER', 'ROUTING']
+    LINK_TYPE = ['PARENT', 'CHILD', 'PEER', 'CORE']
 
     # request_id assigned by the coordination service
     request_id = models.IntegerField(null=True)

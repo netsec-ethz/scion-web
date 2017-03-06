@@ -28,7 +28,7 @@ class TestLinkAds(TestCase):
         isd = ISD.objects.create(id=1)
 
         link_types = {
-            'ROUTING': ['ROUTING', 'ROUTING'],
+            'CORE': ['CORE', 'CORE'],
             'PEER': ['PEER', 'PEER'],
             'PARENT_CHILD': ['CHILD', 'PARENT'],
         }

@@ -39,8 +39,10 @@ from topology.generator import (
     DEFAULT_ZK_CONFIG,
 )
 
+# values to be used for generating test data
 IP_ADDRESS_BASE = '127.0.0.1'
-PORT = 50000
+TEST_UDP_PORT = 50000
+TEST_PORT = 31041
 GEN_PATH = os.path.join(PROJECT_ROOT, 'gen')
 
 
@@ -107,6 +109,10 @@ def ip_generator():
 
 
 def create_next_router(topo_dict, ip_gen):
+    """
+    Creates a test router dictionary with generated IP addresses
+    and test values.
+    """
     router_item = find_last_router(topo_dict)
     if router_item:
         _, last_router = router_item
@@ -132,12 +138,12 @@ def create_next_router(topo_dict, ip_gen):
             'Interface': {
                 'AddrType': 'IPV4',
                 'Addr': str(ip_address_pub),
-                'UdpPort': int(PORT),
-                'ToUdpPort': int(PORT),
+                'UdpPort': TEST_UDP_PORT,
+                'ToUdpPort': TEST_UDP_PORT,
                 'IFID': router_index,
             }
         }
-
+    new_router['Port'] = TEST_PORT
     return str(router_index), new_router
 
 
@@ -145,7 +151,7 @@ def link_topologies(first_topo, second_topo, link_type):
     """
 
     link_type:
-    ROUTING -- both are ROUTING
+    CORE -- both are CORE
     PEER -- both are PEER
     PARENT_CHILD -- first_topo is now a parent of second_topo
     """
@@ -175,9 +181,9 @@ def link_topologies(first_topo, second_topo, link_type):
     second_router_if['ISD_AS'] = '{}-{}'.format(first_topo['ISDID'],
                                                 first_ad_id)
 
-    if link_type == 'ROUTING':
-        first_router_if['LinkType'] = 'ROUTING'
-        second_router_if['LinkType'] = 'ROUTING'
+    if link_type == 'CORE':
+        first_router_if['LinkType'] = 'CORE'
+        second_router_if['LinkType'] = 'CORE'
     elif link_type == 'PEER':
         first_router_if['LinkType'] = 'PEER'
         second_router_if['LinkType'] = 'PEER'
