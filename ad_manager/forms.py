@@ -96,7 +96,7 @@ class ConnectionRequestForm(forms.ModelForm):
 
 
 class NewLinkForm(forms.Form):
-    link_types = ['PARENT', 'CHILD', 'PEER', 'ROUTING']
+    link_types = ['PARENT', 'CHILD', 'PEER', 'CORE']
 
     end_point = forms.ModelChoiceField(
         queryset=AD.objects.none(),
