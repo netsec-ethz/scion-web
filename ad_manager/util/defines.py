@@ -13,9 +13,7 @@ COORD_SERVICE_URI = "http://127.0.0.1:8080"
 UPLOAD_JOIN_REQUEST_SVC = "/api/as/uploadJoinRequest/"
 UPLOAD_JOIN_REPLY_SVC = "/api/as/uploadJoinReply/"
 POLL_JOIN_REPLY_SVC = "/api/as/pollJoinReply/"
-UPLOAD_CONN_REQUESTS_SVC = "/api/as/uploadConnRequests/"
-UPLOAD_CONN_REPLIES_SVC = "/api/as/uploadConnReplies/"
-POLL_CONN_REPLIES_SVC = "/api/as/pollConnReplies/"
+UPLOAD_CONN_REQUEST_SVC = "/api/as/uploadConnRequest/"
+UPLOAD_CONN_REPLY_SVC = "/api/as/uploadConnReply/"
+POLL_CONN_REPLY_SVC = "/api/as/pollConnReply/"
 POLL_EVENTS_SVC = "/api/as/pollEvents/"
-
-INITIAL_CERT_VERSION = 0

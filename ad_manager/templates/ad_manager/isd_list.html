@@ -1,3 +1,19 @@
+<!--
+ * Copyright 2017 ETH Zurich
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+-->
+
 {% extends "ad_manager/base.html" %}
 
 {% block content %}
@@ -19,8 +35,13 @@
     {% csrf_token %}
     <div class="form-group">
         <br/>
-        <label class="control-label" class="floor-align-text" for="inputISDtojoin">Create new AS in ISD:</label>
-        <input id="inputISDtojoin" name="inputISDtojoin" type="text">
+        <label class="control-label" class="floor-align-text" for="inputISDToJoin">Create new AS in ISD:</label>
+        <input id="inputISDToJoin" name="inputISDToJoin" type="text">
+        <label class="control-label" class="floor-align-text" for="inputJoinAsACore">Join as a Core AS:</label>
+        <select id="inputJoinAsACore" name="inputJoinAsACore" required>
+            <option value="False" selected>False</option>
+            <option value="True">True</option>
+        </select>
         <button type="button" class="btn" onclick="queryForAsId();">Join</button>
     </div>
   </form>
@@ -50,10 +71,6 @@
             headers:
             { 'X-CSRFToken': $("input[name='csrfmiddlewaretoken']").val() }
         });
-
-        var isd = document.getElementById('inputISDtojoin').value;
-
-        console.log(isd)
         document.getElementById('joinISD').submit();
     }
   </script>

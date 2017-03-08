@@ -1,55 +1,203 @@
+<!--
+ * Copyright 2017 ETH Zurich
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+-->
 <br />
-
 <p>Send a connection request</p>
 <a href="{% url 'new_connection_request' object.as_id %}" class="btn btn-default">New request</a>
 
 {% if user_has_perm %}
+<hr />
+<h2>Received ISD join requests</h2>
+<table class="table" id="received-connection-requests-tbl">
+  <thead>
+    <tr>
+      <th class="col-md-1">RequestId</th>
+      <th class="col-md-3">Requester</th>
+      <th class="col-md-2">Joins as core AS</th>
+      <th class="col-md-6">Actions (Provide a new AS ID to approve)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for request in join_requests %}
+    <tr>
+      <td>{{ request.RequestId }}</td>
+      <td>{{ request.RequesterId }}</td>
+      <td>{{ request.JoinAsACoreAS }}</td>
+      <td class="col-md-3">
+        <form method="POST" action="{% url 'join_request_action' isd_as=isdas request_id=request.RequestId %}" class="request-approve-form">
+          {% csrf_token %}
+          <input type="text" name="sig_pub_key" value="{{ request.SigPubKey }}" class="hidden">
+          <input type="text" name="enc_pub_key" value="{{ request.EncPubKey }}" class="hidden">
+          <input type="text" name="requester" value="{{ request.RequesterId }}" class="hidden">
+          <input type="text" name="join_as_a_core" value="{{ request.JoinAsACoreAS }}" class="hidden">
+          <label class="control-label" class="floor-align-text" for="newASId">ISD{{object.isd_id}}-AS</label>
+          <input id="newASId" name="newASId" type="text">
+          <button type="submit" class="btn btn-success btn-sm" name="_approve_request">
+            Approve
+          </button>
+          <button type="submit" class="btn btn-danger btn-sm" name="_decline_request">
+            Decline
+          </button>
+        </form>
+      </td>
+    {% empty %}
+    <tr>
+      <td colspan="4"><i>No requests</i></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
   <hr />
-  <h2>Received ISD join requests</h2>
-
+  <h2>Received connection requests</h2>
   <table class="table" id="received-connection-requests-tbl">
     <thead>
-    <tr>
-      <th class="col-md-2">Signing key</th>
-      <th class="col-md-2">Encryption key</th>
-      <th class="col-md-3">Info</th>
-      <th class="col-md-2">Actions</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    {% for request in join_requests %}
       <tr>
-        <td>{{ request.enckey }}</td>
-        <td>{{ request.sigkey }}</td>
+        <th class="col-md-1">Created by</th>
+        <th class="col-md-2">Info</th>
+        <th class="col-md-2">Router IP</th>
+        <th class="col-md-1">Overlay type</th>
+        <th class="col-md-1">MTU</th>
+        <th class="col-md-1">Bandwidth</th>
+        <th class="col-md-1">Link type</th>
+        <th class="col-md-1">Timestamp</th>
+        <th class="col-md-1">Status</th>
+        <th class="col-md-2">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for request in received_requests %}
+      <tr class="request-id-{{ request.RequestId }}">
+        <td class="request-id hidden">{{ request.RequestId }}</td>
+        <td class="requester-isd-as" value="{{ request.RequestIA }}">{{ request.RequestIA }}</td>
+        <td class="requester-certificate hidden">{{ request.RequesterCertificate }}</td>
         <td>
-          <pre>{{ request.info }}</pre>
+          <div class="well">{{ request.Info }}</div>
         </td>
-        <td class="col-md-3">
-          <form method="POST" action="{% url 'accept_join' isd_as=isdas request_id=request.id %}" class="request-approve-form">
+        <td>
+          <div class="well requester-ip-port">
+            {{ request.IP }} : <span id="port">{{ request.Port }}</span>
+            <br />
+          </div>
+        </td>
+        <td class="overlay_type">{{ request.OverlayType }}</td>
+        <td class="mtu">{{ request.MTU }}</td>
+        <td class="bandwidth">{{ request.Bandwidth }}</td>
+        <td class="linktype">{{ request.LinkType }}</td>
+        <td class="timestamp">{{ request.Timestamp }}</td>
+        <td class="signature hidden">{{ request.Signature }}</td>
+        <td class="status">{{ request.Status }}</td>
+        <td>
+          <form id="request_action_form" method="POST" action="{% url 'connection_request_action' request.RequestId %}" class="request-approve-form">
             {% csrf_token %}
-            <input type="text" name="sig_pub_key" value="{{ request.sigkey }}" class="hidden">
-            <input type="text" name="enc_pub_key" value="{{ request.enckey }}" class="hidden">
-            <label class="control-label" class="floor-align-text" for="newASname">Joining AS name:</label>
-            <input id="newASname" name="newASname" type="text" required>
-            <button type="submit" class="btn btn-success btn-sm click-confirm" name="_approve_request">
+            <button type="button" class="btn btn-success btn-sm" name="_approve_request" onclick="showAcceptModal({{ request.RequestId }});">
               Approve
             </button>
-            <button type="submit" class="btn btn-danger btn-sm click-confirm" name="_decline_request">
+          </form>
+          <form id="request_action_form" method="POST" action="{% url 'connection_request_action' request.RequestId %}" class="request-decline-form">
+            {% csrf_token %}
+            <button type="button" class="btn btn-danger btn-sm" name="_decline_request" onclick="showDeclineModal({{ request.RequestId }});">
               Decline
             </button>
           </form>
         </td>
-    {% empty %}
+      </tr>
+      {% empty %}
       <tr>
         <td colspan="4"><i>No requests</i></td>
       </tr>
-    {% endfor %}
+      {% endfor %}
     </tbody>
   </table>
-
-  <hr />
-  <h2>Received connection requests</h2>
-  <!-- TODO(ercanucan): To be implemented -->
+  <!-- Accept connection request modal -->
+  <div class="modal fade" data-backdrop="true" id="acceptConnectionModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">Connection reply parameters</h4>
+        </div>
+        <div class="modal-body">
+          <form id="acceptConnectionModalForm" method="POST">
+            {% csrf_token %}
+            <input type="text" id="RespondIA" name="RespondIA" class="hidden" value="{{ object }}">
+            <input type="text" id="RequestIA" name="RequestIA" class="hidden">
+            <input type="text" id="RequestId" name="RequestId" class="hidden">
+            <div class="form-group">
+              <label class="control-label" for="id_router_info">Border Router Information</label>
+              <select class="form-control" id="id_router_info" name="router_info" required="required" title="" type="text">
+                {% for router in routers %}
+                <option>{{ router.interface_addr }}:{{ router.interface_port }} </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="control-label" for="id_overlay_type">Overlay Type</label>
+              <input class="form-control" id="id_overlay_type" name="accepted_overlay_type" placeholder="Overlay Type" required="required" title="" type="text" readonly>
+            </div>
+            <div class="form-group">
+              <label class="control-label" for="id_mtu">MTU</label>
+              <input class="form-control" id="id_mtu" name="accepted_mtu" placeholder="MTU" required="required" title="" type="number" readonly>
+            </div>
+            <div class="form-group">
+              <label class="control-label" for="id_bandwidth">Bandwidth</label>
+              <input class="form-control" id="id_bandwidth" name="accepted_bandwidth" placeholder="Bandwidth" required="required" title="" type="number" readonly>
+            </div>
+            <button type="submit" name="_approve_request">Send Approval</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Decline connection request modal -->
+  <div class="modal fade" data-backdrop="true" id="declineConnectionModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">Decline connection request</h4>
+        </div>
+        <div class="modal-body">
+          <form id="declineConnectionModalForm" method="POST">
+            {% csrf_token %}
+            <input type="text" id="RespondIA" name="RespondIA" class="hidden" value="{{ object }}">
+            <input type="text" id="RequestIA" name="RequestIA" class="hidden">
+            <input type="text" id="RequestId" name="RequestId" class="hidden">
+            <button type="submit" class="click-confirm" name="_decline_request">Send Decline</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    function showAcceptModal(requestID) {
+        $('#acceptConnectionModal').modal('show');
+        var requestSelector = ".request-id-" + requestID;
+        $('#acceptConnectionModal #acceptConnectionModalForm').attr('action', $(requestSelector + " #request_action_form").attr('action'));
+        $('#acceptConnectionModal #RequestId').attr('value', requestID);
+        $('#acceptConnectionModal #RequestIA').attr('value', $($(requestSelector + " .requester-isd-as")[0]).attr('value'));
+        $('#acceptConnectionModal #id_mtu').attr('value', $(requestSelector + " .mtu")[0].innerText); // prepopulate with requested value
+        $('#acceptConnectionModal #id_overlay_type').attr('value', $(requestSelector + " .overlay_type")[0].innerText); // prepopulate with requested value
+        $('#acceptConnectionModal #id_bandwidth').attr('value', $(requestSelector + " .bandwidth")[0].innerText); // prepopulate with requested value
+    }
+    function showDeclineModal(requestID) {
+        $('#declineConnectionModal').modal('show');
+        var requestSelector = ".request-id-" + requestID;
+        $('#declineConnectionModal #declineConnectionModalForm').attr('action', $(requestSelector + " #request_action_form").attr('action'));
+        $('#declineConnectionModal #RequestId').attr('value', requestID);
+        $('#declineConnectionModal #RequestIA').attr('value', $($(requestSelector + " .requester-isd-as")[0]).attr('value'));
+      }
+  </script>
 
 {% endif %}

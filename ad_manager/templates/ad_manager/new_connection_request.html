@@ -8,12 +8,6 @@
 
   <b>Connecting from:</b> <a href="{{ ad.get_absolute_url }}">AS {{ ad }}</a>
   <br />
-  {% if ad.is_open %}
-    This AS is OPEN. Your connection request will be processed automatically.
-  {% else %}
-    This AS is CLOSED. Your connection request will be reviewed by AS admins.
-  {% endif %}
-  <br />
   <br />
 
   <form action="" method="POST">
