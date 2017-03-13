@@ -295,7 +295,8 @@
         "interface_port": 50000,
         "interface_addr": "127.0.0.18",
         "interface_toport": 50000,
-        "neighbor_ad": 3,
+        "neighbor_isd_id": 2,
+        "neighbor_as_id": 3,
         "interface_id": 1,
         "interface_toaddr": "127.0.0.2",
         "neighbor_type": "ROUTING"
@@ -311,7 +312,8 @@
         "interface_port": 50000,
         "interface_addr": "127.0.0.20",
         "interface_toport": 50000,
-        "neighbor_ad": 2,
+        "neighbor_isd_id": 1,
+        "neighbor_as_id": 2,
         "interface_id": 2,
         "interface_toaddr": "127.0.0.40",
         "neighbor_type": "CHILD"
@@ -327,7 +329,8 @@
         "interface_port": 50000,
         "interface_addr": "127.0.0.40",
         "interface_toport": 50000,
-        "neighbor_ad": 1,
+        "neighbor_isd_id": 1,
+        "neighbor_as_id": 1,
         "interface_id": 1,
         "interface_toaddr": "127.0.0.20",
         "neighbor_type": "PARENT"
@@ -343,7 +346,8 @@
         "interface_port": 50000,
         "interface_addr": "127.0.0.2",
         "interface_toport": 50000,
-        "neighbor_ad": 1,
+        "neighbor_isd_id": 1,
+        "neighbor_as_id": 1,
         "interface_id": 1,
         "interface_toaddr": "127.0.0.18",
         "neighbor_type": "ROUTING"
@@ -359,7 +363,8 @@
         "interface_port": 50000,
         "interface_addr": "127.0.0.8",
         "interface_toport": 50000,
-        "neighbor_ad": 5,
+        "neighbor_isd_id": 2,
+        "neighbor_as_id": 5,
         "interface_id": 4,
         "interface_toaddr": "127.0.0.34",
         "neighbor_type": "CHILD"
@@ -375,7 +380,8 @@
         "interface_port": 50000,
         "interface_addr": "127.0.0.4",
         "interface_toport": 50000,
-        "neighbor_ad": 4,
+        "neighbor_isd_id": 2,
+        "neighbor_as_id": 4,
         "interface_id": 2,
         "interface_toaddr": "127.0.0.28",
         "neighbor_type": "CHILD"
@@ -391,7 +397,8 @@
         "interface_port": 50000,
         "interface_addr": "127.0.0.6",
         "interface_toport": 50000,
-        "neighbor_ad": 6,
+        "neighbor_isd_id": 10,
+        "neighbor_as_id": 6,
         "interface_id": 3,
         "interface_toaddr": "127.0.0.12",
         "neighbor_type": "ROUTING"
@@ -407,7 +414,8 @@
         "interface_port": 50000,
         "interface_addr": "127.0.0.28",
         "interface_toport": 50000,
-        "neighbor_ad": 3,
+        "neighbor_isd_id": 2,
+        "neighbor_as_id": 3,
         "interface_id": 1,
         "interface_toaddr": "127.0.0.4",
         "neighbor_type": "PARENT"
@@ -423,7 +431,8 @@
         "interface_port": 50000,
         "interface_addr": "127.0.0.30",
         "interface_toport": 50000,
-        "neighbor_ad": 5,
+        "neighbor_isd_id": 2,
+        "neighbor_as_id": 5,
         "interface_id": 2,
         "interface_toaddr": "127.0.0.36",
         "neighbor_type": "ROUTING"
@@ -439,7 +448,8 @@
         "interface_port": 50000,
         "interface_addr": "127.0.0.34",
         "interface_toport": 50000,
-        "neighbor_ad": 3,
+        "neighbor_isd_id": 2,
+        "neighbor_as_id": 3,
         "interface_id": 1,
         "interface_toaddr": "127.0.0.8",
         "neighbor_type": "PARENT"
@@ -455,7 +465,8 @@
         "interface_port": 50000,
         "interface_addr": "127.0.0.36",
         "interface_toport": 50000,
-        "neighbor_ad": 4,
+        "neighbor_isd_id": 2,
+        "neighbor_as_id": 4,
         "interface_id": 2,
         "interface_toaddr": "127.0.0.30",
         "neighbor_type": "ROUTING"
@@ -471,7 +482,8 @@
         "interface_port": 50000,
         "interface_addr": "127.0.0.12",
         "interface_toport": 50000,
-        "neighbor_ad": 3,
+        "neighbor_isd_id": 2,
+        "neighbor_as_id": 3,
         "interface_id": 1,
         "interface_toaddr": "127.0.0.6",
         "neighbor_type": "ROUTING"
@@ -487,7 +499,8 @@
         "interface_port": 50000,
         "interface_addr": "127.0.0.14",
         "interface_toport": 50000,
-        "neighbor_ad": 7,
+        "neighbor_isd_id": 10,
+        "neighbor_as_id": 7,
         "interface_id": 2,
         "interface_toaddr": "127.0.0.24",
         "neighbor_type": "CHILD"
@@ -503,7 +516,8 @@
         "interface_port": 50000,
         "interface_addr": "127.0.0.24",
         "interface_toport": 50000,
-        "neighbor_ad": 6,
+        "neighbor_isd_id": 10,
+        "neighbor_as_id": 6,
         "interface_id": 1,
         "interface_toaddr": "127.0.0.14",
         "neighbor_type": "PARENT"

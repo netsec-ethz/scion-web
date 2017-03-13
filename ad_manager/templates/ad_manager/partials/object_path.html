@@ -11,7 +11,7 @@ This element is also called 'Breadcrumbs': http://en.wikipedia.org/wiki/Breadcru
   <span class="glyphicon glyphicon-menu-right"></span>
   AS {{ object.as_id }}
   <!-- Mind map icon -->
-  <a href="{% url 'network_view_ad' object.as_id %}">
+  <a href="{% url 'network_view_as' isd_id=object.isd_id as_id=object.as_id %}">
     <img src="{% static 'img/mind_map.png' %}" width="24">
   </a>
 </h1>

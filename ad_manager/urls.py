@@ -92,8 +92,8 @@ misc = patterns(
     '',
     url(r'^network/?$',
         views.network_view, name='network_view'),
-    url(r'^network/(?P<pk>\d+)/?$',
-        views.network_view_neighbors, name='network_view_ad'),
+    url(r'^network/isd/(?P<isd_id>\d+)/as/(?P<as_id>\d+)/?$',
+        views.network_view_neighbors, name='network_view_as'),
     url(r'^coord_service/?$',
         views.coord_service, name='coord_service'),
 )
