@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='routerweb',
             name='neighbor_type',
-            field=models.CharField(choices=[('CHILD', 'CHILD'), ('PARENT', 'PARENT'), ('PEER', 'PEER'), ('ROUTING', 'ROUTING')], max_length=10, default='DEFAULT'),
+            field=models.CharField(choices=[('CHILD', 'CHILD'), ('PARENT', 'PARENT'), ('PEER', 'PEER'), ('CORE', 'CORE')], max_length=10, default='DEFAULT'),
             preserve_default=False,
         ),
     ]

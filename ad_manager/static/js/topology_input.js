@@ -265,7 +265,7 @@ function reloadRouterInterfaceSection(interface_obj, itemSelector) {
             case 'LinkType':
                 var linkType = $(itemSelector + '#inputInterfaceType');
                 $(linkType).attr('value', value);
-                // we need to test if the AS is core, so that in case the link type is routing, the option gets added
+                // we need to test if the AS is core, so that in case the link type is CORE, the option gets added
                 checkShowCoreOption();
                 // remove all previous selected options for this select
                 $(linkType).find("option").removeAttr('selected');

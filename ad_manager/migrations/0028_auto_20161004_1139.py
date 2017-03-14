@@ -86,7 +86,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='connectionrequest',
             name='link_type',
-            field=models.CharField(default='CHILD', max_length=20, choices=[('PARENT', 'PARENT'), ('CHILD', 'CHILD'), ('PEER', 'PEER'), ('ROUTING', 'ROUTING')]),
+            field=models.CharField(default='CHILD', max_length=20, choices=[('PARENT', 'PARENT'), ('CHILD', 'CHILD'), ('PEER', 'PEER'), ('CORE', 'CORE')]),
         ),
         migrations.AddField(
             model_name='connectionrequest',
