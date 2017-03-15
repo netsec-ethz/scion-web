@@ -21,7 +21,6 @@ import os
 import posixpath
 import socket
 import subprocess
-import tarfile
 import time
 import yaml
 from collections import deque
@@ -74,6 +73,10 @@ from ad_manager.models import (
     JoinRequest,
     OrganisationAdmin,
     RouterWeb,
+)
+from ad_manager.util.simple_config.simple_config import (
+    prep_simple_conf_con_req,
+    SimpleConfTemplate,
 )
 from ad_manager.util.hostfile_generator import generate_ansible_hostfile
 from ad_manager.util.local_config_generator import (
@@ -359,7 +362,7 @@ class ConnectionRequestView(FormView):
 
     @method_decorator(login_required)
     def dispatch(self, request, *args, **kwargs):
-        current_as_id = kwargs['pk']
+        current_as_id = kwargs['as_id']
         form = ConnectionRequestForm(pk=current_as_id)
         context = self.get_context_data(form=form)
         if request.method == 'POST':
@@ -368,7 +371,7 @@ class ConnectionRequestView(FormView):
             return self.render_to_response(context)
 
     def _get_ad(self):
-        return get_object_or_404(AD, as_id=self.kwargs['pk'])
+        return get_object_or_404(AD, as_id=self.kwargs['as_id'])
 
     def form_invalid(self, form):
         logger.error('Connection request form is invalid')
@@ -377,27 +380,14 @@ class ConnectionRequestView(FormView):
     def form_valid(self, form):
         if not self.request.user.is_authenticated():
             return HttpResponseForbidden('Authentication required')
-        # get the account_id and secret necessary to query SCION-coord
-        coord = get_object_or_404(OrganisationAdmin,
-                                  user_id=self.request.user.id)
         # create connection_request db object
         con_req = self.create_req_obj(form)
         # prepare connection request dictionary to send
-        con_req_dict = self.prepare_req_dict(con_req)
-        logger.info("Sending Connection Request: %s", con_req_dict)
-        # upload the req to scion-coord
-        request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
-                              UPLOAD_CONN_REQUEST_SVC, coord.account_id,
-                              coord.secret))
-        _, error = post_req_to_scion_coord(
-            request_url, con_req_dict, "connection request %s" % con_req.id)
-        if error is not None:
+        con_req_dict = prep_con_req_dict(con_req, self._get_ad().isd_id,
+                                         self._get_ad().as_id)
+        _, error = send_connection_request(self.request, con_req, con_req_dict)
+        if error:
             return error
-        logging.info("Connection request %s successfully sent.",
-                     con_req_dict['RequestId'])
-        # set the status of the connection request to SENT
-        con_req.status = REQ_SENT
-        con_req.save()
         # update the success URL
         self.success_url = self._get_ad().get_absolute_url()
         return super().form_valid(form)
@@ -431,47 +421,77 @@ class ConnectionRequestView(FormView):
         con_req.save()
         return con_req
 
-    def prepare_req_dict(self, con_req):
-        """
-        Prepares the connection request as a dictionary to be sent to the SCION
-        coordination service.
-        :param ConnectionRequest con_req: Connection request object.
-        :returns: Connection request as a dictionary.
-        :rtype: dict
-        """
-        isd_as = ISD_AS.from_values(self._get_ad().isd.id,
-                                    self._get_ad().as_id)
-        cert_chain = CertificateChain.from_raw(self._get_ad().certificate)
-        con_req_dict = {
-            "RequestId": con_req.id,
-            "Info": con_req.info,
-            "RequestIA": str(isd_as),
-            "RespondIA": con_req.connect_to,
-            "IP": con_req.router_public_ip,
-            "OverlayType": con_req.overlay_type,
-            "MTU": int(con_req.mtu),
-            "Bandwidth": int(con_req.bandwidth),
-            "Timestamp": iso_timestamp(time.time()),
-            "Signature": "",  # TODO(ercanucan): generate and set the signature
-            "Certificate": cert_chain.to_json()
-        }
-        if con_req.router_public_port:
-            con_req_dict["Port"] = int(con_req.router_public_port)
-        # Adjust the link type for the receiving party (i.e if the requestIA
-        # wants to have the respondIA as a PARENT, then the respondIA should
-        # see it as a request to have a CHILD AS.
-        if con_req.link_type == LinkType.PARENT:
-            con_req_dict["LinkType"] = LinkType.CHILD
-        elif con_req.link_type == LinkType.CHILD:
-            con_req_dict["LinkType"] = LinkType.PARENT
-        else:
-            con_req_dict["LinkType"] = con_req.link_type
-        return con_req_dict
-
     def get_context_data(self, **kwargs):
         context_data = super().get_context_data(**kwargs)
         context_data['ad'] = self._get_ad()
         return context_data
+
+
+def prep_con_req_dict(con_req, isd_id, as_id):
+    """
+    Prepares the connection request as a dictionary to be sent to the SCION
+    coordination service.
+    :param ConnectionRequest con_req: Connection request object.
+    :returns: Connection request as a dictionary.
+    :rtype: dict
+    """
+    isd_as = ISD_AS.from_values(isd_id, as_id)
+    as_obj = get_object_or_404(AD, isd_id=isd_id, as_id=as_id)
+    cert_chain = CertificateChain.from_raw(as_obj.certificate)
+    con_req_dict = {
+        "RequestId": con_req.id,
+        "Info": con_req.info,
+        "RequestIA": str(isd_as),
+        "RespondIA": con_req.connect_to,
+        "IP": con_req.router_public_ip,
+        "OverlayType": con_req.overlay_type,
+        "MTU": int(con_req.mtu),
+        "Bandwidth": int(con_req.bandwidth),
+        "Timestamp": iso_timestamp(time.time()),
+        "Signature": "",  # TODO(ercanucan): generate and set the signature
+        "Certificate": cert_chain.to_json()
+    }
+    if con_req.router_public_port:
+        con_req_dict["Port"] = int(con_req.router_public_port)
+    # Adjust the link type for the receiving party (i.e if the requestIA
+    # wants to have the respondIA as a PARENT, then the respondIA should
+    # see it as a request to have a CHILD AS.
+    if con_req.link_type == LinkType.PARENT:
+        con_req_dict["LinkType"] = LinkType.CHILD
+    elif con_req.link_type == LinkType.CHILD:
+        con_req_dict["LinkType"] = LinkType.PARENT
+    else:
+        con_req_dict["LinkType"] = con_req.link_type
+    return con_req_dict
+
+
+@login_required
+def send_connection_request(request, con_req, con_req_dict):
+    """
+    Sends the connection request to SCION Coordination Service.
+    :param HttpRequest request: Django HTTP request passed on through urls.py.
+    :param con_req: Database object of the connection request.
+    :param con_req_dict: Connection request dictionary to be sent.
+    :returns: Tuple containing the response and a Django HTTP error response.
+    :rtype: (requests.Response, django.http.HttpResponse)
+    """
+    # get the account_id and secret necessary to query SCION-coord
+    coord = get_object_or_404(OrganisationAdmin, user_id=request.user.id)
+    logger.info("Sending Connection Request: %s", con_req_dict)
+    con_req_id = con_req_dict['RequestId']
+    # upload the request to scion-coord
+    request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                          UPLOAD_CONN_REQUEST_SVC, coord.account_id,
+                          coord.secret))
+    resp, error = post_req_to_scion_coord(request_url, con_req_dict,
+                                          "connection request %s" % con_req_id)
+    if error is not None:
+        return None, error
+    logging.info("Connection request %s successfully sent.", con_req_id)
+    # set the status of the connection request to SENT
+    con_req.status = REQ_SENT
+    con_req.save()
+    return resp, None
 
 
 @require_POST
@@ -607,6 +627,28 @@ class ADDetailView(DetailView):
         context['received_requests'] = resp['ConnRequests']
         context['received_conn_replies'] = resp['ConnReplies']
         return context
+
+
+@require_POST
+@login_required
+def simple_configuration(request, isd_id, as_id):
+    current_page = request.META.get('HTTP_REFERER')
+    target_isdas = request.POST['inputTargetISDAS']
+    host_IP = request.POST['inputHostIP']
+    yml_str = SimpleConfTemplate.substitute(
+        IP=host_IP, ISD_ID=isd_id, AS_ID=as_id,
+        TARGET_ISDAS=target_isdas)
+    topo_dict = yaml.load(yml_str)
+    as_obj = get_object_or_404(AD, isd_id=int(isd_id), as_id=int(as_id))
+    as_obj.fill_from_topology(topo_dict, clear=True)
+    con_req = prep_simple_conf_con_req(as_obj, topo_dict, request.user)
+    con_req_dict = prep_con_req_dict(con_req, isd_id, as_id)
+    _, error = send_connection_request(request, con_req, con_req_dict)
+    if error:
+        return error
+    messages.success(request, "AS configuration is made with IP %s and "
+                     "connection request sent to %s" % (host_IP, target_isdas))
+    return redirect(current_page)
 
 
 @login_required
@@ -972,32 +1014,6 @@ def get_own_local_ip():
     except OSError:
         logger.error('Network is unreachable')
     return result
-
-
-def add_file_to_tar(new_file, name, tar_file_path):
-    with tarfile.open(tar_file_path, 'a') as tar_archive:
-        tar_archive.add(new_file, name)
-    return
-
-
-def create_dir_in_tar(new_dir_name, new_dir_path, tar_file_path):
-    with tarfile.open(tar_file_path, 'a') as tar_archive:
-        new_dir = tarfile.TarInfo(new_dir_name)
-        new_dir.type = tarfile.DIRTYPE
-        tar_archive.add(new_dir, new_dir_path)
-    return
-
-
-def create_tar_with_file(new_file, name, tar_file_path):
-    with tarfile.open(tar_file_path, 'w:') as tar_archive:
-        tar_archive.add(new_file, name)
-    return
-
-
-def create_tar(tar_file_path):
-    tar_archive = tarfile.open(tar_file_path, 'w:')
-    tar_archive.close()
-    return
 
 
 def write_out_inmemory_uploaded(file, destination_file_path):
