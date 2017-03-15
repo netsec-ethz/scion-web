@@ -78,11 +78,13 @@ ad_patterns = patterns(
         views.generate_topology, name='generate_topology'),
     url(r'^ads/add_to_topology/?$',
         views.add_to_topology, name='add_to_topology'),
+    url(r'^ads/isd/(?P<isd_id>\d+)/as/(?P<as_id>\d+)/simple_configuration/?$',
+        views.simple_configuration, name='simple_configuration'),
 )
 
 connection_request_patterns = patterns(
     '',
-    url(r'^connection_requests/new/(?P<pk>\d+)/?$',
+    url(r'^connection_requests/new/(?P<as_id>\d+)/?$',
         views.ConnectionRequestView.as_view(), name='new_connection_request'),
     url(r'^connection_requests/(?P<con_req_id>\d+)/action/?$',
         views.connection_request_action, name='connection_request_action'),

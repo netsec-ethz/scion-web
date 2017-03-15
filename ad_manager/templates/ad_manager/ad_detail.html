@@ -38,10 +38,11 @@
 
     <!-- Nav tabs -->
     <ul class="nav nav-tabs" role="tablist">
-      <li role="presentation" class="active"><a href="#servers" aria-controls="servers" role="tab" data-toggle="tab">Servers</a></li>
-      <li role="presentation"><a href="#requests" aria-controls="requests" role="tab" data-toggle="tab">Requests</a></li>
-      <li role="presentation"><a href="#replies" aria-controls="replies" role="tab" data-toggle="tab">Replies</a></li>
-      <li role="presentation"><a href="#topology" aria-controls="topology" role="tab" data-toggle="tab">Define topology</a></li>
+      <li role="presentation" class="active"><a href="#servers" aria-controls="servers" role="tab" data-toggle="tab">AS Summary</a></li>
+      <li role="presentation"><a href="#simplemode" aria-controls="simplemode" role="tab" data-toggle="tab">Simple AS Configuration</a></li>
+      <li role="presentation"><a href="#topology" aria-controls="topology" role="tab" data-toggle="tab">Advanced AS Configuration</a></li>
+      <li role="presentation"><a href="#requests_from_own" aria-controls="requests_from_own" role="tab" data-toggle="tab">Requests from My AS</a></li>
+      <li role="presentation"><a href="#requests_from_others" aria-controls="requests_from_others" role="tab" data-toggle="tab">Requests from Other ASes</a></li>
     </ul>
 
     <!-- Tab panes -->
@@ -70,17 +71,10 @@
         <br /><br />
       </div>
 
-      <!-- Requests tab -->
-      <div role="tabpanel" class="tab-pane" id="requests">
+      <!-- Simple Configuration tab -->
+      <div role="tabpanel" class="tab-pane" id="simplemode">
         {% with ad=object %}
-          {% include 'ad_manager/partials/connection_requests.html' %}
-        {% endwith %}
-      </div>
-
-      <!-- Replies tab -->
-      <div role="tabpanel" class="tab-pane" id="replies">
-        {% with ad=object %}
-          {% include 'ad_manager/partials/connection_replies.html' %}
+          {% include 'ad_manager/partials/simple_configuration.html' %}
         {% endwith %}
       </div>
 
@@ -89,6 +83,21 @@
           <br />
           {% include 'ad_manager/partials/topology_input.html' %}
       </div>
+
+      <!-- Requests from Own AS tab -->
+      <div role="tabpanel" class="tab-pane" id="requests_from_own">
+        {% with ad=object %}
+          {% include 'ad_manager/partials/requests_from_own_as.html' %}
+        {% endwith %}
+      </div>
+
+      <!-- Requests from Other ASes tab -->
+      <div role="tabpanel" class="tab-pane" id="requests_from_others">
+        {% with ad=object %}
+          {% include 'ad_manager/partials/requests_from_other_ases.html' %}
+        {% endwith %}
+      </div>
+
     </div>
   </div>
 
