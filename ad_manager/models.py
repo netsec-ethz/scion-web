@@ -374,7 +374,7 @@ class ConnectionRequest(models.Model):
     bandwidth = models.IntegerField(null=True, default=DEFAULT_BANDWIDTH)
     link_type = models.CharField(max_length=20,
                                  choices=zip(LINK_TYPE, LINK_TYPE),
-                                 default='CHILD')
+                                 default='PARENT')
     overlay_type = models.CharField(max_length=20,
                                     choices=zip(OVERLAY_TYPE, OVERLAY_TYPE),
                                     default='UDP/IPv4')
