@@ -25,8 +25,8 @@
 {% block content %}
 
   <h2>
-    {% if pov_ad %}
-      Network graph for <a href="{{ pov_ad.get_absolute_url }}">AS {{ pov_ad }}</a>
+    {% if pov_as %}
+      Network graph for <a href="{{ pov_as.get_absolute_url }}">AS {{ pov_as }}</a>
     {% else %}
       Full network graph
     {% endif %}

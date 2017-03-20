@@ -116,17 +116,17 @@ class ServerAdmin(PrivilegedChangeAdmin):
 
 @admin.register(RouterWeb, site=admin_site)
 class RouterAdmin(ServerAdmin):
-    list_display = ('ad', 'addr', 'neighbor_ad', 'neighbor_type',
-                    'interface_addr', 'interface_toaddr')
+    list_display = ('ad', 'addr', 'neighbor_isd_id', 'neighbor_as_id',
+                    'neighbor_type', 'interface_addr', 'interface_toaddr')
 
     def get_fields(self, request, obj=None):
         # FIXME is there a way to make it more explicit?
-        self.raw_id_fields += ('neighbor_ad',)
+        self.raw_id_fields += ('neighbor_isd_id', 'neighbor_as_id')
         fields = super().get_fields(request, obj)
         fields += ('interface_id',
                    ('interface_addr', 'interface_port'),
                    ('interface_toaddr', 'interface_toport'),
-                   ('neighbor_ad', 'neighbor_type'))
+                   ('neighbor_isd_id', 'neighbor_as_id', 'neighbor_type'))
         return fields
 
 

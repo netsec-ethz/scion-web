@@ -12,14 +12,12 @@
   </thead>
   <tbody>
   {% for router in routers %}
-    <tr id="{{ router.id_str }}">
+    <tr id="{{ router.name }}">
       <td>Router {{ router.name }}</td>
       <td class="text-center">{{ router.addr }}</td>
       <td class="text-center">{{ router.interface_addr }}</td>
       <td class="text-center">{{ router.interface_toaddr }}</td>
-      <td class="text-center">
-        <a href="{{ router.neighbor_ad.get_absolute_url }}">{{ router.neighbor_ad }}</a>
-      </td>
+      <td class="text-center">{{ router.neighbor_isd_id }}-{{ router.neighbor_as_id }}</td>
       <td>{{ router.neighbor_type }}</td>
     </tr>
   {% empty %}

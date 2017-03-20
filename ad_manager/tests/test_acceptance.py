@@ -132,13 +132,9 @@ class TestAdDetail(BasicWebTest):
         router_rows = routers.find_all('tr')[1:]
         for r in ad.routerweb_set.all():
             row = next(filter(lambda x: r.addr in x.text, router_rows))
-            assert str(r.neighbor_ad) in row.text
+            assert str(r.neighbor_isd_id) in row.text
+            assert str(r.neighbor_as_id) in row.text
             assert r.neighbor_type in row.text
-
-        # Test that links to other ASes work
-        ad_2_detail = ad_detail.click(str(self.ads[2]))
-        self.assertEqual(ad_2_detail.status_int, 200)
-        self.assertContains(ad_2_detail, str(self.ads[2]))
 
     def test_labels(self):
         ad = self.ads[1]

@@ -23,19 +23,20 @@ from django.core.urlresolvers import reverse
 from django.db import models, IntegrityError
 
 # SCION
-from ad_manager.util.common import empty_dict
-from ad_manager.util.defines import (
-    DEFAULT_BANDWIDTH,
-    SCION_SUGGESTED_PORT,
-)
-
-# SCION-WEB
 from lib.defines import (
     BEACON_SERVICE,
     CERTIFICATE_SERVICE,
     DEFAULT_MTU,
     PATH_SERVICE,
     SIBRA_SERVICE,
+)
+from lib.packet.scion_addr import ISD_AS
+
+# SCION-WEB
+from ad_manager.util.common import empty_dict
+from ad_manager.util.defines import (
+    DEFAULT_BANDWIDTH,
+    SCION_SUGGESTED_PORT,
 )
 
 PORT = SCION_SUGGESTED_PORT
@@ -167,39 +168,15 @@ class AD(models.Model):
         try:
             for name, router in routers.items():
                 interface = router["Interface"]
-
-                isd_as_split = interface["ISD_AS"].split('-')
-                isd_str = isd_as_split[0]
-                as_str = isd_as_split[1]
-                try:
-                    neighbor_ad = AD.objects.get(as_id=as_str,
-                                                 isd_id=isd_str)
-                except AD.DoesNotExist:
-                    if auto_refs:
-                        # Handles missing references
-                        # breaks circular dependencies by creating empty ASes
-                        # as needed
-                        try:
-                            isd = ISD.objects.get(id=isd_str)
-                        except ISD.DoesNotExist:
-                            isd = ISD(id=isd_str)
-                            isd.save()
-                        as_obj = AD.objects.create(as_id=as_str, isd_id=isd,
-                                                   is_core_ad=0,
-                                                   is_open=False)
-                        as_obj.save()
-
-                        neighbor_ad = AD.objects.get(as_id=as_str,
-                                                     isd_id=isd_str)
-                    else:
-                        raise
-
+                isd_id, as_id = ISD_AS(interface["ISD_AS"])
                 RouterWeb.objects.update_or_create(
                     addr=router["Addr"], ad=self,
                     port=router["Port"],
                     addr_internal='',
                     port_internal=None,
-                    name=name, neighbor_ad=neighbor_ad,
+                    name=name,
+                    neighbor_isd_id=isd_id,
+                    neighbor_as_id=as_id,
                     neighbor_type=interface["LinkType"],
                     interface_addr=interface["Addr"],
                     interface_toaddr=interface["ToAddr"],
@@ -318,7 +295,8 @@ class RouterWeb(SCIONWebElement):
         ('CORE',) * 2,
     )
 
-    neighbor_ad = models.ForeignKey(AD, related_name='neighbors')
+    neighbor_isd_id = models.IntegerField(null=True)
+    neighbor_as_id = models.IntegerField(null=True)
     neighbor_type = models.CharField(max_length=10, choices=NEIGHBOR_TYPES)
 
     interface_id = models.IntegerField()
@@ -329,16 +307,11 @@ class RouterWeb(SCIONWebElement):
     interface_toaddr = models.GenericIPAddressField(null=True)
     interface_toport = models.IntegerField(null=True)
 
-    def id_str(self):
-        return "er{}-{}er{}-{}".format(self.ad.isd_id, self.ad_id,
-                                       self.neighbor_ad.isd_id,
-                                       self.neighbor_ad.as_id)
-
     def get_dict(self):
         out_dict = super(RouterWeb, self).get_dict()
         out_dict['Interface'] = {'NeighborType': self.neighbor_type,
-                                 'NeighborISD': int(self.neighbor_ad.isd_id),
-                                 'NeighborAD': int(self.neighbor_ad.as_id),
+                                 'NeighborISD': self.neighbor_isd_id,
+                                 'NeighborAD': self.neighbor_as_id,
                                  'Addr': str(self.interface_addr),
                                  'AddrType': 'IPV4',
                                  'ToAddr': str(self.interface_toaddr),

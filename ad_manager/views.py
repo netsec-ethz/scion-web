@@ -749,60 +749,69 @@ def coord_service_update(request):
     return redirect(current_page)
 
 
-def _get_partial_graph(pov_ad, rank=1):
+def _get_partial_graph(pov_as, depth=1):
     partial_graph = {}
-    bfs_queue = deque([[pov_ad, rank]])
+    bfs_queue = deque([[pov_as, depth]])
     while bfs_queue:
-        next_ad, ad_rank = bfs_queue.popleft()
-        if next_ad in partial_graph:
+        next_as, as_depth = bfs_queue.popleft()
+        if next_as in partial_graph:
             continue
-
-        ad_routers = next_ad.routerweb_set.all().select_related('neighbor_ad')
+        routers = next_as.routerweb_set.all()
         neighbors = []
-        for router in ad_routers:
-            neighbor_ad = router.neighbor_ad
-            if ad_rank > 0:
-                bfs_queue.append([neighbor_ad, ad_rank - 1])
-            neighbors.append(neighbor_ad)
-        partial_graph[next_ad] = neighbors
+        for router in routers:
+            neighbor_as = _get_neighbor_as(router)
+            if not neighbor_as:
+                continue
+            if as_depth > 0:
+                bfs_queue.append([neighbor_as, as_depth - 1])
+            neighbors.append(neighbor_as)
+        partial_graph[next_as] = neighbors
     return partial_graph
 
 
-def _get_node_object(ad):
+def _get_neighbor_as(router):
+    try:
+        neighbor_as = AD.objects.get(isd_id=router.neighbor_isd_id,
+                                     as_id=router.neighbor_as_id)
+    except AD.DoesNotExist:
+        # if the neighbor AS does not exist in the local DB, return None
+        return None
+    return neighbor_as
+
+
+def _get_node_object(as_obj):
     node_object = {
-        'name': 'AD {}-{}'.format(ad.isd_id, ad.id),
-        'group': ad.isd_id,
-        'url': ad.get_absolute_url(),
-        'networkUrl': reverse('network_view_ad', args=[ad.id]),
-        'core': int(ad.is_core_ad),
+        'name': 'AS %s-%s' % (as_obj.isd_id, as_obj.as_id),
+        'group': as_obj.isd_id,
+        'url': as_obj.get_absolute_url(),
+        'networkUrl': reverse('network_view_as',
+                              args=[as_obj.isd_id, as_obj.as_id]),
+        'core': int(as_obj.is_core_ad),
     }
     return node_object
 
 
-def network_view_neighbors(request, pk):
-    pov_ad = get_object_or_404(AD, id=pk)  # TODO(ercanucan): query by as_id
-    rank = 2
-
-    partial_graph = _get_partial_graph(pov_ad, rank)
-    ad_with_neighbors = partial_graph.keys()
-
+def network_view_neighbors(request, isd_id, as_id):
+    pov_as = get_object_or_404(AD, isd_id=isd_id, as_id=as_id)
+    depth = 2
+    partial_graph = _get_partial_graph(pov_as, depth)
+    as_with_neighbors = partial_graph.keys()
     # Build reverse index
-    ad_index_rev = {}
-    for i, ad in enumerate(ad_with_neighbors):
-        ad_index_rev[ad] = i
-
+    as_index_rev = {}
+    for i, as_id in enumerate(as_with_neighbors):
+        as_index_rev[as_id] = i
     graph = {'nodes': [], 'links': []}
-    for ad in ad_with_neighbors:
-        index = ad_index_rev[ad]
-        neighbors = partial_graph[ad]
-        node_object = _get_node_object(ad)
-        if ad == pov_ad:
+    for as_obj in as_with_neighbors:
+        index = as_index_rev[as_obj]
+        neighbors = partial_graph[as_obj]
+        node_object = _get_node_object(as_obj)
+        if as_obj == pov_as:
             node_object['pov'] = 1
         graph['nodes'].append(node_object)
         for n in neighbors:
-            if n not in ad_index_rev:
+            if n not in as_index_rev:
                 continue
-            neighbor_id = ad_index_rev[n]
+            neighbor_id = as_index_rev[n]
             if index < neighbor_id:
                 graph['links'].append({
                     'source': index,
@@ -811,34 +820,37 @@ def network_view_neighbors(request, pk):
                 })
     return render(request, 'ad_manager/network_view.html',
                   {'data': graph,
-                   'pov_ad': pov_ad})
+                   'pov_as': pov_as})
 
 
 def network_view(request):
     """
     Prepare network graph visualization.
     """
-    all_ads = AD.objects.all().prefetch_related('routerweb_set__neighbor_ad')
-    ad_graph_tmp = []
+    all_ases = AD.objects.all()
+    as_graph_tmp = []
     # Direct and reverse index <-> AS mappings
-    ad_index = {}
-    ad_index_rev = {}
-    for i, ad in enumerate(all_ads):
-        ad_index[i] = ad
-        ad_index_rev[ad] = i
-        ad_routers = ad.routerweb_set.all()
-        ad_graph_tmp.append([r.neighbor_ad for r in ad_routers])
-
-    # Build a list of [list of neighbors for every AD]
-    ad_graph = []
-    for neighbors in ad_graph_tmp:
-        ad_graph.append([ad_index_rev[n] for n in neighbors])
-
+    as_index = {}
+    as_index_rev = {}
+    for i, as_obj in enumerate(all_ases):
+        as_index[i] = as_obj
+        as_index_rev[as_obj] = i
+        routers = as_obj.routerweb_set.all()
+        neighbors = []
+        for router in routers:
+            neighbor_as = _get_neighbor_as(router)
+            if neighbor_as:
+                neighbors.append(neighbor_as)
+        as_graph_tmp.append(neighbors)
+    # Build a list of [list of neighbors for every AS]
+    as_graph = []
+    for neighbors in as_graph_tmp:
+        as_graph.append([as_index_rev[n] for n in neighbors])
     # Translate to D3.js format
     graph = {'nodes': [], 'links': []}
-    for index, neighbors in enumerate(ad_graph):
-        ad = ad_index[index]
-        node_object = _get_node_object(ad)
+    for index, neighbors in enumerate(as_graph):
+        as_obj = as_index[index]
+        node_object = _get_node_object(as_obj)
         graph['nodes'].append(node_object)
         for n in neighbors:
             if index < n:

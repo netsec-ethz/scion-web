@@ -53,8 +53,10 @@ class TestLinkAds(TestCase):
             router1 = ad1.routerweb_set.all()[0]
             router2 = ad2.routerweb_set.all()[0]
 
-            assert router1.neighbor_ad == ad2
-            assert router2.neighbor_ad == ad1
+            assert router1.neighbor_isd_id == ad2.isd.id
+            assert router1.neighbor_as_id == ad2.as_id
+            assert router2.neighbor_isd_id == ad1.isd.id
+            assert router2.neighbor_as_id == ad1.as_id
 
             # Check addresses
             assert router1.interface_toaddr == router2.interface_addr
