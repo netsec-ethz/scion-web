@@ -39,6 +39,8 @@ sys.path.insert(1, dir(SCION_ROOT))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.7/howto/deployment/checklist/
 
+LOG_DIR = os.path.join(WEB_SCION_DIR, 'logs')
+os.makedirs(LOG_DIR, exist_ok=True)
 
 # Application definition
 INSTALLED_APPS = (
@@ -137,7 +139,7 @@ LOGGING = {
         },
         'file': {
             'class': 'logging.FileHandler',
-            'filename': 'logs/scion-web.log',
+            'filename': os.path.join(LOG_DIR, 'scion-web.log'),
         },
     },
     'loggers': {
