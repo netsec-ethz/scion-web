@@ -83,6 +83,7 @@ class AD(models.Model):
     as_id = models.IntegerField(default=-1)
     isd = models.ForeignKey('ISD')
     is_core_ad = models.BooleanField(default=False)
+    simple_conf_mode = models.BooleanField(default=False)
     is_open = models.BooleanField(default=True)
     md_host = models.GenericIPAddressField(default='127.0.0.1')
     original_topology = jsonfield.JSONField(default=empty_dict)

@@ -18,6 +18,9 @@ import json
 import os
 from collections import defaultdict
 
+# External packages
+from django.shortcuts import get_object_or_404
+
 # SCION
 from lib.defines import (BEACON_SERVICE,
                          CERTIFICATE_SERVICE,
@@ -26,6 +29,9 @@ from lib.defines import (BEACON_SERVICE,
                          SIBRA_SERVICE,
                          PROJECT_ROOT)
 from lib.packet.scion_addr import ISD_AS
+
+# SCION-WEB
+from ad_manager.models import AD
 
 
 ZOOKEEPER_SERVICE = "zk"  # TODO: make PR to add into lib.defines as it used to
@@ -50,7 +56,7 @@ def add_new_section(config, section_name):
         pass  # section already exists
 
 
-def fill_section(config, section_name, val, tags, hostname_lookup):
+def fill_section(config, section_name, val, tags, hostname_lookup, simple_mode):
     server_index = 0
     add_new_section(config, section_name)
     for (serv_id, entry) in val:
@@ -60,11 +66,13 @@ def fill_section(config, section_name, val, tags, hostname_lookup):
             hostname = hostname_lookup[entry]
         except KeyError:
             hostname = serv_id  # no hostname defined, use identifier
+        if simple_mode:
+            entry = 'localhost'
         config[section_name][entry] = tags + '={} # {}'.format(server_index,
                                                                hostname)
 
 
-def fill_router_section(config, section_name, val, isd_id, as_id):
+def fill_router_section(config, section_name, val, isd_id, as_id, simple_mode):
     """
     Fills in the router section of the Ansible hostfile.
     Each line in this section has a list of dictionaries for the set of routers
@@ -80,8 +88,11 @@ def fill_router_section(config, section_name, val, isd_id, as_id):
     addr2instances = defaultdict(list)
     addr2name = defaultdict(list)
     for router_name, addr in val:
-        # remove subnet if exists
-        addr = addr.split('/')[0]
+        if simple_mode:
+            addr = 'localhost'
+        else:
+            # remove subnet if exists
+            addr = addr.split('/')[0]
         # extract the instance id from the router name
         _, _, instance_id = router_name[2:].split('-')
         addr2instances[addr].append(instance_id)
@@ -130,6 +141,7 @@ def generate_ansible_hostfile(topology_params, mockup_dict, isd_as,
     config = configparser.ConfigParser(allow_no_value=True, delimiters=' ',
                                        inline_comment_prefixes='#')
     isd_id, as_id = ISD_AS(isd_as)
+    as_obj = get_object_or_404(AD, isd_id=isd_id, as_id=as_id)
     host_file_path = os.path.join(WEB_ROOT, 'gen',
                                   'ISD' + str(isd_id), 'AS' + str(as_id),
                                   'host.{}-{}'.format(isd_id, as_id))
@@ -150,15 +162,18 @@ def generate_ansible_hostfile(topology_params, mockup_dict, isd_as,
             section_name = service_type + 's'
             tags = 'isd=%s as=%s %s' % (isd_id, as_id,
                                         TYPES_TO_SERVICES[service_type])
-            fill_section(config, section_name, val, tags, hostname_lookup)
+            fill_section(config, section_name, val, tags, hostname_lookup,
+                         as_obj.simple_conf_mode)
         elif service_type == 'router':
             section_name = 'border_routers'
-            fill_router_section(config, section_name, val, isd_id, as_id)
+            fill_router_section(config, section_name, val, isd_id, as_id,
+                                as_obj.simple_conf_mode)
         elif service_type == 'zookeeper_service':
             section_name = 'zookeepers'
             tags = 'isd=%s as=%s %s' % (isd_id, as_id,
                                         TYPES_TO_SERVICES[service_type])
-            fill_section(config, section_name, val, tags, hostname_lookup)
+            fill_section(config, section_name, val, tags, hostname_lookup,
+                         as_obj.simple_conf_mode)
             continue  # zookeepers are not to be listed in scion_nodes children
         scion_nodes.append(section_name)
 

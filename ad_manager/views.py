@@ -75,6 +75,7 @@ from ad_manager.models import (
     RouterWeb,
 )
 from ad_manager.util.simple_config.simple_config import (
+    check_simple_conf_mode,
     prep_simple_conf_con_req,
     SimpleConfTemplate,
 )
@@ -640,6 +641,8 @@ def simple_configuration(request, isd_id, as_id):
         TARGET_ISDAS=target_isdas)
     topo_dict = yaml.load(yml_str)
     as_obj = get_object_or_404(AD, isd_id=int(isd_id), as_id=int(as_id))
+    as_obj.simple_conf_mode = True
+    as_obj.save()
     as_obj.fill_from_topology(topo_dict, clear=True)
     con_req = prep_simple_conf_con_req(as_obj, topo_dict, request.user)
     con_req_dict = prep_con_req_dict(con_req, isd_id, as_id)
@@ -924,22 +927,23 @@ def name_entry_dict_router(tp):
 
 @require_POST
 def generate_topology(request):
+    # TODO(ercanucan): This function should be refactored into smaller pieces.
     topology_params = request.POST.copy()
     topology_params.pop('csrfmiddlewaretoken',
                         None)  # remove csrf entry, as we don't need it here
 
-    mockup_dicts = {}
+    topo_dict = {}
     tp = topology_params
     isd_as = tp['inputISD_AS']
     isd_id, as_id = isd_as.split('-')
-    mockup_dicts['Core'] = True if (tp['inputIsCore'] == 'on') else False
+    topo_dict['Core'] = True if (tp['inputIsCore'] == 'on') else False
 
     service_types = ['BeaconServer', 'CertificateServer',
                      'PathServer', 'SibraServer']
 
     for s_type in service_types:
         section_name = s_type+'s'
-        mockup_dicts[section_name] = \
+        topo_dict[section_name] = \
             name_entry_dict(tp.getlist('input{}Name'.format(s_type)),
                             tp.getlist('input{}Address'.format(s_type)),
                             tp.getlist('input{}Port'.format(s_type)),
@@ -947,9 +951,9 @@ def generate_topology(request):
                             tp.getlist('input{}InternalPort'.format(s_type)),
                             )
 
-    mockup_dicts['BorderRouters'] = name_entry_dict_router(tp)
-    mockup_dicts['ISD_AS'] = tp['inputISD_AS']
-    mockup_dicts['MTU'] = st_int(tp['inputMTU'], DEFAULT_MTU)
+    topo_dict['BorderRouters'] = name_entry_dict_router(tp)
+    topo_dict['ISD_AS'] = tp['inputISD_AS']
+    topo_dict['MTU'] = st_int(tp['inputMTU'], DEFAULT_MTU)
 
     # Zookeeper special case
     s_type = 'ZookeeperServer'
@@ -966,13 +970,13 @@ def generate_topology(request):
         zk_dict[int_key] = zk_dict.pop(key)
         int_key += 1
 
-    mockup_dicts['Zookeepers'] = zk_dict
+    topo_dict['Zookeepers'] = zk_dict
 
     # IP:port uniqueness in AS check
     all_ip_port_pairs = []
     for r in ['BeaconServers', 'CertificateServers',
               'PathServers', 'SibraServers', 'Zookeepers']:
-        servers_of_type_r = mockup_dicts[r]
+        servers_of_type_r = topo_dict[r]
         for server in servers_of_type_r:
             curr_pair = servers_of_type_r[server]['Addr'] + ':' + str(
                 servers_of_type_r[server]['Port'])
@@ -983,14 +987,14 @@ def generate_topology(request):
 
     os.makedirs(static_tmp_path, exist_ok=True)
     with open(yaml_topo_path, 'w') as file:
-        yaml.dump(mockup_dicts, file, default_flow_style=False)
+        yaml.dump(topo_dict, file, default_flow_style=False)
 
-    create_local_gen(isd_as, mockup_dicts)
+    create_local_gen(isd_as, topo_dict)
     commit_hash = tp['commitHash']
     # sanitize commit hash from comments, take first part up to |, strip spaces
     commit_hash = (commit_hash.split('|'))[0].strip()
     generate_ansible_hostfile(topology_params,
-                              mockup_dicts,
+                              topo_dict,
                               isd_as,
                               commit_hash)
 
@@ -999,7 +1003,7 @@ def generate_topology(request):
     # TODO : hash displayed queryset and curr_as query set and compare
     # allow the user to write back the new configuration only if it hasn't
     # changed in the meantime
-    curr_as.fill_from_topology(mockup_dicts, clear=True)
+    curr_as.fill_from_topology(topo_dict, clear=True)
 
     current_page = request.META.get('HTTP_REFERER')
     return redirect(current_page)

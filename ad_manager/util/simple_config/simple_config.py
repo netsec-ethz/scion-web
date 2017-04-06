@@ -16,11 +16,17 @@
 import os
 from string import Template
 
+# External packages
+from django.shortcuts import get_object_or_404
+
 # SCION
 from lib.util import read_file
 
 # SCION-WEB
-from ad_manager.models import ConnectionRequest
+from ad_manager.models import (
+    AD,
+    ConnectionRequest,
+)
 
 
 SIMPLE_CONF_OVERLAY_TYPE = 'UDP/IPv4'
@@ -55,3 +61,26 @@ def prep_simple_conf_con_req(as_obj, topo_dict, user):
         link_type=interface['LinkType'],
         info='Hello from SCIONLab User Simple Setup')
     return con_req
+
+
+def check_simple_conf_mode(topo_dict, isd_id, as_id):
+    """
+    Checks if the AS is in simple mode and updates the simple_conf_mode
+    accordingly.
+    """
+    services = ['BeaconServers', 'CertificateServers', 'BorderRouters',
+                'PathServers', 'SibraServers']
+    as_obj = get_object_or_404(AD, isd_id=isd_id, as_id=as_id)
+    service_addrs = set()
+    for service in services:
+        for _, service_instance in topo_dict[service].items():
+            service_addrs.add(service_instance['Addr'])
+    zk_addrs = set()
+    for _, zk_instance in topo_dict['Zookeepers'].items():
+        zk_addrs.add(zk_instance['Addr'])
+    if (len(service_addrs) == 1 and len(zk_addrs) == 1 and
+            '127.0.0.1' in zk_addrs):
+        as_obj.simple_conf_mode = True
+    else:
+        as_obj.simple_conf_mode = False
+    as_obj.save()
