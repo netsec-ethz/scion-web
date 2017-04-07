@@ -33,6 +33,15 @@ WEB_ROOT = os.path.join(PROJECT_ROOT, 'sub', 'web')
 
 SUPPORTED_CLOUD_ENGINES = ['switch_engines', 'amazon_ec2']
 
+TYPES_TO_SERVICES = {
+    'router': ROUTER_SERVICE,
+    'beacon_server': BEACON_SERVICE,
+    'path_server': PATH_SERVICE,
+    'cert_server': CERTIFICATE_SERVICE,
+    'sibra_server': SIBRA_SERVICE,
+    'zookeeper_service': ZOOKEEPER_SERVICE
+}
+
 
 def add_new_section(config, section_name):
     try:
@@ -124,10 +133,6 @@ def generate_ansible_hostfile(topology_params, mockup_dict, isd_as,
     host_file_path = os.path.join(WEB_ROOT, 'gen',
                                   'ISD' + str(isd_id), 'AS' + str(as_id),
                                   'host.{}-{}'.format(isd_id, as_id))
-    # looks up the prefix used for naming supervisor processes,
-    # beacon server -> 'bs', ...
-    lkp = lookup_dict_services_prefixes()
-
     scion_nodes = []  # entries for the scion_node section
     for key, service_type in [('BeaconServer', 'beacon_server'),
                               ('CertificateServer', 'cert_server'),
@@ -143,17 +148,16 @@ def generate_ansible_hostfile(topology_params, mockup_dict, isd_as,
         hostname_lookup = dict(zip(unique_addr, hostnames))
         if service_type.endswith('_server'):
             section_name = service_type + 's'
-            tags = 'isd={} as={} {}'.format(isd_id, as_id,
-                                            lkp[service_type])
+            tags = 'isd=%s as=%s %s' % (isd_id, as_id,
+                                        TYPES_TO_SERVICES[service_type])
             fill_section(config, section_name, val, tags, hostname_lookup)
         elif service_type == 'router':
             section_name = 'border_routers'
             fill_router_section(config, section_name, val, isd_id, as_id)
         elif service_type == 'zookeeper_service':
             section_name = 'zookeepers'
-            tags = 'isd={} as={} {}'.format(isd_id,
-                                            as_id,
-                                            lkp[service_type])
+            tags = 'isd=%s as=%s %s' % (isd_id, as_id,
+                                        TYPES_TO_SERVICES[service_type])
             fill_section(config, section_name, val, tags, hostname_lookup)
             continue  # zookeepers are not to be listed in scion_nodes children
         scion_nodes.append(section_name)
@@ -173,16 +177,3 @@ def generate_ansible_hostfile(topology_params, mockup_dict, isd_as,
 
     with open(host_file_path, 'w') as configfile:
         config.write(configfile, space_around_delimiters=False)
-
-
-def lookup_dict_services_prefixes():
-    # looks up the prefix used for naming supervisor processes,
-    # beacon server -> 'bs', ...
-    # TODO: agree on standard service type naming,
-    # unify with lookup_dict_services_prefixes function in views
-    return {'router': ROUTER_SERVICE,
-            'beacon_server': BEACON_SERVICE,
-            'path_server': PATH_SERVICE,
-            'cert_server': CERTIFICATE_SERVICE,
-            'sibra_server': SIBRA_SERVICE,
-            'zookeeper_service': ZOOKEEPER_SERVICE}
