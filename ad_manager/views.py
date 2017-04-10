@@ -652,7 +652,7 @@ class ADDetailView(DetailView):
         resp = r.json()
         context['join_requests'] = resp['JoinRequests']
         context['received_requests'] = resp['ConnRequests']
-        context['received_conn_replies'] = resp['ReceivedConnReplies']
+        context['received_conn_replies'] = resp['ConnReplies']
         return context
 
 
