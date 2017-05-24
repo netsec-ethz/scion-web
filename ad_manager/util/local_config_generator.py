@@ -21,6 +21,9 @@ from copy import deepcopy
 from shutil import rmtree
 from string import Template
 
+# External packages
+from django.shortcuts import get_object_or_404
+
 # SCION
 from lib.defines import (
     AS_CONF_FILE,
@@ -48,6 +51,7 @@ from topology.generator import PrometheusGenerator
 
 # SCION-WEB
 from ad_manager.models import AD
+from ad_manager.util.simple_config.simple_config import check_simple_conf_mode
 
 
 WEB_ROOT = os.path.join(PROJECT_ROOT, 'sub', 'web')
@@ -78,6 +82,7 @@ def create_local_gen(isdas, tp):
     :param dict tp: the topology parameter file as a dict of dicts
     """
     ia = ISD_AS(isdas)
+    check_simple_conf_mode(tp, ia[0], ia[1])
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
     write_dispatcher_config(local_gen_path)
     as_path = 'ISD%s/AS%s/' % (ia[0], ia[1])
@@ -96,6 +101,7 @@ def create_local_gen(isdas, tp):
             write_topology_file(tp, type_key, instance_path)
             write_zlog_file(service_type, instance_name, instance_path)
     write_endhost_config(tp, ia, local_gen_path)
+    generate_zk_config(tp, ia, local_gen_path)
     generate_prometheus_config(tp, local_gen_path, as_path)
 
 
@@ -335,8 +341,6 @@ def generate_prometheus_config(tp, local_gen_path, as_path):
     Writes Prometheus configuration files for the given AS. Currently only
     generates for border routers.
     :param dict tp: the topology of the AS provided as a dict of dicts.
-    :param str isd_id: ISD the AS belongs to.
-    :param str as_id: AS for which the configuration should be written.
     :param str local_gen_path: The gen path of scion-web.
     :param str as_path: The path of the given AS.
     """
@@ -383,3 +387,45 @@ def write_prometheus_config_file(path, file_paths):
     }
     write_file(os.path.join(path, PROM_FILE),
                yaml.dump(config, default_flow_style=False))
+
+
+def generate_zk_config(tp, isd_as, local_gen_path):
+    """
+    Generates Zookeeper configuration files for Zookeeper instances of an AS.
+    :param dict tp: the topology of the AS provided as a dict of dicts.
+    :param ISD_AS isd_as: ISD-AS for which the ZK config will be written.
+    :param str local_gen_path: The gen path of scion-web.
+    """
+    for zk_id, zk in tp['Zookeepers'].items():
+        instance_name = 'zk%s-%s-%s' % (isd_as[0], isd_as[1], zk_id)
+        write_zk_conf(local_gen_path, isd_as, instance_name, zk)
+
+
+def write_zk_conf(local_gen_path, isd_as, instance_name, zk):
+    """
+    Writes a Zookeeper configuration file for the given Zookeeper instance.
+    :param str local_gen_path: The gen path of scion-web.
+    :param ISD_AS isd_as: ISD-AS for which the ZK config will be written.
+    :param str instance_name: the instance of the ZK service (e.g. zk1-5-1).
+    :param dict zk: Zookeeper instance information from the topology as a
+    dictionary.
+    """
+    as_obj = get_object_or_404(AD, isd_id=isd_as[0], as_id=isd_as[1])
+    conf = {
+        'tickTime': 100,
+        'initLimit': 10,
+        'syncLimit': 5,
+        'dataDir': '/var/lib/zookeeper',
+        'clientPort': zk['Port'],
+        'maxClientCnxns': 0,
+        'autopurge.purgeInterval': 1
+    }
+    if as_obj.simple_conf_mode:
+        conf['clientPortAddress'] = '127.0.0.1'
+    else:
+        # set the dataLogDir only if we are operating in the normal mode.
+        conf['dataLogDir'] = '/run/shm/host-zk'
+
+    zk_conf_path = get_elem_dir(local_gen_path, isd_as, instance_name)
+    zk_conf_file = os.path.join(zk_conf_path, 'zoo.cfg')
+    write_file(zk_conf_file, yaml.dump(conf, default_flow_style=False))
