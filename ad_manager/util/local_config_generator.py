@@ -25,6 +25,12 @@ from string import Template
 from django.shortcuts import get_object_or_404
 
 # SCION
+from lib.crypto.asymcrypto import (
+    get_enc_key_file_path,
+    get_sig_key_file_path,
+)
+from lib.crypto.certificate_chain import get_cert_chain_file_path
+from lib.crypto.trc import get_trc_file_path
 from lib.defines import (
     AS_CONF_FILE,
     GEN_PATH,
@@ -34,10 +40,6 @@ from lib.defines import (
 from lib.packet.scion_addr import ISD_AS
 from lib.util import (
     copy_file,
-    get_cert_chain_file_path,
-    get_enc_key_file_path,
-    get_sig_key_file_path,
-    get_trc_file_path,
     read_file,
     write_file,
 )
