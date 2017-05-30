@@ -31,9 +31,11 @@ from ad_manager.models import (
     SibraServerWeb,
     AD)
 from ad_manager.util.common import is_private_address
+
+from lib.crypto.trc import get_trc_file_path
 from lib.defines import PROJECT_ROOT
 from lib.types import LinkType
-from lib.util import read_file, write_file, get_trc_file_path
+from lib.util import read_file, write_file
 from topology.generator import (
     ConfigGenerator,
     DEFAULT_PATH_POLICY_FILE,

@@ -42,6 +42,7 @@ from django.shortcuts import redirect, get_object_or_404, render
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView, DetailView, FormView
+from nacl.signing import SigningKey
 
 # SCION
 from lib.crypto.asymcrypto import (
@@ -289,7 +290,7 @@ def prep_approved_join_reply(request, join_rep_dict, own_isdas, own_as_obj):
     joining_ia = ISD_AS.from_values(own_isdas[0], joining_as)
     cert = Certificate.from_values(
         str(joining_ia), str(own_isdas), INITIAL_CERT_VERSION, "", False,
-        enc_pub_key, sig_pub_key, signing_as_sig_priv_key
+        enc_pub_key, sig_pub_key, SigningKey(signing_as_sig_priv_key)
     )
     respond_ia_chain = CertificateChain.from_raw(own_as_obj.certificate)
     request_ia_chain = CertificateChain([cert, respond_ia_chain.certs[0]])
