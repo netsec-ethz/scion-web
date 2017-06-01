@@ -7,6 +7,7 @@ Contains constant definitions used for SCION web.
 # Values related to the suggested default values
 DEFAULT_BANDWIDTH = 1000
 SCION_SUGGESTED_PORT = 31000
+PROM_BR_PORT_OFFSET = 100
 
 # Values related to the SCION coordination service API
 COORD_SERVICE_URI = "http://127.0.0.1:8080"
