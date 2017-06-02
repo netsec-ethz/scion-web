@@ -11,14 +11,22 @@
   </tr>
   </thead>
   <tbody>
-  {% for router in routers %}
+  {% for router in border_routers %}
     <tr id="{{ router.name }}">
       <td>Router {{ router.name }}</td>
-      <td class="text-center">{{ router.addr }}</td>
-      <td class="text-center">{{ router.interface_addr }}</td>
-      <td class="text-center">{{ router.interface_toaddr }}</td>
-      <td class="text-center">{{ router.neighbor_isd_id }}-{{ router.neighbor_as_id }}</td>
-      <td>{{ router.neighbor_type }}</td>
+      {% for addr in router_addrs %}
+        {% if router.id == addr.router_id and addr.is_public %}
+          <td class="text-center">{{ addr.addr }}</td>
+          {% for intf in interface_addrs %}
+            {% if addr.id == intf.router_addr_id %}
+              <td class="text-center">{{ intf.addr }}</td>
+              <td class="text-center">{{ intf.remote_addr }}</td>
+              <td class="text-center">{{ intf.neighbor_isd_id }}-{{ intf.neighbor_as_id }}</td>
+              <td>{{ intf.neighbor_type }}</td>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
     </tr>
   {% empty %}
     <tr>

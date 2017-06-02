@@ -55,7 +55,7 @@ from lib.defines import DEFAULT_MTU
 from lib.packet.scion_addr import ISD_AS
 from lib.types import LinkType
 from lib.util import iso_timestamp
-from topology.generator import INITIAL_CERT_VERSION
+from topology.generator import INITIAL_CERT_VERSION, INITIAL_TRC_VERSION
 
 # SCION-WEB
 from ad_manager.forms import (
@@ -65,11 +65,12 @@ from ad_manager.forms import (
 )
 from ad_manager.models import (
     AD,
+    BorderRouterAddress,
+    BorderRouterInterface,
     ConnectionRequest,
     ISD,
     JoinRequest,
     OrganisationAdmin,
-    RouterWeb,
 )
 from ad_manager.util.simple_config.simple_config import (
     prep_simple_conf_con_req,
@@ -285,7 +286,7 @@ def prep_approved_join_reply(request, join_rep_dict, own_isdas, own_as_obj):
     signing_as_sig_priv_key = from_b64(own_as_obj.sig_priv_key)
     joining_ia = ISD_AS.from_values(own_isdas[0], joining_as)
     cert = Certificate.from_values(
-        str(joining_ia), str(own_isdas), INITIAL_CERT_VERSION, "", False,
+        str(joining_ia), str(own_isdas), INITIAL_TRC_VERSION, INITIAL_CERT_VERSION, "", False,
         enc_pub_key, sig_pub_key, SigningKey(signing_as_sig_priv_key)
     )
     respond_ia_chain = CertificateChain.from_raw(own_as_obj.certificate)
@@ -573,11 +574,11 @@ class ADDetailView(DetailView):
         ad = context['object']
 
         # Status tab
-        context['routers'] = ad.routerweb_set.select_related()
-        context['path_servers'] = ad.pathserverweb_set.all()
-        context['certificate_servers'] = ad.certificateserverweb_set.all()
-        context['beacon_servers'] = ad.beaconserverweb_set.all()
-        context['sibra_servers'] = ad.sibraserverweb_set.all()
+        context['services'] = ad.service_set.select_related()
+        context['service_addrs'] = ad.serviceaddress_set.select_related()
+        context['border_routers'] = ad.borderrouter_set.select_related()
+        context['router_addrs'] = ad.borderrouteraddress_set.select_related()
+        context['interface_addrs'] = ad.borderrouterinterface_set.select_related()
 
         context['management_interface_ip'] = get_own_local_ip()
         context['reloaded_topology'] = ad.original_topology
@@ -590,13 +591,16 @@ class ADDetailView(DetailView):
         context['isdas'] = str(ISD_AS.from_values(ad.isd_id, ad.as_id))
 
         # Sort by name numerically
-        lists_to_sort = ['routers', 'path_servers',
-                         'certificate_servers', 'beacon_servers',
-                         'sibra_servers']
-        for list_name in lists_to_sort:
+        for list_name in ['services', 'border_routers']:
             context[list_name] = sorted(
                 context[list_name],
                 key=lambda el: el.name if el.name is not None else -1
+            )
+        # Sort by address numerically
+        for list_name in ['service_addrs', 'router_addrs', 'interface_addrs']:
+            context[list_name] = sorted(
+                context[list_name],
+                key=lambda el: el.addr if el.addr is not None else -1
             )
         # Permissions
         context['user_has_perm'] = self.request.user.has_perm('change_ad', ad)
@@ -670,8 +674,10 @@ def add_to_topology(request):
     ip = con_req.router_public_ip
     port = con_req.router_public_port
     try:
-        router = RouterWeb.objects.get(addr=ip, interface_port=port)
-    except RouterWeb.DoesNotExist:
+        router_intf = BorderRouterInterface.objects.get(addr=ip, l4port=port)
+        router_addr = router_intf.router_addr
+        router = router_addr.router
+    except BorderRouterAddress.DoesNotExist:
         logger.error("Router for connection reply with ID %s not found.",
                      con_reply['RequestId'])
         return HttpResponseNotFound("Router for connection reply with ID %s "
@@ -684,10 +690,10 @@ def add_to_topology(request):
         return HttpResponseNotFound("AS %s was not found"
                                     % con_reply['RequestIA'])
     topo = req_ia.original_topology
-    interface = topo['BorderRouters'][router.name]['Interface']
-    interface['ToAddr'] = con_reply['IP']
+    interface = topo['BorderRouters'][router.name]['Interfaces'][str(router_intf.interface_id)]
+    interface['Remote']['Addr'] = con_reply['IP']
     if "UDP" in con_reply['OverlayType']:
-        interface['ToUdpPort'] = con_reply['Port']
+        interface['Remote']['L4Port'] = con_reply['Port']
     # TODO(ercanucan): verify the other parameters of the request as well?
     req_ia.save()
     # write the updated topology file
@@ -750,10 +756,10 @@ def _get_partial_graph(pov_as, depth=1):
         next_as, as_depth = bfs_queue.popleft()
         if next_as in partial_graph:
             continue
-        routers = next_as.routerweb_set.all()
+        interfaces = next_as.borderrouterinterface_set.all()
         neighbors = []
-        for router in routers:
-            neighbor_as = _get_neighbor_as(router)
+        for intf in interfaces:
+            neighbor_as = _get_neighbor_as(intf)
             if not neighbor_as:
                 continue
             if as_depth > 0:
@@ -763,10 +769,9 @@ def _get_partial_graph(pov_as, depth=1):
     return partial_graph
 
 
-def _get_neighbor_as(router):
+def _get_neighbor_as(intf):
     try:
-        neighbor_as = AD.objects.get(isd_id=router.neighbor_isd_id,
-                                     as_id=router.neighbor_as_id)
+        neighbor_as = AD.objects.get(isd_id=intf.neighbor_isd_id, as_id=intf.neighbor_as_id)
     except AD.DoesNotExist:
         # if the neighbor AS does not exist in the local DB, return None
         return None
@@ -829,10 +834,10 @@ def network_view(request):
     for i, as_obj in enumerate(all_ases):
         as_index[i] = as_obj
         as_index_rev[as_obj] = i
-        routers = as_obj.routerweb_set.all()
+        interfaces = as_obj.borderrouterinterface_set.all()
         neighbors = []
-        for router in routers:
-            neighbor_as = _get_neighbor_as(router)
+        for intf in interfaces:
+            neighbor_as = _get_neighbor_as(intf)
             if neighbor_as:
                 neighbors.append(neighbor_as)
         as_graph_tmp.append(neighbors)
@@ -863,6 +868,7 @@ def wrong_api_call(request):
 
 static_tmp_path = os.path.join(WEB_ROOT, 'ad_manager', 'static', 'tmp')
 yaml_topo_path = os.path.join(static_tmp_path, 'topology.yml')
+json_topo_path = os.path.join(static_tmp_path, 'topology.json')
 
 
 def st_int(s, default):
@@ -876,12 +882,29 @@ def name_entry_dict(name_l, address_l, port_l, addr_int_l, port_int_l):
     for i in range(len(name_l)):
         if address_l[i] == '':
             continue  # don't include empty entries
-        ret_dict[name_l[i]] = {'Addr': address_l[i],
-                               'Port': st_int(port_l[i],
-                                              SCION_SUGGESTED_PORT),
-                               'AddrInternal': addr_int_l[i],
-                               'PortInternal': st_int(port_int_l[i], None)
-                               }
+        ret_dict[name_l[i]] = {
+            'Public': [{
+                'Addr': address_l[i],
+                'L4Port': st_int(port_l[i], SCION_SUGGESTED_PORT),
+            }]
+        }
+        if addr_int_l[i] is not '':
+            ret_dict[name_l[i]]['Bind'] = [{
+                'Addr': addr_int_l[i],
+                'L4Port': st_int(port_int_l[i], None),
+            }]
+    return ret_dict
+
+
+def name_entry_dict_zk(name_l, address_l, port_l, addr_int_l, port_int_l):
+    ret_dict = {}
+    for i in range(len(name_l)):
+        if address_l[i] == '':
+            continue  # don't include empty entries
+        ret_dict[name_l[i]] = {
+            'Addr': address_l[i],
+            'L4Port': st_int(port_l[i], SCION_SUGGESTED_PORT)
+        }
     return ret_dict
 
 
@@ -904,18 +927,35 @@ def name_entry_dict_router(tp):
         if address_list[i] == '':
             continue  # don't include empty entries
         ret_dict[name_list[i]] = {
-            'Addr': address_list[i],
-            'Port': st_int(port_list[i], None),
-            'Interface': {
-                'Addr': interface_list[i],
-                'Bandwidth': st_int(bandwidth_list[i], None),
-                'IFID': st_int(if_id_list[i], None),
-                'ISD_AS': remote_name_list[i],
-                'LinkType': interface_type_list[i],
-                'MTU': st_int(link_mtu_list[i], None),
-                'ToAddr': remote_address_list[i],
-                'ToUdpPort': st_int(remote_port_list[i], None),
-                'UdpPort': st_int(own_port_list[i], None)
+            'InternalAddrs': [{
+                'Public': [{
+                    'Addr': address_list[i],
+                    'L4Port': st_int(port_list[i], None),
+                }],
+                # TODO(jonghoonkwon): Put the 'Bind' field after web UI
+                # provides internal address & port information
+            }],
+            'Interfaces': {
+                st_int(if_id_list[i], None): {
+                    'Bandwidth': st_int(bandwidth_list[i], None),
+                    'ISD_AS': remote_name_list[i],
+                    'LinkType': interface_type_list[i],
+                    # TODO(jonghoonkwon): Initial version of scion web assumes that
+                    # we have only one internal address. Need to be fixed.
+                    'InternalAddrIdx': 0,
+                    'MTU': st_int(link_mtu_list[i], None),
+                    'Overlay': 'UDP/IPv4',
+                    'Public': {
+                        'Addr': interface_list[i],
+                        'L4Port': st_int(own_port_list[i], None),
+                    },
+                    # TODO(jonghoonkwon): Put the 'Bind' field after web UI
+                    # provides internal address & port information
+                    'Remote': {
+                        'Addr': remote_address_list[i],
+                        'L4Port': st_int(remote_port_list[i], None),
+                    }
+                }
             }
         }
     return ret_dict
@@ -934,12 +974,10 @@ def generate_topology(request):
     isd_id, as_id = isd_as.split('-')
     topo_dict['Core'] = True if (tp['inputIsCore'] == 'on') else False
 
-    service_types = ['BeaconServer', 'CertificateServer',
-                     'PathServer', 'SibraServer']
+    service_types = ['BeaconService', 'CertificateService', 'PathService', 'SibraService']
 
     for s_type in service_types:
-        section_name = s_type+'s'
-        topo_dict[section_name] = \
+        topo_dict[s_type] = \
             name_entry_dict(tp.getlist('input{}Name'.format(s_type)),
                             tp.getlist('input{}Address'.format(s_type)),
                             tp.getlist('input{}Port'.format(s_type)),
@@ -950,33 +988,28 @@ def generate_topology(request):
     topo_dict['BorderRouters'] = name_entry_dict_router(tp)
     topo_dict['ISD_AS'] = tp['inputISD_AS']
     topo_dict['MTU'] = st_int(tp['inputMTU'], DEFAULT_MTU)
+    # TODO(jonghoonkwon): We currently assume that the overlay network is 'UDP/IPv4'
+    topo_dict['Overlay'] = 'UDP/IPv4'
 
     # Zookeeper special case
     s_type = 'ZookeeperServer'
-    zk_dict = name_entry_dict(tp.getlist('input{}Name'.format(s_type)),
-                              tp.getlist('input{}Address'.format(s_type)),
-                              tp.getlist('input{}Port'.format(s_type)),
-                              tp.getlist(
-                                  'input{}InternalAddress'.format(s_type)),
-                              tp.getlist('input{}InternalPort'.format(s_type)),
-                              )
+    zk_dict = name_entry_dict_zk(tp.getlist('input{}Name'.format(s_type)),
+                                 tp.getlist('input{}Address'.format(s_type)),
+                                 tp.getlist('input{}Port'.format(s_type)),
+                                 tp.getlist(
+                                    'input{}InternalAddress'.format(s_type)),
+                                 tp.getlist('input{}InternalPort'.format(s_type)),
+                                 )
     named_keys = list(zk_dict.keys())  # copy 'named' keys
     int_key = 1  # dict keys get replaced with numeric keys, 1 based
     for key in named_keys:
         zk_dict[int_key] = zk_dict.pop(key)
         int_key += 1
 
-    topo_dict['Zookeepers'] = zk_dict
+    topo_dict['ZookeeperService'] = zk_dict
 
     # IP:port uniqueness in AS check
-    all_ip_port_pairs = []
-    for r in ['BeaconServers', 'CertificateServers',
-              'PathServers', 'SibraServers', 'Zookeepers']:
-        servers_of_type_r = topo_dict[r]
-        for server in servers_of_type_r:
-            curr_pair = servers_of_type_r[server]['Addr'] + ':' + str(
-                servers_of_type_r[server]['Port'])
-            all_ip_port_pairs.append(curr_pair)
+    all_ip_port_pairs = get_all_ip_port_pairs(topo_dict, service_types)
     if len(all_ip_port_pairs) != len(set(all_ip_port_pairs)):
         return JsonResponse(
             {'data': 'IP:port combinations not unique within AS'})
@@ -999,6 +1032,29 @@ def generate_topology(request):
 
     current_page = request.META.get('HTTP_REFERER')
     return redirect(current_page)
+
+
+def get_all_ip_port_pairs(topo_dict, service_types):
+    """
+    Returns all ip port pairs in the AS for a uniqueness check.
+    :param dict topo_dict: the topology of the AS provided as a dict of dicts.
+    :param list service_types: A list of the service types running inside the AS.
+    :returns: The list containing all IP and Port pairs.
+    :rtype: list
+    """
+    # TODO(ercanucan): This function needs to be more extensive. Currently it considers
+    # only services and only their public addresses. It should be extended to account
+    # for bind addresses, border routers, interfaces and their public/bind addresses.
+    all_ip_port_pairs = []
+    for service_type in service_types:
+        for entry in topo_dict[service_type].values():
+            for addr_info in entry['Public']:
+                curr_pair = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'])
+                all_ip_port_pairs.append(curr_pair)
+    for zk_addr_info in topo_dict['ZookeeperService'].values():
+        curr_pair = "%s:%s" % (zk_addr_info['Addr'], zk_addr_info['L4Port'])
+        all_ip_port_pairs.append(curr_pair)
+    return all_ip_port_pairs
 
 
 def get_own_local_ip():
