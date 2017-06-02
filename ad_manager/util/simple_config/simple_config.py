@@ -68,15 +68,20 @@ def check_simple_conf_mode(topo_dict, isd_id, as_id):
     Checks if the AS is in simple mode and updates the simple_conf_mode
     accordingly.
     """
-    services = ['BeaconServers', 'CertificateServers', 'BorderRouters',
-                'PathServers', 'SibraServers']
+    services = ['BeaconService', 'CertificateService', 'PathService', 'SibraService']
     as_obj = get_object_or_404(AD, isd_id=isd_id, as_id=as_id)
     service_addrs = set()
     for service in services:
         for _, service_instance in topo_dict[service].items():
-            service_addrs.add(service_instance['Addr'])
+            for addr_idx in range(len(service_instance['Public'])):
+                service_addrs.add(service_instance['Public'][addr_idx]['Addr'])
+    br_addrs = set()
+    for _, br_instance in topo_dict['BorderRouters'].items():
+        for br_int_addrs in br_instance['InternalAddrs']:
+            for addr_idx in range(len(br_int_addrs['Public'])):
+                br_addrs.add(br_int_addrs['Public'][addr_idx]['Addr'])
     zk_addrs = set()
-    for _, zk_instance in topo_dict['Zookeepers'].items():
+    for _, zk_instance in topo_dict['ZookeeperService'].items():
         zk_addrs.add(zk_instance['Addr'])
     if (len(service_addrs) == 1 and len(zk_addrs) == 1 and
             '127.0.0.1' in zk_addrs):
