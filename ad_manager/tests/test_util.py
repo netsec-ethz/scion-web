@@ -45,33 +45,35 @@ class TestLinkAds(TestCase):
             ad2 = AD.objects.create(isd=isd, as_id=as_id+1)
             link_ads(ad1, ad2, connection)
 
-            ad1_routers = list(ad1.routerweb_set.all())
-            ad2_routers = list(ad2.routerweb_set.all())
+            ad1_routers = list(ad1.borderrouter_set.all())
+            ad2_routers = list(ad2.borderrouter_set.all())
             assert len(ad1_routers) == 1
             assert len(ad2_routers) == 1
 
-            router1 = ad1.routerweb_set.all()[0]
-            router2 = ad2.routerweb_set.all()[0]
+            router1 = ad1.borderrouteraddress_set.all()[0]
+            router2 = ad2.borderrouteraddress_set.all()[0]
 
-            assert router1.neighbor_isd_id == ad2.isd.id
-            assert router1.neighbor_as_id == ad2.as_id
-            assert router2.neighbor_isd_id == ad1.isd.id
-            assert router2.neighbor_as_id == ad1.as_id
+            router1_intf = ad1.borderrouterinterface_set.all()[0]
+            router2_intf = ad2.borderrouterinterface_set.all()[0]
+
+            assert router1_intf.neighbor_isd_id == ad2.isd.id
+            assert router1_intf.neighbor_as_id == ad2.as_id
+            assert router2_intf.neighbor_isd_id == ad1.isd.id
+            assert router2_intf.neighbor_as_id == ad1.as_id
 
             # Check addresses
-            assert router1.interface_toaddr == router2.interface_addr
-            assert router2.interface_toaddr == router1.interface_addr
+            assert router1_intf.remote_addr == router2_intf.addr
+            assert router2_intf.remote_addr == router1_intf.addr
 
             # Check ports
-            assert router1.interface_toport == router2.interface_port
-            assert router2.interface_toport == router1.interface_port
+            assert router1_intf.remote_l4port == router2_intf.l4port
+            assert router2_intf.remote_l4port == router1_intf.l4port
 
             neighbor_type1, neighbor_type2 = test_connections[connection]
-            assert router1.neighbor_type == neighbor_type1
-            assert router2.neighbor_type == neighbor_type2
+            assert router1_intf.neighbor_type == neighbor_type1
+            assert router2_intf.neighbor_type == neighbor_type2
 
-            ip_addresses += [router1.addr, router1.interface_addr,
-                             router2.addr, router2.interface_addr]
+            ip_addresses += [router1.addr, router1_intf.addr, router2.addr, router2_intf.addr]
             as_id = as_id + 2
 
         # Check that there are no IP duplicates

@@ -51,19 +51,19 @@
       <!-- Server summary tab -->
       <div role="tabpanel" class="tab-pane active" id="servers">
 
-        {% with table_name='Beacon servers' servers=beacon_servers table_id='beacon-servers' %}
+        {% with table_name='Beacon servers' type="bs" servers=services addrs=service_addrs table_id='beacon-servers' %}
           {% include 'ad_manager/partials/server_table.html' %}
         {% endwith %}
 
-        {% with table_name='Certificate servers' servers=certificate_servers table_id='certificate-servers' %}
+        {% with table_name='Certificate servers' type="cs" servers=services addrs=service_addrs table_id='certificate-servers' %}
           {% include 'ad_manager/partials/server_table.html' %}
         {% endwith %}
 
-        {% with table_name='Path servers' servers=path_servers table_id='path-servers' %}
+        {% with table_name='Path servers' type="ps" servers=services addrs=service_addrs table_id='path-servers' %}
           {% include 'ad_manager/partials/server_table.html' %}
         {% endwith %}
 
-        {% with table_name='Sibra servers' servers=sibra_servers table_id='sibra-servers' %}
+        {% with table_name='Sibra servers' type="sb" servers=services addrs=service_addrs table_id='sibra-servers' %}
           {% include 'ad_manager/partials/server_table.html' %}
         {% endwith %}
 

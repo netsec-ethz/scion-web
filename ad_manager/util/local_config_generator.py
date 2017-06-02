@@ -14,10 +14,10 @@
 
 # Stdlib
 import configparser
+import json
 import logging
 import os
 import yaml
-from copy import deepcopy
 from shutil import rmtree
 from string import Template
 
@@ -49,7 +49,7 @@ from topology.generator import (
     INITIAL_TRC_VERSION,
     PATH_POLICY_FILE,
 )
-from topology.generator import PrometheusGenerator
+from topology.generator import PrometheusGenerator, _topo_json_to_yaml
 
 # SCION-WEB
 from ad_manager.models import AD
@@ -68,11 +68,11 @@ TYPES_TO_EXECUTABLES = {
 }
 
 TYPES_TO_KEYS = {
-    'beacon_server': 'BeaconServers',
-    'certificate_server': 'CertificateServers',
+    'beacon_server': 'BeaconService',
+    'certificate_server': 'CertificateService',
     'router': 'BorderRouters',
-    'path_server': 'PathServers',
-    'sibra_server': 'SibraServers'
+    'path_server': 'PathService',
+    'sibra_server': 'SibraService'
 }
 
 
@@ -107,28 +107,6 @@ def create_local_gen(isdas, tp):
     generate_prometheus_config(tp, local_gen_path, as_path)
 
 
-def topo_instance(tp, type_key):
-    #  Little trow away logic handling the NATed case until topo represents
-    # internal and external addresses
-
-    singular_topo = deepcopy(tp)
-    remove_incomplete_router_info(singular_topo)
-    for server_type in singular_topo.keys():  # services know only internal
-        if server_type.endswith("Servers") or server_type == 'Zookeepers':
-            for entry in singular_topo[server_type]:
-                internal_address = singular_topo[server_type][entry].pop(
-                    'AddrInternal')
-                internal_port = singular_topo[server_type][entry].pop(
-                    'PortInternal')
-                if type_key in ('BorderRouters', 'endhost'):
-                    continue  # Routers and endhost only know about external
-                if internal_address != '':
-                    singular_topo[server_type][entry]['Addr'] = internal_address
-                if internal_port is not None:
-                    singular_topo[server_type][entry]['Port'] = internal_port
-    return singular_topo
-
-
 def remove_incomplete_router_info(topo):
     """
     Prevents the incomplete router info being written into the topology file
@@ -138,9 +116,12 @@ def remove_incomplete_router_info(topo):
     """
     routers = topo['BorderRouters']
     complete_routers = {}
+    complete_flag = True
     for name, router in routers.items():
-        if (router['Interface']['ToAddr'] != '' and
-                router['Interface']['ToUdpPort'] != ''):
+        for ifid, intf_dict in router['Interfaces'].items():
+            if (intf_dict['Remote']['Addr'] == '' or intf_dict['Remote']['L4Port'] == ''):
+                complete_flag = False
+        if complete_flag:
             complete_routers[name] = router
     topo['BorderRouters'] = complete_routers
 
@@ -161,7 +142,9 @@ def prep_supervisord_conf(instance_dict, executable_name, service_type, instance
     env_tmpl = 'PYTHONPATH=.,ZLOG_CFG="%s/%s.zlog.conf"'
     if service_type == 'router':  # go router
         env_tmpl += ',GODEBUG="cgocheck=0"'
-        prom_addr = "%s:%s" % (instance_dict['Addr'], instance_dict['Port'] + PROM_BR_PORT_OFFSET)
+        prom_addr = "%s:%s" % (instance_dict['InternalAddrs'][0]['Public'][0]['Addr'],
+                               instance_dict['InternalAddrs'][0]['Public'][0]['L4Port'] +
+                               PROM_BR_PORT_OFFSET)
         cmd = ('bash -c \'exec bin/%s -id "%s" -confd "%s" -prom "%s" &>logs/%s.OUT\'') % (
             executable_name, instance_name, get_elem_dir(GEN_PATH, isd_as, instance_name),
             prom_addr, instance_name)
@@ -227,10 +210,13 @@ def write_topology_file(tp, type_key, instance_path):
     :param str type_key: key to describe service type.
     :param instance_path: the folder to write the file into.
     """
-    path = os.path.join(instance_path, 'topology.yml')
-    topo = topo_instance(tp, type_key)
+    path = os.path.join(instance_path, 'topology.json')
     with open(path, 'w') as file:
-        yaml.dump(topo, file, default_flow_style=False)
+        json.dump(tp, file, indent=2)
+    topo_yml = _topo_json_to_yaml(tp)
+    path = os.path.join(instance_path, 'topology.yml')
+    with open(path, 'w') as file:
+        yaml.dump(topo_yml, file, default_flow_style=False)
 
 
 def write_endhost_config(tp, isd_as, local_gen_path):
@@ -350,7 +336,12 @@ def generate_prometheus_config(tp, local_gen_path, as_path):
     """
     router_list = []
     for router in tp['BorderRouters'].values():
-        router_list.append("%s:%s" % (router['Addr'], router['Port'] + PROM_BR_PORT_OFFSET))
+        for int_addr_idx in range(len(router['InternalAddrs'])):
+            for addr_idx in range(len(router['InternalAddrs'][int_addr_idx]['Public'])):
+                router_list.append("%s:%s" % (
+                    router['InternalAddrs'][int_addr_idx]['Public'][addr_idx]['Addr'],
+                    router['InternalAddrs'][int_addr_idx]['Public'][addr_idx]['L4Port'] +
+                    PROM_BR_PORT_OFFSET))
     targets_path = os.path.join(as_path, PrometheusGenerator.PROM_DIR,
                                 PrometheusGenerator.BR_TARGET_FILE)
     target_config = [{'targets': router_list}]
@@ -400,7 +391,7 @@ def generate_zk_config(tp, isd_as, local_gen_path):
     :param ISD_AS isd_as: ISD-AS for which the ZK config will be written.
     :param str local_gen_path: The gen path of scion-web.
     """
-    for zk_id, zk in tp['Zookeepers'].items():
+    for zk_id, zk in tp['ZookeeperService'].items():
         instance_name = 'zk%s-%s-%s' % (isd_as[0], isd_as[1], zk_id)
         write_zk_conf(local_gen_path, isd_as, instance_name, zk)
 
@@ -420,7 +411,7 @@ def write_zk_conf(local_gen_path, isd_as, instance_name, zk):
         'initLimit': 10,
         'syncLimit': 5,
         'dataDir': '/var/lib/zookeeper',
-        'clientPort': zk['Port'],
+        'clientPort': zk['L4Port'],
         'maxClientCnxns': 0,
         'autopurge.purgeInterval': 1
     }
