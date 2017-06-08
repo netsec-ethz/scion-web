@@ -30,11 +30,11 @@ from django.contrib import messages
 from django.conf.global_settings import TEMPLATE_CONTEXT_PROCESSORS as TCP
 
 WEB_SCION_DIR = dir(dir(dir(os.path.abspath(__file__))))
-SCION_ROOT = dir(WEB_SCION_DIR)
-sys.path.insert(0, SCION_ROOT)
-
-# for users who don't dynamically add content root to their PATHONPATH
-sys.path.insert(1, dir(SCION_ROOT))
+SCION_ROOT_DIR = dir(dir(WEB_SCION_DIR))
+SCION_PYTHON_ROOT_DIR = os.path.join(SCION_ROOT_DIR, 'python')
+sys.path.insert(0, WEB_SCION_DIR)
+sys.path.insert(0, SCION_ROOT_DIR)
+sys.path.insert(0, SCION_PYTHON_ROOT_DIR)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.7/howto/deployment/checklist/
