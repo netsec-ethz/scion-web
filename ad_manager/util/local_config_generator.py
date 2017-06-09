@@ -54,7 +54,7 @@ from topology.generator import PrometheusGenerator
 # SCION-WEB
 from ad_manager.models import AD
 from ad_manager.util.simple_config.simple_config import check_simple_conf_mode
-
+from ad_manager.util.defines import PROM_BR_PORT_OFFSET
 
 WEB_ROOT = os.path.join(PROJECT_ROOT, 'sub', 'web')
 logger = logging.getLogger("scion-web")
@@ -94,8 +94,8 @@ def create_local_gen(isdas, tp):
         executable_name = TYPES_TO_EXECUTABLES[service_type]
         instances = tp[type_key].keys()
         for instance_name in instances:
-            config = prep_supervisord_conf(executable_name, service_type,
-                                           instance_name, ia)
+            config = prep_supervisord_conf(tp[type_key][instance_name], executable_name,
+                                           service_type, instance_name, ia)
             instance_path = get_elem_dir(local_gen_path, ia, instance_name)
             write_certs_trc_keys(ia, instance_path)
             write_as_conf_and_path_policy(ia, instance_path)
@@ -145,11 +145,11 @@ def remove_incomplete_router_info(topo):
     topo['BorderRouters'] = complete_routers
 
 
-def prep_supervisord_conf(executable_name, service_type, instance_name,
-                          isd_as):
+def prep_supervisord_conf(instance_dict, executable_name, service_type, instance_name, isd_as):
     """
     Prepares the supervisord configuration for the infrastructure elements
     and returns it as a ConfigParser object.
+    :param dict instance_dict: topology information of the given instance.
     :param str executable_name: the name of the executable.
     :param str service_type: the type of the service (e.g. beacon_server).
     :param str instance_name: the instance of the service (e.g. br1-8-1).
@@ -161,12 +161,14 @@ def prep_supervisord_conf(executable_name, service_type, instance_name,
     env_tmpl = 'PYTHONPATH=.,ZLOG_CFG="%s/%s.zlog.conf"'
     if service_type == 'router':  # go router
         env_tmpl += ',GODEBUG="cgocheck=0"'
-        cmd_tmpl = ("bash -c 'exec bin/%s -id \"%s\" -confd \"%s\""
-                    " &>logs/%s.OUT'")
+        prom_addr = "%s:%s" % (instance_dict['Addr'], instance_dict['Port'] + PROM_BR_PORT_OFFSET)
+        cmd = ('bash -c \'exec bin/%s -id "%s" -confd "%s" -prom "%s" &>logs/%s.OUT\'') % (
+            executable_name, instance_name, get_elem_dir(GEN_PATH, isd_as, instance_name),
+            prom_addr, instance_name)
     else:  # other infrastructure elements
-        cmd_tmpl = "bash -c 'exec bin/%s \"%s\" \"%s\" &>logs/%s.OUT'"
-    cmd = cmd_tmpl % (executable_name, instance_name, get_elem_dir(
-        GEN_PATH, isd_as, instance_name), instance_name)
+        cmd = ('bash -c \'exec bin/%s "%s" "%s" &>logs/%s.OUT\'') % (
+            executable_name, instance_name, get_elem_dir(GEN_PATH, isd_as, instance_name),
+            instance_name)
     env = env_tmpl % (get_elem_dir(GEN_PATH, isd_as, instance_name),
                       instance_name)
     config['program:' + instance_name] = {
@@ -348,7 +350,7 @@ def generate_prometheus_config(tp, local_gen_path, as_path):
     """
     router_list = []
     for router in tp['BorderRouters'].values():
-        router_list.append("%s:%s" % (router['Addr'], router['Port']))
+        router_list.append("%s:%s" % (router['Addr'], router['Port'] + PROM_BR_PORT_OFFSET))
     targets_path = os.path.join(as_path, PrometheusGenerator.PROM_DIR,
                                 PrometheusGenerator.BR_TARGET_FILE)
     target_config = [{'targets': router_list}]
