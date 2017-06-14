@@ -20,7 +20,6 @@ import logging
 import os
 import posixpath
 import socket
-import subprocess
 import time
 import yaml
 from collections import deque
@@ -52,10 +51,7 @@ from lib.crypto.asymcrypto import (
 from lib.crypto.certificate import Certificate
 from lib.crypto.certificate_chain import CertificateChain
 from lib.crypto.trc import TRC
-from lib.defines import (
-    DEFAULT_MTU,
-    PROJECT_ROOT,
-)
+from lib.defines import DEFAULT_MTU
 from lib.packet.scion_addr import ISD_AS
 from lib.types import LinkType
 from lib.util import iso_timestamp
@@ -985,10 +981,6 @@ def generate_topology(request):
         return JsonResponse(
             {'data': 'IP:port combinations not unique within AS'})
 
-    os.makedirs(static_tmp_path, exist_ok=True)
-    with open(yaml_topo_path, 'w') as file:
-        yaml.dump(topo_dict, file, default_flow_style=False)
-
     create_local_gen(isd_as, topo_dict)
     commit_hash = tp['commitHash']
     # sanitize commit hash from comments, take first part up to |, strip spaces
@@ -1029,19 +1021,6 @@ def write_out_inmemory_uploaded(file, destination_file_path):
     return
 
 
-def create_global_gen(topo_path):
-    # ./scion.sh topology -c '/../scion/topology/Switzerland.topo'
-    # we reuse the generation facility provided by scion.sh
-    scion_sh_path = os.path.join(PROJECT_ROOT, 'scion.sh')
-    result = subprocess.check_call([scion_sh_path, 'topology',
-                                    '-c', topo_path,
-                                    '-o', os.path.join(PROJECT_ROOT,
-                                                       'deploy-gen')
-                                    ],
-                                   cwd=PROJECT_ROOT)
-    return result
-
-
 def handle_uploaded_file(f):
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
     os.makedirs(local_gen_path, exist_ok=True)  # create the folder if not there
@@ -1059,14 +1038,10 @@ def upload_file(request):
     elif request.method == 'POST':
         form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
-            if '_upload_topo' in request.POST:
-                path = handle_uploaded_file(request.FILES['file'])
-                create_global_gen(path)  # to get the trc file
-            elif '_upload_init_topo' in request.POST:
-                path = []
-                for topo_file in request.FILES.getlist('file'):
-                    path.append(handle_uploaded_file(topo_file))
-                reload_data_from_files(path, on_the_fly_refs=True)
+            path = []
+            for topo_file in request.FILES.getlist('file'):
+                path.append(handle_uploaded_file(topo_file))
+            reload_data_from_files(path, on_the_fly_refs=True)
         return redirect(current_page)
     else:
         return redirect(current_page)
