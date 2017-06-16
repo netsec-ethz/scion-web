@@ -47,7 +47,7 @@
 
     <br/>
 
-    {% with 'Beacon Certificate Domain Path' as serverTypes %}
+    {% with 'Beacon Certificate Path' as serverTypes %}
     {% for type in serverTypes.split %}
     <div class="control-group well {% if forloop.counter0 == 2 %}hidden{% endif %}">
       <div class="chevron {% if forloop.counter0 == 2 %}collapsed{% endif %}" data-toggle="collapse"
@@ -61,26 +61,26 @@
       <br/>
       <div class="{{ type }}Item item" id="{{ type }}Item-1">
 
-        <input class="hidden" type="text" id="input{{ type }}ServerType" name="input{{ type }}ServerType" title="server type"
+        <input class="hidden" type="text" id="input{{ type }}ServiceType" name="input{{ type }}ServiceType" title="server type"
         value="{{ type|lower }}_server">
-        <label class="control-label col-sm-2 server-name-label" for="input{{ type }}ServerName">Server name: </label>
+        <label class="control-label col-sm-2 server-name-label" for="input{{ type }}ServiceName">Service name: </label>
         <div class="form-group">
           <div class="controls">
-            <input class="server-name-input" type="text" id="input{{ type }}ServerName" name="input{{ type }}ServerName"
+            <input class="server-name-input" type="text" id="input{{ type }}ServiceName" name="input{{ type }}ServiceName"
             value="{{ type|lower|slice:":1" }}s{{ isd_id }}-{{ as_id }}-1">
           </div>
         </div>
 
-        <label class="control-label col-sm-2 server-address-label" for="input{{ type }}ServerAddress">Address &
+        <label class="control-label col-sm-2 server-address-label" for="input{{ type }}ServiceAddress">Address &
           port: </label>
           <div class="controls">
-            <input class="server-address-input" type="text" id="input{{ type }}ServerAddress" name="input{{ type }}ServerAddress"
+            <input class="server-address-input" type="text" id="input{{ type }}ServiceAddress" name="input{{ type }}ServiceAddress"
             placeholder="127.0.0.{{ forloop.counter0|add:49 }}" value=""> :
-            <input class="server-port-input inputPort" id="input{{ type }}ServerPort" name="input{{ type }}ServerPort"
+            <input class="server-port-input inputPort" id="input{{ type }}ServicePort" name="input{{ type }}ServicePort"
             placeholder="{{ forloop.counter0|add:1025 }}" type="text">
-            <label class="server-internal-address-label m-l-3" for="input{{ type }}ServerInternalAddress">Internal address & port: </label>
-            <input class="server-internal-address-input" id="input{{ type }}ServerInternalAddress" name="input{{ type }}ServerInternalAddress" type="text"> :
-            <input class="server-internal-port-input inputPort" id="input{{ type }}ServerInternalPort" name="input{{ type }}ServerInternalPort"
+            <label class="server-internal-address-label m-l-3" for="input{{ type }}ServiceInternalAddress">Internal address & port: </label>
+            <input class="server-internal-address-input" id="input{{ type }}ServiceInternalAddress" name="input{{ type }}ServiceInternalAddress" type="text"> :
+            <input class="server-internal-port-input inputPort" id="input{{ type }}ServiceInternalPort" name="input{{ type }}ServiceInternalPort"
             placeholder="" type="text">
             <button class="btn btn-success btn-add pull-right" type="button"
             onclick="toggleInput(this);">
@@ -217,24 +217,24 @@
                 <br/>
                 <div class="SibraItem item" id="SibraItem-1">
 
-                  <input class="hidden" type="text" id="inputSibraServerType" name="inputSibraServerType" title="server type"
+                  <input class="hidden" type="text" id="inputSibraServiceType" name="inputSibraServiceType" title="server type"
                   value="sibra_server">
-                  <label class="control-label col-sm-2 server-name-label" for="inputSibraServerName">Server name: </label>
+                  <label class="control-label col-sm-2 server-name-label" for="inputSibraServiceName">Server name: </label>
                   <div class="form-group">
                     <div class="controls">
-                      <input class="server-name-input" type="text" id="inputSibraServerName" name="inputSibraServerName" value="sb{{ isd_id }}-{{ as_id }}-1">
+                      <input class="server-name-input" type="text" id="inputSibraServiceName" name="inputSibraServiceName" value="sb{{ isd_id }}-{{ as_id }}-1">
                     </div>
                   </div>
 
-                  <label class="control-label col-sm-2 server-address-label" for="inputSibraServerAddress">Address & port: </label>
+                  <label class="control-label col-sm-2 server-address-label" for="inputSibraServiceAddress">Address & port: </label>
                   <div class="controls">
-                    <input class="server-address-input" type="text" id="inputSibraServerAddress" name="inputSibraServerAddress"
+                    <input class="server-address-input" type="text" id="inputSibraServiceAddress" name="inputSibraServiceAddress"
                     placeholder="127.0.0.54"> :
-                    <input class="server-port-input inputPort" id="inputSibraServerPort" name="inputSibraServerPort"
+                    <input class="server-port-input inputPort" id="inputSibraServicePort" name="inputSibraServicePort"
                     placeholder="2048" type="text">
-                    <label class="server-internal-address-label m-l-3" for="inputSibraServerInternalAddress">Internal address & port: </label>
-                    <input class="server-internal-address-input" id="inputSibraServerInternalAddress" name="inputSibraServerInternalAddress" type="text"> :
-                    <input class="server-internal-port-input inputPort" id="inputSibraServerInternalPort" name="inputSibraServerInternalPort"
+                    <label class="server-internal-address-label m-l-3" for="inputSibraServiceInternalAddress">Internal address & port: </label>
+                    <input class="server-internal-address-input" id="inputSibraServiceInternalAddress" name="inputSibraServiceInternalAddress" type="text"> :
+                    <input class="server-internal-port-input inputPort" id="inputSibraServiceInternalPort" name="inputSibraServiceInternalPort"
                     placeholder="" type="text">
                     <button class="btn btn-success btn-add pull-right" type="button"
                     onclick="toggleInput(this);">
@@ -320,7 +320,7 @@
 
         <br/>
         <div class="control-group">
-          <button id="submitButton" type="button" class="btn" onclick="checkFreshness({{ isd_id }}, {{ as_id }});">Save to topology file</button>
+          <button id="submitButton" type="button" class="btn" onclick=checkFreshness("{% url 'topo_hash' isd_id as_id %}");>Save to topology file</button>
           <div id="forceSubmitDiv" class="hidden">
             <label class="control-label" for="forceSubmit">Force submit: </label>
             <input id="forceSubmit" name="forceSubmit" type="checkbox" value="false"/>

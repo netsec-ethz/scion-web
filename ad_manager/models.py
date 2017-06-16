@@ -16,6 +16,7 @@
 import copy
 import logging
 
+
 # External packages
 import jsonfield
 from django.contrib.auth.models import User
@@ -35,6 +36,7 @@ from lib.packet.scion_addr import ISD_AS
 # SCION-WEB
 from ad_manager.util.common import empty_dict
 from ad_manager.util.defines import (
+    ADDR_TYPES,
     DEFAULT_BANDWIDTH,
     SCION_SUGGESTED_PORT,
 )
@@ -112,27 +114,25 @@ class AD(models.Model):
         out_dict.update({
             'ISDID': int(self.isd_id), 'ADID': int(self.as_id),
             'Core': int(self.is_core_ad),
-            'BorderRouters': {}, 'PathServers': {}, 'BeaconServers': {},
-            'CertificateServers': {}, 'SibraServers': {},
+            'BorderRouters': {}, 'PathService': {}, 'BeaconService': {},
+            'CertificateService': {}, 'SibraService': {},
         })
-        for router in self.routerweb_set.all():
+        for router in self.borderrouter_set.all():
             out_dict['BorderRouters'][str(router.name)] = router.get_dict()
-        for ps in self.pathserverweb_set.all():
-            out_dict['PathServers'][str(ps.name)] = ps.get_dict()
-        for bs in self.beaconserverweb_set.all():
-            out_dict['BeaconServers'][str(bs.name)] = bs.get_dict()
-        for cs in self.certificateserverweb_set.all():
-            out_dict['CertificateServers'][str(cs.name)] = cs.get_dict()
-        for sb in self.sibraserverweb_set.all():
-            out_dict['SibraServers'][str(sb.name)] = sb.get_dict()
+        for service in self.service_set.all():
+            if 'bs' in service.name:
+                out_dict['BeaconService'][str(service.name)] = service.get_dict()
+            elif 'ps' in service.name:
+                out_dict['PathService'][str(service.name)] = service.get_dict()
+            elif 'cs' in service.name:
+                out_dict['CertificateService'][str(service.name)] = service.get_dict()
+            elif 'sb' in service.name:
+                out_dict['SibraService'][str(service.name)] = service.get_dict()
         return out_dict
 
     def get_all_elements(self):
-        elements = [self.routerweb_set.all(),
-                    self.pathserverweb_set.all(),
-                    self.beaconserverweb_set.all(),
-                    self.certificateserverweb_set.all(),
-                    self.sibraserverweb_set.all()]
+        elements = [self.borderrouter_set.all(),
+                    self.service_set.all()]
         for element_group in elements:
             for element in element_group:
                 yield element
@@ -142,6 +142,89 @@ class AD(models.Model):
         element_ids = [element.id_str() for element in all_elements]
         return element_ids
 
+    def fill_router_info(self, router_dict):
+        """
+        Update the router information in the database.
+        (i.e., BorderRouter and BorderRouterAddress.)
+        :param dict router_dict: topo_dict['BorderRouters']
+        """
+        for name, router in router_dict.items():
+            br_obj, _ = BorderRouter.objects.update_or_create(name=name, ad=self)
+            br_addr_idx = []
+            for int_addr_idx in range(len(router['InternalAddrs'])):
+                for attr in ADDR_TYPES:
+                    router_addr = router['InternalAddrs'][int_addr_idx]
+                    if attr not in router_addr.keys():
+                        continue
+                    for addr_idx in range(len(router_addr[attr])):
+                        addr = router_addr[attr][addr_idx]['Addr']
+                        port = router_addr[attr][addr_idx]['L4Port']
+                        if not port:
+                            port = router_addr['Public'][addr_idx]['L4Port']
+                        addr_type = _check_ip_addr(addr)
+                        if not addr_type:
+                            logging.error("Given IP address is invalid: %s(%s)" % (name, addr))
+                        br_addr_obj, _ = BorderRouterAddress.objects.update_or_create(
+                            addr=addr,
+                            l4port=port,
+                            addr_type=addr_type,
+                            is_public=(attr == 'Public'),
+                            router=br_obj,
+                            ad=self
+                        )
+                        br_addr_idx.append(br_addr_obj)
+            for if_id, intf in router["Interfaces"].items():
+                isd_id, as_id = ISD_AS(intf["ISD_AS"])
+                br_addr_obj = br_addr_idx[intf['InternalAddrIdx']]
+                br_inft_obj, _ = BorderRouterInterface.objects.update_or_create(
+                    addr=intf['Public']['Addr'],
+                    l4port=intf['Public']['L4Port'],
+                    remote_addr=intf['Remote']['Addr'],
+                    remote_l4port=intf['Remote']['L4Port'],
+                    internal_addr_idx=intf['InternalAddrIdx'],
+                    interface_id=if_id,
+                    bandwidth=intf['Bandwidth'],
+                    mtu=intf['MTU'],
+                    neighbor_isd_id=isd_id,
+                    neighbor_as_id=as_id,
+                    neighbor_type=intf["LinkType"],
+                    router_addr=br_addr_obj,
+                    ad=self
+                )
+                if 'Bind' in intf.keys():
+                    br_inft_obj.update(
+                        bind_addr=intf['Public']['Addr'],
+                        bind_l4port=intf['Public']['L4Port'],
+                    )
+
+    def fill_service_info(self, service_dict):
+        """
+        Update the service information in the database.
+        (i.e., Service and ServiceAddress tables.)
+        :param dict service_dict: (e.g., topo_dict['BeaconService'])
+        """
+        for name, service in service_dict.items():
+            srv_obj, _ = Service.objects.update_or_create(name=name, ad=self)
+            for attr in ADDR_TYPES:
+                if attr not in service.keys():
+                    continue
+                for addr_idx in range(len(service[attr])):
+                    addr = service[attr][addr_idx]["Addr"]
+                    port = service[attr][addr_idx]["L4Port"]
+                    if not port and attr is 'Bind':
+                        port = service['Public'][addr_idx]['L4Port']
+                    addr_type = _check_ip_addr(addr)
+                    if not addr_type:
+                        logging.error("Given IP address is invalid: %s(%s)" % (name, addr))
+                    srv_addr_obj, _ = ServiceAddress.objects.update_or_create(
+                        addr=addr,
+                        l4port=port,
+                        addr_type=addr_type,
+                        is_public=(attr == 'Public'),
+                        service=srv_obj,
+                        ad=self
+                    )
+
     def fill_from_topology(self, topology_dict, clear=False, auto_refs=False):
         """
         Add infrastructure elements (servers, routers) to the AD, extracted
@@ -150,77 +233,29 @@ class AD(models.Model):
         assert isinstance(topology_dict, dict), 'Dictionary expected'
 
         if clear:
-            self.routerweb_set.all().delete()
-            self.pathserverweb_set.all().delete()
-            self.certificateserverweb_set.all().delete()
-            self.beaconserverweb_set.all().delete()
-            self.sibraserverweb_set.all().delete()
+            self.borderrouter_set.all().delete()
+            self.borderrouteraddress_set.all().delete()
+            self.borderrouterinterface_set.all().delete()
+            self.service_set.all().delete()
+            self.serviceaddress_set.all().delete()
 
         self.original_topology = topology_dict
         self.is_core_ad = (topology_dict['Core'] == 1)
         self.save()
 
         routers = topology_dict["BorderRouters"]
-        beacon_servers = topology_dict["BeaconServers"]
-        certificate_servers = topology_dict["CertificateServers"]
-        path_servers = topology_dict["PathServers"]
-        sibra_servers = topology_dict["SibraServers"]
+        beacon_servers = topology_dict["BeaconService"]
+        certificate_servers = topology_dict["CertificateService"]
+        path_servers = topology_dict["PathService"]
+        sibra_servers = topology_dict["SibraService"]
 
         try:
-            for name, router in routers.items():
-                interface = router["Interface"]
-                isd_id, as_id = ISD_AS(interface["ISD_AS"])
-                RouterWeb.objects.update_or_create(
-                    addr=router["Addr"], ad=self,
-                    port=router["Port"],
-                    addr_internal='',
-                    port_internal=None,
-                    name=name,
-                    neighbor_isd_id=isd_id,
-                    neighbor_as_id=as_id,
-                    neighbor_type=interface["LinkType"],
-                    interface_addr=interface["Addr"],
-                    interface_toaddr=interface["ToAddr"],
-                    interface_id=interface["IFID"],
-                    interface_port=interface["UdpPort"],
-                    interface_toport=interface["ToUdpPort"],
-                )
+            self.fill_router_info(routers)
+            self.fill_service_info(beacon_servers)
+            self.fill_service_info(certificate_servers)
+            self.fill_service_info(path_servers)
+            self.fill_service_info(sibra_servers)
 
-            for name, bs in beacon_servers.items():
-                BeaconServerWeb.objects.\
-                    update_or_create(addr=bs["Addr"],
-                                     port=bs["Port"],
-                                     addr_internal=bs["AddrInternal"],
-                                     port_internal=bs["PortInternal"],
-                                     name=name,
-                                     ad=self)
-
-            for name, cs in certificate_servers.items():
-                CertificateServerWeb.objects.\
-                    update_or_create(addr=cs["Addr"],
-                                     port=cs["Port"],
-                                     addr_internal=cs["AddrInternal"],
-                                     port_internal=cs["PortInternal"],
-                                     name=name,
-                                     ad=self)
-
-            for name, ps in path_servers.items():
-                PathServerWeb.objects.\
-                    update_or_create(addr=ps["Addr"],
-                                     port=ps["Port"],
-                                     addr_internal=ps["AddrInternal"],
-                                     port_internal=ps["PortInternal"],
-                                     name=name,
-                                     ad=self)
-
-            for name, sb in sibra_servers.items():
-                SibraServerWeb.objects.\
-                    update_or_create(addr=sb["Addr"],
-                                     port=sb["Port"],
-                                     addr_internal=sb["AddrInternal"],
-                                     port_internal=sb["PortInternal"],
-                                     name=name,
-                                     ad=self)
         except IntegrityError:
             logging.warning("Integrity error in AD.fill_from_topology(): "
                             "ignoring")
@@ -238,6 +273,70 @@ class AD(models.Model):
 
     def __str__(self):
         return '{}-{}'.format(self.isd.id, self.as_id)
+
+
+class AddressElement(models.Model):
+    addr = models.GenericIPAddressField()
+    l4port = models.IntegerField(default=0)
+    overlay_port = models.IntegerField(null=True)
+    addr_type = models.CharField(max_length=5, default="IPv4")
+    is_public = models.BooleanField(default=True)
+    ad = models.ForeignKey(AD)
+
+    class Meta:
+        abstract = True
+
+
+class Service(models.Model):
+    ad = models.ForeignKey(AD)
+    name = models.CharField(max_length=20, null=True)
+
+    def get_dict(self):
+        # TODO(jonghoonkwon): Fix this method to return a service dict
+        out_dict = super(Service, self).get_dict()
+        return out_dict
+
+
+class ServiceAddress(AddressElement):
+    service = models.ForeignKey(Service)
+
+
+class BorderRouter(models.Model):
+    ad = models.ForeignKey(AD)
+    name = models.CharField(max_length=20, null=True)
+
+    def get_dict(self):
+        # TODO(jonghoonkwon): Complete the method to return a dict
+        out_dict = super(BorderRouter, self).get_dict()
+        return out_dict
+
+
+class BorderRouterAddress(AddressElement):
+    router = models.ForeignKey(BorderRouter)
+
+
+class BorderRouterInterface(models.Model):
+    addr = models.GenericIPAddressField()
+    l4port = models.IntegerField(default=0)
+    bind_addr = models.GenericIPAddressField(default=None, null=True)
+    bind_l4port = models.IntegerField(default=None, null=True)
+    remote_addr = models.GenericIPAddressField(null=True)
+    remote_l4port = models.IntegerField(null=True)
+    internal_addr_idx = models.IntegerField()
+    interface_id = models.IntegerField()
+    bandwidth = models.IntegerField()
+    mtu = models.IntegerField()
+    NEIGHBOR_TYPES = (
+        ('CHILD',) * 2,
+        ('PARENT',) * 2,
+        ('PEER',) * 2,
+        ('CORE',) * 2,
+    )
+    neighbor_isd_id = models.IntegerField(null=True)
+    neighbor_as_id = models.IntegerField(null=True)
+    neighbor_type = models.CharField(max_length=10, choices=NEIGHBOR_TYPES)
+    router_addr = models.ForeignKey(BorderRouterAddress)
+    ad = models.ForeignKey(AD)
 
 
 class SCIONWebElement(models.Model):
@@ -388,3 +487,34 @@ class ConnectionRequest(models.Model):
 
     def is_approved(self):
         return self.status == 'APPROVED'
+
+
+def _check_ip_addr(addr):
+    """
+    Check whether the ip address is valid or not, and return an address type
+    :param str addr: ip address (i.e., "127.0.0.1" or ":::::::FFFF")
+    :returns: IP address type (i.e., 'IPv4', 'IPv6' or None)
+    """
+    if '.' in addr:
+        tokens = str(addr).split('.')
+        if len(tokens) is 4:
+            for token in tokens:
+                if not token.isdigit():
+                    return None
+                if int(token) < 0 or int(token) > 255:
+                    return None
+        return 'IPv4'
+    elif ':' in addr:
+        tokens = str(addr).split(':')
+        if len(tokens) is 8:
+            is_valid = False
+            for token in tokens:
+                if token:
+                    continue
+                decimal = int("0x" + token, 16)
+                if decimal < 0 or decimal > 65535:
+                    return None
+                is_valid = True
+        if is_valid:
+            return 'IPv6'
+    return None
