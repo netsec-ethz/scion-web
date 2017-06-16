@@ -59,7 +59,7 @@ from lib.defines import (
 from lib.packet.scion_addr import ISD_AS
 from lib.types import LinkType
 from lib.util import iso_timestamp
-from topology.generator import INITIAL_CERT_VERSION, _topo_json_to_yaml
+from topology.generator import INITIAL_CERT_VERSION, INITIAL_TRC_VERSION, _topo_json_to_yaml
 
 # SCION-WEB
 from ad_manager.forms import (
@@ -290,7 +290,7 @@ def prep_approved_join_reply(request, join_rep_dict, own_isdas, own_as_obj):
     signing_as_sig_priv_key = from_b64(own_as_obj.sig_priv_key)
     joining_ia = ISD_AS.from_values(own_isdas[0], joining_as)
     cert = Certificate.from_values(
-        str(joining_ia), str(own_isdas), INITIAL_CERT_VERSION, "", False,
+        str(joining_ia), str(own_isdas), INITIAL_TRC_VERSION, INITIAL_CERT_VERSION, "", False,
         enc_pub_key, sig_pub_key, SigningKey(signing_as_sig_priv_key)
     )
     respond_ia_chain = CertificateChain.from_raw(own_as_obj.certificate)
@@ -578,7 +578,7 @@ class ADDetailView(DetailView):
         ad = context['object']
 
         # Status tab
-        context['service_servers'] = ad.service_set.select_related()
+        context['services'] = ad.service_set.select_related()
         context['service_addrs'] = ad.serviceaddress_set.select_related()
         context['border_routers'] = ad.borderrouter_set.select_related()
         context['router_addrs'] = ad.borderrouteraddress_set.select_related()
@@ -595,11 +595,18 @@ class ADDetailView(DetailView):
         context['isdas'] = str(ISD_AS.from_values(ad.isd_id, ad.as_id))
 
         # Sort by name numerically
-        lists_to_sort = ['service_servers', 'border_routers']
+        lists_to_sort = ['services', 'border_routers']
         for list_name in lists_to_sort:
             context[list_name] = sorted(
                 context[list_name],
                 key=lambda el: el.name if el.name is not None else -1
+            )
+        # Sort by address numerically
+        lists_to_sort = ['service_addrs', 'router_addrs', 'interface_addrs']
+        for list_name in lists_to_sort:
+            context[list_name] = sorted(
+                context[list_name],
+                key=lambda el: el.addr if el.addr is not None else -1
             )
         # Permissions
         context['user_has_perm'] = self.request.user.has_perm('change_ad', ad)
@@ -673,7 +680,7 @@ def add_to_topology(request):
     ip = con_req.router_public_ip
     port = con_req.router_public_port
     try:
-        router_intf = BorderRouterInterface.objects.get(addr=ip, port=port)
+        router_intf = BorderRouterInterface.objects.get(addr=ip, l4port=port)
         router_addr = router_intf.router_addr
         router = router_addr.router
     except BorderRouterAddress.DoesNotExist:
@@ -689,7 +696,7 @@ def add_to_topology(request):
         return HttpResponseNotFound("AS %s was not found"
                                     % con_reply['RequestIA'])
     topo = req_ia.original_topology
-    interface = topo['BorderRouters'][router.name]['Interfaces'][router_intf.interface_id]
+    interface = topo['BorderRouters'][router.name]['Interfaces'][str(router_intf.interface_id)]
     interface['Remote']['Addr'] = con_reply['IP']
     if "UDP" in con_reply['OverlayType']:
         interface['Remote']['L4Port'] = con_reply['Port']
@@ -902,9 +909,7 @@ def name_entry_dict_zk(name_l, address_l, port_l, addr_int_l, port_int_l):
         if address_l[i] == '':
             continue  # don't include empty entries
         ret_dict[name_l[i]] = {'Addr': address_l[i],
-                               'L4Port': st_int(port_l[i],
-                                                SCION_SUGGESTED_PORT),
-                               }
+                               'L4Port': st_int(port_l[i], SCION_SUGGESTED_PORT), }
     return ret_dict
 
 
@@ -940,6 +945,8 @@ def name_entry_dict_router(tp):
                     'Bandwidth': st_int(bandwidth_list[i], None),
                     'ISD_AS': remote_name_list[i],
                     'LinkType': interface_type_list[i],
+                    # TODO(jonghoonkwon): Initial version of scion web assumes that
+                    # we have only one internal address. Need to be fixed.
                     'InternalAddrIdx': 0,
                     'MTU': st_int(link_mtu_list[i], None),
                     'Overlay': 'UDP/IPv4',
@@ -972,12 +979,10 @@ def generate_topology(request):
     isd_id, as_id = isd_as.split('-')
     topo_dict['Core'] = True if (tp['inputIsCore'] == 'on') else False
 
-    service_types = ['BeaconServer', 'CertificateServer',
-                     'PathServer', 'SibraServer']
+    service_types = ['BeaconService', 'CertificateService', 'PathService', 'SibraService']
 
     for s_type in service_types:
-        service_name = s_type[:-2] + 'ice'
-        topo_dict[service_name] = \
+        topo_dict[s_type] = \
             name_entry_dict(tp.getlist('input{}Name'.format(s_type)),
                             tp.getlist('input{}Address'.format(s_type)),
                             tp.getlist('input{}Port'.format(s_type)),
@@ -988,6 +993,7 @@ def generate_topology(request):
     topo_dict['BorderRouters'] = name_entry_dict_router(tp)
     topo_dict['ISD_AS'] = tp['inputISD_AS']
     topo_dict['MTU'] = st_int(tp['inputMTU'], DEFAULT_MTU)
+    # TODO(jonghoonkwon): We currently assume that the overlay network is 'UDP/IPv4'
     topo_dict['Overlay'] = 'UDP/IPv4'
 
     # Zookeeper special case
@@ -1009,8 +1015,7 @@ def generate_topology(request):
 
     # IP:port uniqueness in AS check
     all_ip_port_pairs = []
-    for r in ['BeaconService', 'CertificateService',
-              'PathService', 'SibraService']:
+    for r in service_types:
         servers_of_type_r = topo_dict[r]
         for server in servers_of_type_r:
             for i in range(len(servers_of_type_r[server]['Public'])):

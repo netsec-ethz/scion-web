@@ -27,7 +27,7 @@ from ad_manager.models import (
     AD,
     BorderRouterAddress,
     BorderRouterInterface,
-    ServiceAddress
+    ServiceAddress,
 )
 from ad_manager.util.common import is_private_address
 

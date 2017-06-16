@@ -135,7 +135,7 @@ class TestAdDetail(BasicWebTest):
         for intf in ad.borderrouterinterface_set.all():
             obj = intf.router_addr.router
             row = next(filter(lambda x: obj.name in x.text, router_rows))
-            isd_ad = '{}-{}'.format(intf.neighbor_isd_id, intf.neighbor_as_id)
+            isd_ad = '%s-%s' % (intf.neighbor_isd_id, intf.neighbor_as_id)
             assert isd_ad in row.text
             assert intf.addr in row.text
             assert intf.remote_addr in row.text

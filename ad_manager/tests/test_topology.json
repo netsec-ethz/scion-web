@@ -280,7 +280,7 @@
 },
 {
   "fields": {
-    "port": 31041,
+    "l4port": 31041,
     "addr_type": "IPv4",
     "service": 1,
     "ad": 1,
@@ -293,7 +293,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "service": 2,
     "ad": 1,
@@ -306,7 +306,7 @@
 },
 {
   "fields": {
-    "port": 31043,
+    "l4port": 31043,
     "addr_type": "IPv4",
     "service": 3,
     "ad": 1,
@@ -319,7 +319,7 @@
 },
 {
   "fields": {
-    "port": 31045,
+    "l4port": 31045,
     "addr_type": "IPv4",
     "service": 4,
     "ad": 1,
@@ -332,7 +332,7 @@
 },
 {
   "fields": {
-    "port": 31041,
+    "l4port": 31041,
     "addr_type": "IPv4",
     "service": 5,
     "ad": 2,
@@ -345,7 +345,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "service": 6,
     "ad": 2,
@@ -358,7 +358,7 @@
 },
 {
   "fields": {
-    "port": 31043,
+    "l4port": 31043,
     "addr_type": "IPv4",
     "service": 7,
     "ad": 2,
@@ -371,7 +371,7 @@
 },
 {
   "fields": {
-    "port": 31045,
+    "l4port": 31045,
     "addr_type": "IPv4",
     "service": 8,
     "ad": 2,
@@ -384,7 +384,7 @@
 },
 {
   "fields": {
-    "port": 31041,
+    "l4port": 31041,
     "addr_type": "IPv4",
     "service": 37,
     "ad": 21,
@@ -397,7 +397,7 @@
 },
 {
   "fields": {
-    "port": 31041,
+    "l4port": 31041,
     "addr_type": "IPv4",
     "service": 37,
     "ad": 21,
@@ -410,7 +410,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "service": 38,
     "ad": 21,
@@ -423,7 +423,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "service": 38,
     "ad": 21,
@@ -436,7 +436,7 @@
 },
 {
   "fields": {
-    "port": 31041,
+    "l4port": 31041,
     "addr_type": "IPv4",
     "service": 39,
     "ad": 21,
@@ -449,7 +449,7 @@
 },
 {
   "fields": {
-    "port": 31043,
+    "l4port": 31043,
     "addr_type": "IPv4",
     "service": 40,
     "ad": 21,
@@ -462,7 +462,7 @@
 },
 {
   "fields": {
-    "port": 31041,
+    "l4port": 31041,
     "addr_type": "IPv4",
     "service": 41,
     "ad": 22,
@@ -475,7 +475,7 @@
 },
 {
   "fields": {
-    "port": 31041,
+    "l4port": 31041,
     "addr_type": "IPv4",
     "service": 41,
     "ad": 22,
@@ -488,7 +488,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "service": 42,
     "ad": 22,
@@ -501,7 +501,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "service": 42,
     "ad": 22,
@@ -514,7 +514,7 @@
 },
 {
   "fields": {
-    "port": 31041,
+    "l4port": 31041,
     "addr_type": "IPv4",
     "service": 43,
     "ad": 22,
@@ -527,7 +527,7 @@
 },
 {
   "fields": {
-    "port": 31043,
+    "l4port": 31043,
     "addr_type": "IPv4",
     "service": 44,
     "ad": 22,
@@ -540,7 +540,7 @@
 },
 {
   "fields": {
-    "port": 31041,
+    "l4port": 31041,
     "addr_type": "IPv4",
     "service": 45,
     "ad": 48,
@@ -553,7 +553,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "service": 46,
     "ad": 48,
@@ -566,7 +566,7 @@
 },
 {
   "fields": {
-    "port": 31043,
+    "l4port": 31043,
     "addr_type": "IPv4",
     "service": 47,
     "ad": 48,
@@ -579,7 +579,7 @@
 },
 {
   "fields": {
-    "port": 31045,
+    "l4port": 31045,
     "addr_type": "IPv4",
     "service": 48,
     "ad": 48,
@@ -592,7 +592,7 @@
 },
 {
   "fields": {
-    "port": 31041,
+    "l4port": 31041,
     "addr_type": "IPv4",
     "service": 49,
     "ad": 31,
@@ -605,7 +605,7 @@
 },
 {
   "fields": {
-    "port": 31041,
+    "l4port": 31041,
     "addr_type": "IPv4",
     "service": 50,
     "ad": 31,
@@ -618,7 +618,7 @@
 },
 {
   "fields": {
-    "port": null,
+    "l4port": 31041,
     "addr_type": "IPv4",
     "service": 50,
     "ad": 31,
@@ -631,7 +631,7 @@
 },
 {
   "fields": {
-    "port": 31041,
+    "l4port": 31041,
     "addr_type": "IPv4",
     "service": 51,
     "ad": 31,
@@ -644,7 +644,7 @@
 },
 {
   "fields": {
-    "port": null,
+    "l4port": 31041,
     "addr_type": "IPv4",
     "service": 51,
     "ad": 31,
@@ -657,7 +657,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "service": 52,
     "ad": 31,
@@ -814,7 +814,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "ad": 1,
     "router": 1,
@@ -827,7 +827,7 @@
 },
 {
   "fields": {
-    "port": 31043,
+    "l4port": 31043,
     "addr_type": "IPv4",
     "ad": 1,
     "router": 2,
@@ -840,7 +840,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "ad": 1,
     "router": 3,
@@ -853,7 +853,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "ad": 1,
     "router": 4,
@@ -866,7 +866,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "ad": 1,
     "router": 5,
@@ -879,7 +879,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "ad": 1,
     "router": 6,
@@ -892,7 +892,7 @@
 },
 {
   "fields": {
-    "port": 31044,
+    "l4port": 31044,
     "addr_type": "IPv4",
     "ad": 1,
     "router": 7,
@@ -905,7 +905,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "ad": 2,
     "router": 8,
@@ -918,7 +918,7 @@
 },
 {
   "fields": {
-    "port": 31044,
+    "l4port": 31044,
     "addr_type": "IPv4",
     "ad": 2,
     "router": 9,
@@ -931,7 +931,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "ad": 2,
     "router": 10,
@@ -944,7 +944,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "ad": 2,
     "router": 11,
@@ -957,7 +957,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "ad": 2,
     "router": 12,
@@ -970,7 +970,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "ad": 21,
     "router": 30,
@@ -983,7 +983,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "ad": 21,
     "router": 31,
@@ -996,7 +996,7 @@
 },
 {
   "fields": {
-    "port": 31043,
+    "l4port": 31043,
     "addr_type": "IPv4",
     "ad": 21,
     "router": 32,
@@ -1009,7 +1009,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "ad": 22,
     "router": 33,
@@ -1022,7 +1022,7 @@
 },
 {
   "fields": {
-    "port": 31044,
+    "l4port": 31044,
     "addr_type": "IPv4",
     "ad": 48,
     "router": 34,
@@ -1035,7 +1035,7 @@
 },
 {
   "fields": {
-    "port": 31042,
+    "l4port": 31042,
     "addr_type": "IPv4",
     "ad": 31,
     "router": 35,
@@ -1048,17 +1048,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "CHILD",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 1,
     "neighbor_isd_id": 1,
     "remote_addr": "203.0.113.2",
+    "internal_addr_idx": 0,
     "interface_id": 3,
     "router_addr": 1,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.1",
     "neighbor_as_id": 3
@@ -1068,17 +1069,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50001,
+    "bind_l4port": null,
+    "l4port": 50001,
     "neighbor_type": "CHILD",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 1,
     "neighbor_isd_id": 1,
     "remote_addr": "203.0.113.254",
+    "internal_addr_idx": 0,
     "interface_id": 7,
     "router_addr": 2,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.150",
     "neighbor_as_id": 4
@@ -1088,17 +1090,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "CHILD",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 1,
     "neighbor_isd_id": 1,
     "remote_addr": "203.0.113.114",
+    "internal_addr_idx": 0,
     "interface_id": 1,
     "router_addr": 3,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.150",
     "neighbor_as_id": 5
@@ -1108,17 +1111,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "CORE",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 1,
     "neighbor_isd_id": 3,
     "remote_addr": "203.0.113.115",
+    "internal_addr_idx": 0,
     "interface_id": 5,
     "router_addr": 4,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.154",
     "neighbor_as_id": 31
@@ -1128,17 +1132,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "CORE",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 1,
     "neighbor_isd_id": 2,
     "remote_addr": "203.0.113.180",
+    "internal_addr_idx": 0,
     "interface_id": 4,
     "router_addr": 5,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.134",
     "neighbor_as_id": 21
@@ -1148,17 +1153,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "CHILD",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 1,
     "neighbor_isd_id": 1,
     "remote_addr": "203.0.113.211",
+    "internal_addr_idx": 0,
     "interface_id": 2,
     "router_addr": 6,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.138",
     "neighbor_as_id": 2
@@ -1168,17 +1174,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "CORE",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 1,
     "neighbor_isd_id": 4,
     "remote_addr": "203.0.113.18",
+    "internal_addr_idx": 0,
     "interface_id": 6,
     "router_addr": 7,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.130",
     "neighbor_as_id": 41
@@ -1188,17 +1195,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "CHILD",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 2,
     "neighbor_isd_id": 1,
     "remote_addr": "203.0.113.191",
+    "internal_addr_idx": 0,
     "interface_id": 4,
     "router_addr": 8,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.190",
     "neighbor_as_id": 6
@@ -1208,17 +1216,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "PARENT",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 2,
     "neighbor_isd_id": 1,
     "remote_addr": "203.0.113.138",
+    "internal_addr_idx": 0,
     "interface_id": 3,
     "router_addr": 9,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.211",
     "neighbor_as_id": 1
@@ -1228,17 +1237,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "PARENT",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 2,
     "neighbor_isd_id": 1,
     "remote_addr": "203.0.113.1",
+    "internal_addr_idx": 0,
     "interface_id": 1,
     "router_addr": 10,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.2",
     "neighbor_as_id": 3
@@ -1248,17 +1258,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "PEER",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 2,
     "neighbor_isd_id": 1,
     "remote_addr": "203.0.113.122",
+    "internal_addr_idx": 0,
     "interface_id": 2,
     "router_addr": 11,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.194",
     "neighbor_as_id": 5
@@ -1268,17 +1279,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "PARENT",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 2,
     "neighbor_isd_id": 1,
     "remote_addr": "203.0.113.69",
+    "internal_addr_idx": 0,
     "interface_id": 5,
     "router_addr": 12,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.68",
     "neighbor_as_id": 3
@@ -1288,17 +1300,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "CORE",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 21,
     "neighbor_isd_id": 1,
     "remote_addr": "203.0.113.134",
+    "internal_addr_idx": 0,
     "interface_id": 1,
     "router_addr": 30,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.180",
     "neighbor_as_id": 1
@@ -1308,17 +1321,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "CHILD",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 21,
     "neighbor_isd_id": 2,
     "remote_addr": "203.0.113.198",
+    "internal_addr_idx": 0,
     "interface_id": 2,
     "router_addr": 31,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.165",
     "neighbor_as_id": 22
@@ -1328,17 +1342,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50001,
+    "bind_l4port": null,
+    "l4port": 50001,
     "neighbor_type": "CHILD",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 21,
     "neighbor_isd_id": 2,
     "remote_addr": "203.0.113.208",
+    "internal_addr_idx": 0,
     "interface_id": 3,
     "router_addr": 32,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.165",
     "neighbor_as_id": 23
@@ -1348,17 +1363,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "PARENT",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 22,
     "neighbor_isd_id": 2,
     "remote_addr": "203.0.113.165",
+    "internal_addr_idx": 0,
     "interface_id": 1,
     "router_addr": 33,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.198",
     "neighbor_as_id": 21
@@ -1368,17 +1384,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "PARENT",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 48,
     "neighbor_isd_id": 2,
     "remote_addr": "203.0.113.165",
+    "internal_addr_idx": 0,
     "interface_id": 1,
     "router_addr": 34,
-    "remote_port": 50001,
+    "remote_l4port": 50001,
     "bind_addr": null,
     "addr": "203.0.113.208",
     "neighbor_as_id": 21
@@ -1388,17 +1405,18 @@
 },
 {
   "fields": {
-    "bind_port": null,
-    "port": 50000,
+    "bind_l4port": null,
+    "l4port": 50000,
     "neighbor_type": "CORE",
     "bandwidth": 1000,
     "mtu": 1472,
     "ad": 31,
     "neighbor_isd_id": 1,
     "remote_addr": "203.0.113.154",
+    "internal_addr_idx": 0,
     "interface_id": 1,
     "router_addr": 35,
-    "remote_port": 50000,
+    "remote_l4port": 50000,
     "bind_addr": null,
     "addr": "203.0.113.115",
     "neighbor_as_id": 1

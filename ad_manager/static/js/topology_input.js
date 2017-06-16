@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-function checkFreshness(isd_id, as_id) {
+function checkFreshness(url) {
     var csrftoken = $("input[name='csrfmiddlewaretoken']").attr('value');
     var xmlhttp = new XMLHttpRequest();
-    var url = "../api/v1/internal/isd/" + isd_id + "/as/" + as_id + "/topo_hash/";
     var submit = false;
     xmlhttp.onreadystatechange = function () {
         // check if XMLHttpRequest is ready and HTTP status code is 200
@@ -197,17 +196,17 @@ function reloadServiceSection(reloadedTopology, entryKey) {
         }
         // fill form values
         var itemSelector = '#' + type + 'Item-' + (parseInt(i) + 1).toString(); // get a 1 based selector
-        $(itemSelector + ' #input' + type + 'ServerName').val(name);
+        $(itemSelector + ' #input' + type + 'ServiceName').val(name);
         server = entry[name];
         address = server['Public'][0]['Addr'];
-        $(itemSelector + ' #input' + type + 'ServerAddress').val(address);
+        $(itemSelector + ' #input' + type + 'ServiceAddress').val(address);
         port = server['Public'][0]['L4Port'];
-        $(itemSelector + ' #input' + type + 'ServerPort').val(port);
+        $(itemSelector + ' #input' + type + 'ServicePort').val(port);
         if ('Bind' in server) {
             addressInternal = server['Bind'][0]['Addr'];
-            $(itemSelector + ' #input' + type + 'ServerInternalAddress').val(addressInternal);
+            $(itemSelector + ' #input' + type + 'ServiceInternalAddress').val(addressInternal);
             portInternal = server['Bind'][0]['L4Port'];
-            $(itemSelector + ' #input' + type + 'ServerInternalPort').val(portInternal);
+            $(itemSelector + ' #input' + type + 'ServiceInternalPort').val(portInternal);
         }
     }
 }

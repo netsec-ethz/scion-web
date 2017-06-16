@@ -140,15 +140,14 @@ def get_section_addr(mockup_dict, section_name):
             ret_val.append((sec_id, section[sec_id]['Addr']))
     elif section_name.endswith('Service'):
         for sec_id in section:
-            for i in range(len(section[sec_id]['Public'])):
-                ret_val.append(
-                    (sec_id, section[sec_id]['Public'][i]['Addr']))
+            for addr_idx in range(len(section[sec_id]['Public'])):
+                ret_val.append((sec_id, section[sec_id]['Public'][addr_idx]['Addr']))
     elif section_name.endswith("Routers"):
         for sec_id in section:
-            for i in range(len(section[sec_id]['InternalAddrs'])):
-                for j in range(len(section[sec_id]['InternalAddrs'][i]['Public'])):
-                    ret_val.append((sec_id,
-                                    section[sec_id]['InternalAddrs'][i]['Public'][j]['Addr']))
+            int_addrs = section[sec_id]['InternalAddrs']
+            for int_addr_idx in range(len(int_addrs)):
+                for addr_idx in range(len(int_addrs[int_addr_idx]['Public'])):
+                    ret_val.append((sec_id, int_addrs[int_addr_idx]['Public'][addr_idx]['Addr']))
     return ret_val
 
 

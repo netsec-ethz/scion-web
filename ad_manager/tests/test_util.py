@@ -66,8 +66,8 @@ class TestLinkAds(TestCase):
             assert router2_intf.remote_addr == router1_intf.addr
 
             # Check ports
-            assert router1_intf.remote_port == router2_intf.port
-            assert router2_intf.remote_port == router1_intf.port
+            assert router1_intf.remote_l4port == router2_intf.l4port
+            assert router2_intf.remote_l4port == router1_intf.l4port
 
             neighbor_type1, neighbor_type2 = test_connections[connection]
             assert router1_intf.neighbor_type == neighbor_type1

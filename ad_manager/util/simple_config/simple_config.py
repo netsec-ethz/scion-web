@@ -74,13 +74,13 @@ def check_simple_conf_mode(topo_dict, isd_id, as_id):
     service_addrs = set()
     for service in services:
         for _, service_instance in topo_dict[service].items():
-            for i in range(len(service_instance['Public'])):
-                service_addrs.add(service_instance['Public'][i]['Addr'])
+            for add_idx in range(len(service_instance['Public'])):
+                service_addrs.add(service_instance['Public'][add_idx]['Addr'])
     br_addrs = set()
     for _, br_instance in topo_dict['BorderRouters'].items():
-        for br_Addrs in br_instance['InternalAddrs']:
-            for i in range(len(br_Addrs['Public'])):
-                br_addrs.add(br_Addrs['Public'][i]['Addr'])
+        for br_int_addrs in br_instance['InternalAddrs']:
+            for add_idx in range(len(br_int_addrs['Public'])):
+                br_addrs.add(br_int_addrs['Public'][add_idx]['Addr'])
     zk_addrs = set()
     for _, zk_instance in topo_dict['ZookeeperService'].items():
         zk_addrs.add(zk_instance['Addr'])

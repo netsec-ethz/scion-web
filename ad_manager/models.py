@@ -16,6 +16,7 @@
 import copy
 import logging
 
+
 # External packages
 import jsonfield
 from django.contrib.auth.models import User
@@ -35,6 +36,7 @@ from lib.packet.scion_addr import ISD_AS
 # SCION-WEB
 from ad_manager.util.common import empty_dict
 from ad_manager.util.defines import (
+    ADDR_TYPES,
     DEFAULT_BANDWIDTH,
     SCION_SUGGESTED_PORT,
 )
@@ -142,40 +144,44 @@ class AD(models.Model):
 
     def fill_router_info(self, router_dict):
         """
-        Update the router information in the database. (i.e., BorderRouter,
-        BorderRouterAddress and BorderRouterInterface tables.)
-        : param dict router_dict: topo_dict['BorderRouters']
+        Update the router information in the database.
+        (i.e., BorderRouter and BorderRouterAddress.)
+        :param dict router_dict: topo_dict['BorderRouters']
         """
-        attrs = ['Public', 'Bind']
         for name, router in router_dict.items():
-            br_obj, _ = BorderRouter.objects.update_or_create(
-                name=name,
-                ad=self
-            )
+            br_obj, _ = BorderRouter.objects.update_or_create(name=name, ad=self)
             br_addr_idx = []
-            for i in range(len(router['InternalAddrs'])):
-                for attr in attrs:
-                    if attr not in router['InternalAddrs'][i].keys():
+            for int_addr_idx in range(len(router['InternalAddrs'])):
+                for attr in ADDR_TYPES:
+                    router_addr = router['InternalAddrs'][int_addr_idx]
+                    if attr not in router_addr.keys():
                         continue
-                    for j in range(len(router['InternalAddrs'][i][attr])):
+                    for addr_idx in range(len(router_addr[attr])):
+                        addr = router_addr[attr][addr_idx]['Addr']
+                        port = router_addr[attr][addr_idx]['L4Port']
+                        if not port:
+                            port = router_addr['Public'][addr_idx]['L4Port']
+                        addr_type = _check_ip_addr(addr)
+                        if not addr_type:
+                            logging.error("Given IP address is invalid: %s(%s)" % (name, addr))
                         br_addr_obj, _ = BorderRouterAddress.objects.update_or_create(
-                            addr=router['InternalAddrs'][i][attr][j]['Addr'],
-                            port=router['InternalAddrs'][i][attr][j]['L4Port'],
-                            addr_type="IPv4",
+                            addr=addr,
+                            l4port=port,
+                            addr_type=addr_type,
                             is_public=(attr == 'Public'),
                             router=br_obj,
                             ad=self
                         )
                         br_addr_idx.append(br_addr_obj)
-
             for if_id, intf in router["Interfaces"].items():
                 isd_id, as_id = ISD_AS(intf["ISD_AS"])
                 br_addr_obj = br_addr_idx[intf['InternalAddrIdx']]
                 br_inft_obj, _ = BorderRouterInterface.objects.update_or_create(
                     addr=intf['Public']['Addr'],
-                    port=intf['Public']['L4Port'],
+                    l4port=intf['Public']['L4Port'],
                     remote_addr=intf['Remote']['Addr'],
-                    remote_port=intf['Remote']['L4Port'],
+                    remote_l4port=intf['Remote']['L4Port'],
+                    internal_addr_idx=intf['InternalAddrIdx'],
                     interface_id=if_id,
                     bandwidth=intf['Bandwidth'],
                     mtu=intf['MTU'],
@@ -184,31 +190,36 @@ class AD(models.Model):
                     neighbor_type=intf["LinkType"],
                     router_addr=br_addr_obj,
                     ad=self
-                    )
+                )
                 if 'Bind' in intf.keys():
                     br_inft_obj.update(
                         bind_addr=intf['Public']['Addr'],
-                        bind_port=intf['Public']['L4Port'],
+                        bind_l4port=intf['Public']['L4Port'],
                     )
 
     def fill_service_info(self, service_dict):
         """
         Update the service information in the database.
         (i.e., Service and ServiceAddress tables.)
-        : param dict service_dict: (e.g., topo_dict['BeaconService'])
+        :param dict service_dict: (e.g., topo_dict['BeaconService'])
         """
-        attrs = ['Public', 'Bind']
         for name, service in service_dict.items():
-            srv_obj, _ = Service.objects.\
-                update_or_create(name=name, ad=self)
-            for attr in attrs:
+            srv_obj, _ = Service.objects.update_or_create(name=name, ad=self)
+            for attr in ADDR_TYPES:
                 if attr not in service.keys():
                     continue
-                for i in range(len(service[attr])):
+                for addr_idx in range(len(service[attr])):
+                    addr = service[attr][addr_idx]["Addr"]
+                    port = service[attr][addr_idx]["L4Port"]
+                    if not port and attr is 'Bind':
+                        port = service['Public'][addr_idx]['L4Port']
+                    addr_type = _check_ip_addr(addr)
+                    if not addr_type:
+                        logging.error("Given IP address is invalid: %s(%s)" % (name, addr))
                     srv_addr_obj, _ = ServiceAddress.objects.update_or_create(
-                        addr=service[attr][i]["Addr"],
-                        port=service[attr][i]["L4Port"],
-                        addr_type="IPv4",
+                        addr=addr,
+                        l4port=port,
+                        addr_type=addr_type,
                         is_public=(attr == 'Public'),
                         service=srv_obj,
                         ad=self
@@ -266,9 +277,9 @@ class AD(models.Model):
 
 class AddressElement(models.Model):
     addr = models.GenericIPAddressField()
-    port = models.IntegerField(null=True)
+    l4port = models.IntegerField(default=0)
     overlay_port = models.IntegerField(null=True)
-    addr_type = models.CharField(max_length=5, default="IPV4")
+    addr_type = models.CharField(max_length=5, default="IPv4")
     is_public = models.BooleanField(default=True)
     ad = models.ForeignKey(AD)
 
@@ -306,11 +317,12 @@ class BorderRouterAddress(AddressElement):
 
 class BorderRouterInterface(models.Model):
     addr = models.GenericIPAddressField()
-    port = models.IntegerField()
+    l4port = models.IntegerField(default=0)
     bind_addr = models.GenericIPAddressField(default=None, null=True)
-    bind_port = models.IntegerField(default=None, null=True)
+    bind_l4port = models.IntegerField(default=None, null=True)
     remote_addr = models.GenericIPAddressField(null=True)
-    remote_port = models.IntegerField(null=True)
+    remote_l4port = models.IntegerField(null=True)
+    internal_addr_idx = models.IntegerField()
     interface_id = models.IntegerField()
     bandwidth = models.IntegerField()
     mtu = models.IntegerField()
@@ -475,3 +487,34 @@ class ConnectionRequest(models.Model):
 
     def is_approved(self):
         return self.status == 'APPROVED'
+
+
+def _check_ip_addr(addr):
+    """
+    Check whether the ip address is valid or not, and return an address type
+    :param str addr: ip address (i.e., "127.0.0.1" or ":::::::FFFF")
+    :returns: IP address type (i.e., 'IPv4', 'IPv6' or None)
+    """
+    if '.' in addr:
+        tokens = str(addr).split('.')
+        if len(tokens) is 4:
+            for token in tokens:
+                if not token.isdigit():
+                    return None
+                if int(token) < 0 or int(token) > 255:
+                    return None
+        return 'IPv4'
+    elif ':' in addr:
+        tokens = str(addr).split(':')
+        if len(tokens) is 8:
+            is_valid = False
+            for token in tokens:
+                if token:
+                    continue
+                decimal = int("0x" + token, 16)
+                if decimal < 0 or decimal > 65535:
+                    return None
+                is_valid = True
+        if is_valid:
+            return 'IPv6'
+    return None

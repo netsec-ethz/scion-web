@@ -49,7 +49,7 @@ from topology.generator import (
     INITIAL_TRC_VERSION,
     PATH_POLICY_FILE,
 )
-from topology.generator import PrometheusGenerator, _topo_json_to_yaml
+from topology.generator import PrometheusGenerator
 
 # SCION-WEB
 from ad_manager.models import AD
@@ -215,11 +215,6 @@ def write_topology_file(tp, type_key, instance_path):
     with open(path, 'w') as file:
         json.dump(tp, file, indent=2)
 
-    topo_yml = _topo_json_to_yaml(tp)
-    path = os.path.join(instance_path, 'topology.yml')
-    with open(path, 'w') as file:
-        yaml.dump(topo_yml, file, default_flow_style=False)
-
 
 def write_endhost_config(tp, isd_as, local_gen_path):
     """
@@ -338,11 +333,12 @@ def generate_prometheus_config(tp, local_gen_path, as_path):
     """
     router_list = []
     for router in tp['BorderRouters'].values():
-        for i in range(len(router['InternalAddrs'])):
-            for j in range(len(router['InternalAddrs'][i]['Public'])):
+        for int_addr_idx in range(len(router['InternalAddrs'])):
+            for addr_idx in range(len(router['InternalAddrs'][int_addr_idx]['Public'])):
                 router_list.append("%s:%s" % (
-                    router['InternalAddrs'][i]['Public'][j]['Addr'],
-                    router['InternalAddrs'][i]['Public'][j]['L4Port'] + PROM_BR_PORT_OFFSET))
+                    router['InternalAddrs'][int_addr_idx]['Public'][addr_idx]['Addr'],
+                    router['InternalAddrs'][int_addr_idx]['Public'][addr_idx]['L4Port'] +
+                    PROM_BR_PORT_OFFSET))
     targets_path = os.path.join(as_path, PrometheusGenerator.PROM_DIR,
                                 PrometheusGenerator.BR_TARGET_FILE)
     target_config = [{'targets': router_list}]
