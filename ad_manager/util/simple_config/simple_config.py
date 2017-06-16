@@ -47,15 +47,15 @@ def prep_simple_conf_con_req(as_obj, topo_dict, user):
     """
     router_name = 'br%s-%s-1' % (as_obj.isd_id, as_obj.as_id)
     router = topo_dict['BorderRouters'][router_name]
-    interface = router['Interface']
+    interface = router['Interfaces']['1']
     con_req = ConnectionRequest.objects.create(
         created_by=user,
         connect_to=interface['ISD_AS'],
         connect_from=as_obj,
-        router_info='%s:%s' % (interface['Addr'], interface['UdpPort']),
+        router_info='%s:%s' % (interface['Public']['Addr'], interface['Public']['L4Port']),
         overlay_type=SIMPLE_CONF_OVERLAY_TYPE,
-        router_public_ip=interface['Addr'],
-        router_public_port=interface['UdpPort'],
+        router_public_ip=interface['Public']['Addr'],
+        router_public_port=interface['Public']['L4Port'],
         mtu=interface['MTU'],
         bandwidth=interface['Bandwidth'],
         link_type=interface['LinkType'],
