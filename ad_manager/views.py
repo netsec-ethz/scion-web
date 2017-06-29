@@ -1047,8 +1047,8 @@ def get_all_ip_port_pairs(topo_dict, service_types):
     # for bind addresses, border routers, interfaces and their public/bind addresses.
     all_ip_port_pairs = []
     for service_type in service_types:
-        for entry in topo_dict[service_type]:
-            for addr_info in topo_dict[service_type][entry]['Public']:
+        for entry in topo_dict[service_type].values():
+            for addr_info in entry['Public']:
                 curr_pair = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'])
                 all_ip_port_pairs.append(curr_pair)
     for zk_addr_info in topo_dict['ZookeeperService'].values():

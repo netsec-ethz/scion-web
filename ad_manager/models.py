@@ -153,9 +153,9 @@ class AD(models.Model):
                 for addr_attr in ADDR_ATTRIBUTES:
                     if addr_attr not in router_addr.keys():
                         continue
-                    for addr_idx in range(len(router_addr[addr_attr])):
-                        addr = router_addr[addr_attr][addr_idx]['Addr']
-                        port = router_addr[addr_attr][addr_idx]['L4Port']
+                    for addr_idx, addr_info in enumerate(router_addr[addr_attr]):
+                        addr = addr_info['Addr']
+                        port = addr_info['L4Port']
                         if not port:
                             port = router_addr['Public'][addr_idx]['L4Port']
                         # TODO (ercanucan): currently we assume IPv4
