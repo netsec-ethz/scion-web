@@ -19,4 +19,4 @@ UPLOAD_CONN_REPLY_SVC = "/api/as/uploadConnReply/"
 POLL_CONN_REPLY_SVC = "/api/as/pollConnReply/"
 POLL_EVENTS_SVC = "/api/as/pollEvents/"
 
-SERVICE_ADDR_TYPES = ['Public', 'Bind']
+ADDR_ATTRIBUTES = ['Public', 'Bind']

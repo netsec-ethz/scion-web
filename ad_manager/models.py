@@ -35,7 +35,7 @@ from lib.packet.scion_addr import ISD_AS
 # SCION-WEB
 from ad_manager.util.common import empty_dict
 from ad_manager.util.defines import (
-    SERVICE_ADDR_TYPES,
+    ADDR_ATTRIBUTES,
     DEFAULT_BANDWIDTH,
     SCION_SUGGESTED_PORT,
 )
@@ -117,21 +117,21 @@ class AD(models.Model):
             'CertificateService': {}, 'SibraService': {},
         })
         for router in self.borderrouter_set.all():
-            out_dict['BorderRouters'][str(router.name)] = router.get_dict()
+            out_dict['BorderRouters'][router.name] = router.get_dict()
         for service in self.service_set.all():
-            if 'bs' in service.name:
-                out_dict['BeaconService'][str(service.name)] = service.get_dict()
-            elif 'ps' in service.name:
-                out_dict['PathService'][str(service.name)] = service.get_dict()
-            elif 'cs' in service.name:
-                out_dict['CertificateService'][str(service.name)] = service.get_dict()
-            elif 'sb' in service.name:
-                out_dict['SibraService'][str(service.name)] = service.get_dict()
+            if service.name.startswith('bs'):
+                out_dict['BeaconService'][service.name] = service.get_dict()
+            elif service.name.startswith('ps'):
+                out_dict['PathService'][service.name] = service.get_dict()
+            elif service.name.startswith('cs'):
+                out_dict['CertificateService'][service.name] = service.get_dict()
+            elif service.name.startswith('sb'):
+                out_dict['SibraService'][service.name] = service.get_dict()
         return out_dict
 
     def get_all_elements(self):
-        elements = [self.borderrouter_set.all(), self.service_set.all()]
-        for element_group in elements:
+        element_groups = [self.borderrouter_set.all(), self.service_set.all()]
+        for element_group in element_groups:
             for element in element_group:
                 yield element
 
@@ -149,14 +149,13 @@ class AD(models.Model):
         for name, router in router_dict.items():
             br_obj, _ = BorderRouter.objects.update_or_create(name=name, ad=self)
             br_addr_idx = []
-            for int_addr_idx in range(len(router['InternalAddrs'])):
-                for attr in SERVICE_ADDR_TYPES:
-                    router_addr = router['InternalAddrs'][int_addr_idx]
-                    if attr not in router_addr.keys():
+            for int_addr_idx, router_addr in enumerate(router['InternalAddrs']):
+                for addr_attr in ADDR_ATTRIBUTES:
+                    if addr_attr not in router_addr.keys():
                         continue
-                    for addr_idx in range(len(router_addr[attr])):
-                        addr = router_addr[attr][addr_idx]['Addr']
-                        port = router_addr[attr][addr_idx]['L4Port']
+                    for addr_idx in range(len(router_addr[addr_attr])):
+                        addr = router_addr[addr_attr][addr_idx]['Addr']
+                        port = router_addr[addr_attr][addr_idx]['L4Port']
                         if not port:
                             port = router_addr['Public'][addr_idx]['L4Port']
                         # TODO (ercanucan): currently we assume IPv4
@@ -165,7 +164,7 @@ class AD(models.Model):
                             addr=addr,
                             l4port=port,
                             addr_type=addr_type,
-                            is_public=(attr == 'Public'),
+                            is_public=(addr_attr == 'Public'),
                             router=br_obj,
                             ad=self
                         )
@@ -190,8 +189,8 @@ class AD(models.Model):
                 )
                 if 'Bind' in intf.keys():
                     br_inft_obj.update(
-                        bind_addr=intf['Public']['Addr'],
-                        bind_l4port=intf['Public']['L4Port'],
+                        bind_addr=intf['Bind']['Addr'],
+                        bind_l4port=intf['Bind']['L4Port'],
                     )
 
     def fill_service_info(self, service_dict):
@@ -202,13 +201,13 @@ class AD(models.Model):
         """
         for name, service in service_dict.items():
             srv_obj, _ = Service.objects.update_or_create(name=name, ad=self)
-            for attr in SERVICE_ADDR_TYPES:
-                if attr not in service.keys():
+            for addr_attr in ADDR_ATTRIBUTES:
+                if addr_attr not in service.keys():
                     continue
-                for addr_idx in range(len(service[attr])):
-                    addr = service[attr][addr_idx]["Addr"]
-                    port = service[attr][addr_idx]["L4Port"]
-                    if not port and attr is 'Bind':
+                for addr_idx, addr_info in enumerate(service[addr_attr]):
+                    addr = addr_info["Addr"]
+                    port = addr_info["L4Port"]
+                    if not port and addr_attr is 'Bind':
                         port = service['Public'][addr_idx]['L4Port']
                     # TODO (ercanucan): currently we assume IPv4
                     addr_type = 'IPv4'
@@ -216,7 +215,7 @@ class AD(models.Model):
                         addr=addr,
                         l4port=port,
                         addr_type=addr_type,
-                        is_public=(attr == 'Public'),
+                        is_public=(addr_attr == 'Public'),
                         service=srv_obj,
                         ad=self
                     )
@@ -287,11 +286,6 @@ class Service(models.Model):
     ad = models.ForeignKey(AD)
     name = models.CharField(max_length=20, null=True)
 
-    def get_dict(self):
-        # TODO(jonghoonkwon): Fix this method to return a service dict
-        out_dict = super(Service, self).get_dict()
-        return out_dict
-
 
 class ServiceAddress(AddressElement):
     service = models.ForeignKey(Service)
@@ -300,11 +294,6 @@ class ServiceAddress(AddressElement):
 class BorderRouter(models.Model):
     ad = models.ForeignKey(AD)
     name = models.CharField(max_length=20, null=True)
-
-    def get_dict(self):
-        # TODO(jonghoonkwon): Complete the method to return a dict
-        out_dict = super(BorderRouter, self).get_dict()
-        return out_dict
 
 
 class BorderRouterAddress(AddressElement):

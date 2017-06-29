@@ -591,15 +591,13 @@ class ADDetailView(DetailView):
         context['isdas'] = str(ISD_AS.from_values(ad.isd_id, ad.as_id))
 
         # Sort by name numerically
-        lists_to_sort = ['services', 'border_routers']
-        for list_name in lists_to_sort:
+        for list_name in ['services', 'border_routers']:
             context[list_name] = sorted(
                 context[list_name],
                 key=lambda el: el.name if el.name is not None else -1
             )
         # Sort by address numerically
-        lists_to_sort = ['service_addrs', 'router_addrs', 'interface_addrs']
-        for list_name in lists_to_sort:
+        for list_name in ['service_addrs', 'router_addrs', 'interface_addrs']:
             context[list_name] = sorted(
                 context[list_name],
                 key=lambda el: el.addr if el.addr is not None else -1
@@ -1011,18 +1009,7 @@ def generate_topology(request):
     topo_dict['ZookeeperService'] = zk_dict
 
     # IP:port uniqueness in AS check
-    all_ip_port_pairs = []
-    for r in service_types:
-        servers_of_type_r = topo_dict[r]
-        for server in servers_of_type_r:
-            for i in range(len(servers_of_type_r[server]['Public'])):
-                curr_pair = servers_of_type_r[server]['Public'][i]['Addr'] + ':' + str(
-                    servers_of_type_r[server]['Public'][i]['L4Port'])
-            all_ip_port_pairs.append(curr_pair)
-    for server in topo_dict['ZookeeperService']:
-        curr_pair = topo_dict['ZookeeperService'][server]['Addr'] + ':' + str(
-            topo_dict['ZookeeperService'][server]['L4Port'])
-        all_ip_port_pairs.append(curr_pair)
+    all_ip_port_pairs = get_all_ip_port_pairs(topo_dict, service_types)
     if len(all_ip_port_pairs) != len(set(all_ip_port_pairs)):
         return JsonResponse(
             {'data': 'IP:port combinations not unique within AS'})
@@ -1045,6 +1032,29 @@ def generate_topology(request):
 
     current_page = request.META.get('HTTP_REFERER')
     return redirect(current_page)
+
+
+def get_all_ip_port_pairs(topo_dict, service_types):
+    """
+    Returns all ip port pairs in the AS for a uniqueness check.
+    :param dict topo_dict: the topology of the AS provided as a dict of dicts.
+    :param list service_types: A list of the service types running inside the AS.
+    :returns: The list containing all IP and Port pairs.
+    :rtype: list
+    """
+    # TODO(ercanucan): This function needs to be more extensive. Currently it considers
+    # only services and only their public addresses. It should be extended to account
+    # for bind addresses, border routers, interfaces and their public/bind addresses.
+    all_ip_port_pairs = []
+    for service_type in service_types:
+        for entry in topo_dict[service_type]:
+            for addr_info in topo_dict[service_type][entry]['Public']:
+                curr_pair = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'])
+                all_ip_port_pairs.append(curr_pair)
+    for zk_addr_info in topo_dict['ZookeeperService'].values():
+        curr_pair = "%s:%s" % (zk_addr_info['Addr'], zk_addr_info['L4Port'])
+        all_ip_port_pairs.append(curr_pair)
+    return all_ip_port_pairs
 
 
 def get_own_local_ip():
