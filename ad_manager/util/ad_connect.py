@@ -24,12 +24,11 @@ from ipaddress import ip_address
 
 # SCION
 from ad_manager.models import (
-    BeaconServerWeb,
-    CertificateServerWeb,
-    PathServerWeb,
-    RouterWeb,
-    SibraServerWeb,
-    AD)
+    AD,
+    BorderRouterAddress,
+    BorderRouterInterface,
+    ServiceAddress,
+)
 from ad_manager.util.common import is_private_address
 
 from lib.crypto.trc import get_trc_file_path
@@ -89,24 +88,19 @@ def find_next_ip_local():
 def find_next_ip_global():
     max_ip = ip_address(IP_ADDRESS_BASE)
 
-    # Servers
-    object_groups = [PathServerWeb.objects.all(),
-                     CertificateServerWeb.objects.all(),
-                     BeaconServerWeb.objects.all(),
-                     SibraServerWeb.objects.all()]
+    # Routers
+    object_groups = [BorderRouterAddress.objects.all(), BorderRouterInterface.objects.all()]
     for group in object_groups:
         for element in group:
             element_addr = ip_address(element.addr)
             if element_addr > max_ip and is_private_address(element_addr):
                 max_ip = element_addr
 
-    # Routers
-    for router in RouterWeb.objects.all():
-        ip_addrs = [router.addr, router.interface_addr, router.interface_toaddr]
-        for addr in ip_addrs:
-            addr = ip_address(addr)
-            if addr > max_ip and is_private_address(addr):
-                max_ip = addr
+    # Services
+    for service in ServiceAddress.objects.all():
+        addr = ip_address(service.addr)
+        if addr > max_ip and is_private_address(addr):
+            max_ip = addr
 
     return max_ip + 1
 
@@ -134,53 +128,59 @@ def create_next_router(topo_dict, ip_gen):
         nr_addr = next(ip_gen)
         nr_if_addr = next(ip_gen)
 
-        new_router['Addr'] = nr_addr
-        new_router['Interface']['Addr'] = nr_if_addr
-        new_router['Interface']['ToAddr'] = 'NULL'
-        new_router['Interface']['IFID'] = router_index
+        new_router['InternalAddr'][0]['Public'][0]['Addr'] = nr_addr
+        new_router['Interfaces'][router_index] = {}
+        new_router['Interfaces'][router_index]['Public']['Addr'] = nr_if_addr
+        new_router['Interfaces'][router_index]['Remote']['Addr'] = 'NULL'
     else:
         ip_address_loc = next(ip_gen)
         ip_address_pub = next(ip_gen)
         router_index = 1
+        if_id = 0
         new_router = {
-            'AddrType': 'IPV4',
-            'Addr': str(ip_address_loc),
-            'Interface': {
-                'AddrType': 'IPV4',
-                'Addr': str(ip_address_pub),
-                'UdpPort': TEST_UDP_PORT,
-                'ToUdpPort': TEST_UDP_PORT,
-                'IFID': router_index,
+            'InternalAddrs': [{
+                'Public': [{
+                    'Addr': str(ip_address_loc),
+                    'L4Port': TEST_PORT,
+                }]
+            }],
+            'Interfaces': {
+                str(if_id): {
+                    'Public': {
+                        'Addr': str(ip_address_pub),
+                        'L4Port': TEST_UDP_PORT,
+                    },
+                    'Remote': {
+                        'Addr': 'NULL',
+                        'L4Port': TEST_UDP_PORT,
+                    },
+                    'InternalAddrIdx': 0,
+                    'Bandwidth': 1000,
+                    'MTU': 1472,
+                }
             }
         }
-    new_router['Port'] = TEST_PORT
-    return str(router_index), new_router
+    return str(if_id), str(router_index), new_router
 
 
 def link_topologies(first_topo, second_topo, connection_type):
     first_topo = copy.deepcopy(first_topo)
     second_topo = copy.deepcopy(second_topo)
     ip_gen = ip_generator()
-    first_router_id, first_topo_router = create_next_router(first_topo,
-                                                            ip_gen)
-    second_router_id, second_topo_router = create_next_router(second_topo,
-                                                              ip_gen)
+    first_ifid, first_router_id, first_topo_router = create_next_router(first_topo, ip_gen)
+    second_ifid, second_router_id, second_topo_router = create_next_router(second_topo, ip_gen)
 
-    first_router_if = first_topo_router['Interface']
-    second_router_if = second_topo_router['Interface']
+    first_router_if = first_topo_router['Interfaces'][first_ifid]
+    second_router_if = second_topo_router['Interfaces'][second_ifid]
 
     first_ad_id = first_topo['ADID']
     second_ad_id = second_topo['ADID']
 
-    first_router_if['ToAddr'] = second_router_if['Addr']
-    first_router_if['NeighborISD'] = second_topo['ISDID']
-    first_router_if['NeighborAD'] = second_ad_id
+    first_router_if['Remote']['Addr'] = second_router_if['Public']['Addr']
     first_router_if['ISD_AS'] = '{}-{}'.format(second_topo['ISDID'],
                                                second_ad_id)
 
-    second_router_if['ToAddr'] = first_router_if['Addr']
-    second_router_if['NeighborISD'] = first_topo['ISDID']
-    second_router_if['NeighborAD'] = first_ad_id
+    second_router_if['Remote']['Addr'] = first_router_if['Public']['Addr']
     second_router_if['ISD_AS'] = '{}-{}'.format(first_topo['ISDID'],
                                                 first_ad_id)
 
@@ -208,9 +208,7 @@ def link_ads(first_ad, second_ad, connection_type):
     assert isinstance(second_ad, AD)
     first_topo = first_ad.generate_topology_dict()
     second_topo = second_ad.generate_topology_dict()
-    first_topo, second_topo = link_topologies(first_topo, second_topo,
-                                              connection_type)
-
+    first_topo, second_topo = link_topologies(first_topo, second_topo, connection_type)
     first_ad.fill_from_topology(first_topo, clear=True)
     second_ad.fill_from_topology(second_topo, clear=True)
 
@@ -255,8 +253,7 @@ def create_new_ad_files(parent_ad_topo, isd_id, ad_id, out_dir):
     new_topo_path = gen.path_dict(isd_id, ad_id)['topo_file_abs']
     new_topo_file = read_file(new_topo_path)
     new_topo = json.loads(new_topo_file)
-    existing_topo, new_topo = link_topologies(parent_ad_topo, new_topo,
-                                              'PARENT_CHILD')
+    existing_topo, new_topo = link_topologies(parent_ad_topo, new_topo, 'PARENT_CHILD')
     # Update the config files for the new AD
     write_file(new_topo_path, json.dumps(new_topo, sort_keys=4, indent=4))
     gen.write_derivatives(new_topo)

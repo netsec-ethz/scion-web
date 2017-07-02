@@ -76,12 +76,14 @@ class ConnectionRequestForm(forms.ModelForm):
                                           'ISD-AS to connect to'})
         )
         # populate the choice field with options to choose from
-        router_set = ad.routerweb_set.all()
-        for router in router_set:
-            val = router.interface_addr
-            if router.interface_port:  # UdpToPort is not empty
-                val += ":" + str(router.interface_port)
-            router_choices.append((val, val))
+        for router in ad.borderrouter_set.all():
+            for router_addr in router.borderrouteraddress_set.all():
+                if router_addr.is_public:
+                    for router_intf in router_addr.borderrouterinterface_set.all():
+                        val = router_intf.addr
+                        if router_intf.l4port:  # UdpToPort is not empty
+                            val += ":" + str(router_intf.l4port)
+                        router_choices.append((val, val))
 
         self.fields['router_info'] = forms.ChoiceField(
             choices=router_choices

@@ -126,12 +126,32 @@ def set_cloud_providers(config, topology_params):
         pass
 
 
-def get_section_attr(mockup_dict, section_name, attr):
-    section = mockup_dict[section_name]
-    return [(sec_id, section[sec_id][attr]) for sec_id in section]
+def get_section_addr(topo_dict, section_name):
+    """
+    Extract all the service types and their corresponding addresses.
+    : param dict topo_dict: the topology dictionary.
+    : param str section_name: the name of the service (e.g. BeaconService)
+    : returns: a list of pairs of the service type and addresse.
+    """
+    section = topo_dict[section_name]
+    ret_val = []
+    if section_name == 'ZookeeperService':
+        for sec_id in section:
+            ret_val.append((sec_id, section[sec_id]['Addr']))
+    elif section_name.endswith('Service'):
+        for sec_id in section:
+            for addr_idx in range(len(section[sec_id]['Public'])):
+                ret_val.append((sec_id, section[sec_id]['Public'][addr_idx]['Addr']))
+    elif section_name.endswith("Routers"):
+        for sec_id in section:
+            int_addrs = section[sec_id]['InternalAddrs']
+            for int_addr_idx in range(len(int_addrs)):
+                for addr_idx in range(len(int_addrs[int_addr_idx]['Public'])):
+                    ret_val.append((sec_id, int_addrs[int_addr_idx]['Public'][addr_idx]['Addr']))
+    return ret_val
 
 
-def generate_ansible_hostfile(topology_params, mockup_dict, isd_as,
+def generate_ansible_hostfile(topology_params, topo_dict, isd_as,
                               commit_hash):
     """
     Generate the host file for Ansible
@@ -146,13 +166,13 @@ def generate_ansible_hostfile(topology_params, mockup_dict, isd_as,
                                   'ISD' + str(isd_id), 'AS' + str(as_id),
                                   'host.{}-{}'.format(isd_id, as_id))
     scion_nodes = []  # entries for the scion_node section
-    for key, service_type in [('BeaconServer', 'beacon_server'),
-                              ('CertificateServer', 'cert_server'),
-                              ('BorderRouter', 'router'),
-                              ('PathServer', 'path_server'),
-                              ('SibraServer', 'sibra_server'),
-                              ('Zookeeper', 'zookeeper_service')]:
-        val = get_section_attr(mockup_dict, key+'s', 'Addr')
+    for key, service_type in [('BeaconService', 'beacon_server'),
+                              ('CertificateService', 'cert_server'),
+                              ('BorderRouters', 'router'),
+                              ('PathService', 'path_server'),
+                              ('SibraService', 'sibra_server'),
+                              ('ZookeeperService', 'zookeeper_service')]:
+        val = get_section_addr(topo_dict, key)
         if not val:  # skip empty entries
             continue
         hostnames = topology_params.getlist('inputHostname')

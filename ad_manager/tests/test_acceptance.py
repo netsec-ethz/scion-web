@@ -89,20 +89,20 @@ class TestListAds(BasicWebTest):
         self.assertContains(ad_list, isd_name)
         self.assertNotContains(ad_list, str(self.ads[1]))
 
-        for ad_id in [3, 4, 5]:
+        for ad_id in [21, 22, 23]:
             ad = self.ads[ad_id]
             self.assertContains(ad_list, str(ad))
 
     def test_list_core(self):
         isd = self.isds[2]
-        ad = self.ads[3]
+        ad = self.ads[21]
         ad.is_core_ad = True
         ad.save()
         assert ad.isd == isd
 
         ad_list = self.app.get(reverse('isd_detail', args=[isd.id]))
         self.assertContains(ad_list, ad.as_id)
-        li_tag = ad_list.html.find('a', text='AS 2-3').parent
+        li_tag = ad_list.html.find('a', text='AS 2-21').parent
         self.assertIn('core', li_tag.text)
 
 
@@ -125,16 +125,21 @@ class TestAdDetail(BasicWebTest):
             self.assertFalse('No servers' in str(table), "Table is empty")
 
         # Test that all beacon servers are listed
-        for bs in ad.beaconserverweb_set.all():
-            assert bs.addr in beacon_servers.text
+        for service in ad.serviceaddress_set.all():
+            obj = service.service
+            if 'bs' in obj.name:
+                assert service.addr in beacon_servers.text
 
         # Test that routers are listed correctly
         router_rows = routers.find_all('tr')[1:]
-        for r in ad.routerweb_set.all():
-            row = next(filter(lambda x: r.addr in x.text, router_rows))
-            assert str(r.neighbor_isd_id) in row.text
-            assert str(r.neighbor_as_id) in row.text
-            assert r.neighbor_type in row.text
+        for intf in ad.borderrouterinterface_set.all():
+            obj = intf.router_addr.router
+            row = next(filter(lambda x: obj.name in x.text, router_rows))
+            isd_ad = '%s-%s' % (intf.neighbor_isd_id, intf.neighbor_as_id)
+            assert isd_ad in row.text
+            assert intf.addr in row.text
+            assert intf.remote_addr in row.text
+            assert intf.neighbor_type in row.text
 
     def test_labels(self):
         ad = self.ads[1]

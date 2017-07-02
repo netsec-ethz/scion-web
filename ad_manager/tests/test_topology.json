@@ -1,563 +1,1427 @@
 [
 {
-    "fields": {},
-    "pk": 1,
-    "model": "ad_manager.isd"
+  "fields": {},
+  "model": "ad_manager.isd",
+  "pk": 1
 },
 {
-    "fields": {},
-    "pk": 2,
-    "model": "ad_manager.isd"
+  "fields": {},
+  "model": "ad_manager.isd",
+  "pk": 2
 },
 {
-    "fields": {},
-    "pk": 10,
-    "model": "ad_manager.isd"
+  "fields": {},
+  "model": "ad_manager.isd",
+  "pk": 3
 },
 {
-    "fields": {
-        "is_open": true,
-        "original_topology": "{\"Zookeepers\":{},\"BeaconServers\":{\"1\":{\"Addr\":\"127.0.0.51\",\"AddrType\":\"IPV4\"}},\"BorderRouters\":{\"2\":{\"Addr\":\"127.0.0.19\",\"AddrType\":\"IPV4\",\"Interface\":{\"Addr\":\"127.0.0.20\",\"ToUdpPort\":50000,\"IFID\":2,\"NeighborAD\":2,\"NeighborType\":\"CHILD\",\"ToAddr\":\"127.0.0.40\",\"NeighborISD\":1,\"UdpPort\":50000,\"AddrType\":\"IPV4\"}},\"1\":{\"Addr\":\"127.0.0.17\",\"AddrType\":\"IPV4\",\"Interface\":{\"Addr\":\"127.0.0.18\",\"ToUdpPort\":50000,\"IFID\":1,\"NeighborAD\":3,\"NeighborType\":\"CORE\",\"ToAddr\":\"127.0.0.2\",\"NeighborISD\":2,\"UdpPort\":50000,\"AddrType\":\"IPV4\"}}},\"ADID\":1,\"CertificateServers\":{\"1\":{\"Addr\":\"127.0.0.52\",\"AddrType\":\"IPV4\"}},\"Core\":1,\"PathServers\":{\"1\":{\"Addr\":\"127.0.0.53\",\"AddrType\":\"IPV4\"}},\"ISDID\":1}",
-        "as_id": 1,
-        "isd": 1,
-        "is_core_ad": true,
-        "md_host": "127.0.0.1"
-    },
-    "pk": 1,
-    "model": "ad_manager.ad"
+  "fields": {
+    "as_id": 1,
+    "isd": 1,
+    "is_open": false,
+    "original_topology": "{\"MTU\":1472,\"Core\":true,\"CertificateService\":{\"cs1-1-1\":{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.130\"}]}},\"Overlay\":\"UDP/IPv4\",\"BorderRouters\":{\"br1-1-5\":{\"Interfaces\":{\"5\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.154\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.115\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"CORE\",\"ISD_AS\":\"3-31\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.154\"}]}]},\"br1-1-3\":{\"Interfaces\":{\"3\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.1\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.2\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"CHILD\",\"ISD_AS\":\"1-3\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.142\"}]}]},\"br1-1-6\":{\"Interfaces\":{\"6\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.130\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.18\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"CORE\",\"ISD_AS\":\"4-41\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31044,\"Addr\":\"203.0.113.130\"}]}]},\"br1-1-2\":{\"Interfaces\":{\"2\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.138\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.211\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"CHILD\",\"ISD_AS\":\"1-2\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.138\"}]}]},\"br1-1-4\":{\"Interfaces\":{\"4\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.134\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.180\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"CORE\",\"ISD_AS\":\"2-21\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.134\"}]}]},\"br1-1-7\":{\"Interfaces\":{\"7\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50001,\"Addr\":\"203.0.113.150\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.254\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"CHILD\",\"ISD_AS\":\"1-4\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31043,\"Addr\":\"203.0.113.150\"}]}]},\"br1-1-1\":{\"Interfaces\":{\"1\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.150\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.114\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"CHILD\",\"ISD_AS\":\"1-5\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.150\"}]}]}},\"PathService\":{\"ps1-1-1\":{\"Public\":[{\"L4Port\":31043,\"Addr\":\"203.0.113.130\"}]}},\"BeaconService\":{\"bs1-1-1\":{\"Public\":[{\"L4Port\":31041,\"Addr\":\"203.0.113.130\"}]}},\"ZookeeperService\":{\"1\":{\"L4Port\":2181,\"Addr\":\"203.0.113.130\"}},\"ISD_AS\":\"1-1\",\"SibraService\":{\"sb1-1-1\":{\"Public\":[{\"L4Port\":31045,\"Addr\":\"203.0.113.130\"}]}}}",
+    "is_core_ad": true,
+    "md_host": "127.0.0.1"
+  },
+  "model": "ad_manager.ad",
+  "pk": 1
 },
 {
-    "fields": {
-        "is_open": true,
-        "original_topology": "{\"Zookeepers\":{},\"BeaconServers\":{\"1\":{\"Addr\":\"127.0.0.67\",\"AddrType\":\"IPV4\"}},\"BorderRouters\":{\"1\":{\"Addr\":\"127.0.0.39\",\"AddrType\":\"IPV4\",\"Interface\":{\"Addr\":\"127.0.0.40\",\"ToUdpPort\":50000,\"IFID\":1,\"NeighborAD\":1,\"NeighborType\":\"PARENT\",\"ToAddr\":\"127.0.0.20\",\"NeighborISD\":1,\"UdpPort\":50000,\"AddrType\":\"IPV4\"}}},\"ADID\":2,\"CertificateServers\":{\"1\":{\"Addr\":\"127.0.0.68\",\"AddrType\":\"IPV4\"}},\"Core\":0,\"PathServers\":{\"1\":{\"Addr\":\"127.0.0.69\",\"AddrType\":\"IPV4\"}},\"ISDID\":1}",
-        "as_id": 2,
-        "isd": 1,
-        "is_core_ad": false,
-        "md_host": "127.0.0.1"
-    },
-    "pk": 2,
-    "model": "ad_manager.ad"
+  "fields": {
+    "as_id": 2,
+    "isd": 1,
+    "is_open": false,
+    "original_topology": "{\"MTU\":1472,\"Core\":false,\"CertificateService\":{\"cs1-2-1\":{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.211\"}]}},\"Overlay\":\"UDP/IPv4\",\"BorderRouters\":{\"br1-2-3\":{\"Interfaces\":{\"3\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.211\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.138\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"PARENT\",\"ISD_AS\":\"1-1\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31044,\"Addr\":\"203.0.113.211\"}]}]},\"br1-2-1\":{\"Interfaces\":{\"1\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.2\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.1\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"PARENT\",\"ISD_AS\":\"1-3\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.146\"}]}]},\"br1-2-4\":{\"Interfaces\":{\"4\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.190\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.191\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"CHILD\",\"ISD_AS\":\"1-6\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.190\"}]}]},\"br1-2-5\":{\"Interfaces\":{\"5\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.68\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.69\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"PARENT\",\"ISD_AS\":\"1-3\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.68\"}]}]},\"br1-2-2\":{\"Interfaces\":{\"2\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.194\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.122\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"PEER\",\"ISD_AS\":\"1-5\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.194\"}]}]}},\"PathService\":{\"ps1-2-1\":{\"Public\":[{\"L4Port\":31043,\"Addr\":\"203.0.113.211\"}]}},\"BeaconService\":{\"bs1-2-1\":{\"Public\":[{\"L4Port\":31041,\"Addr\":\"203.0.113.211\"}]}},\"ZookeeperService\":{\"1\":{\"L4Port\":2181,\"Addr\":\"203.0.113.211\"}},\"ISD_AS\":\"1-2\",\"SibraService\":{\"sb1-2-1\":{\"Public\":[{\"L4Port\":31045,\"Addr\":\"203.0.113.211\"}]}}}",
+    "is_core_ad": false,
+    "md_host": "127.0.0.1"
+  },
+  "model": "ad_manager.ad",
+  "pk": 2
 },
 {
-    "fields": {
-        "is_open": true,
-        "original_topology": "{\"Zookeepers\":{},\"BeaconServers\":{\"1\":{\"Addr\":\"127.0.0.43\",\"AddrType\":\"IPV4\"}},\"BorderRouters\":{\"2\":{\"Addr\":\"127.0.0.3\",\"AddrType\":\"IPV4\",\"Interface\":{\"Addr\":\"127.0.0.4\",\"ToUdpPort\":50000,\"IFID\":2,\"NeighborAD\":4,\"NeighborType\":\"CHILD\",\"ToAddr\":\"127.0.0.28\",\"NeighborISD\":2,\"UdpPort\":50000,\"AddrType\":\"IPV4\"}},\"3\":{\"Addr\":\"127.0.0.5\",\"AddrType\":\"IPV4\",\"Interface\":{\"Addr\":\"127.0.0.6\",\"ToUdpPort\":50000,\"IFID\":3,\"NeighborAD\":6,\"NeighborType\":\"CORE\",\"ToAddr\":\"127.0.0.12\",\"NeighborISD\":10,\"UdpPort\":50000,\"AddrType\":\"IPV4\"}},\"4\":{\"Addr\":\"127.0.0.7\",\"AddrType\":\"IPV4\",\"Interface\":{\"Addr\":\"127.0.0.8\",\"ToUdpPort\":50000,\"IFID\":4,\"NeighborAD\":5,\"NeighborType\":\"CHILD\",\"ToAddr\":\"127.0.0.34\",\"NeighborISD\":2,\"UdpPort\":50000,\"AddrType\":\"IPV4\"}},\"1\":{\"Addr\":\"127.0.0.1\",\"AddrType\":\"IPV4\",\"Interface\":{\"Addr\":\"127.0.0.2\",\"ToUdpPort\":50000,\"IFID\":1,\"NeighborAD\":1,\"NeighborType\":\"CORE\",\"ToAddr\":\"127.0.0.18\",\"NeighborISD\":1,\"UdpPort\":50000,\"AddrType\":\"IPV4\"}}},\"ADID\":3,\"CertificateServers\":{\"1\":{\"Addr\":\"127.0.0.44\",\"AddrType\":\"IPV4\"}},\"Core\":1,\"PathServers\":{\"1\":{\"Addr\":\"127.0.0.45\",\"AddrType\":\"IPV4\"}},\"ISDID\":2}",
-        "as_id": 3,
-        "isd": 2,
-        "is_core_ad": true,
-        "md_host": "127.0.0.1"
-    },
-    "pk": 3,
-    "model": "ad_manager.ad"
+  "fields": {
+    "as_id": 21,
+    "isd": 2,
+    "is_open": false,
+    "original_topology": "{\"MTU\":1472,\"Core\":true,\"CertificateService\":{\"cs2-21-1\":{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.138\"}],\"Bind\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.47\"}]}},\"Overlay\":\"UDP/IPv4\",\"BorderRouters\":{\"br2-21-3\":{\"Interfaces\":{\"3\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50001,\"Addr\":\"203.0.113.165\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.208\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"CHILD\",\"ISD_AS\":\"2-23\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31043,\"Addr\":\"203.0.113.165\"}]}]},\"br2-21-2\":{\"Interfaces\":{\"2\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.165\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.198\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"CHILD\",\"ISD_AS\":\"2-22\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.165\"}]}]},\"br2-21-1\":{\"Interfaces\":{\"1\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.180\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.134\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"CORE\",\"ISD_AS\":\"1-1\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.180\"}]}]}},\"PathService\":{\"ps2-21-1\":{\"Public\":[{\"L4Port\":31041,\"Addr\":\"203.0.113.180\"}]}},\"BeaconService\":{\"bs2-21-1\":{\"Public\":[{\"L4Port\":31041,\"Addr\":\"203.0.113.138\"}],\"Bind\":[{\"L4Port\":31041,\"Addr\":\"203.0.113.47\"}]}},\"ZookeeperService\":{\"1\":{\"L4Port\":2181,\"Addr\":\"203.0.113.180\"}},\"ISD_AS\":\"2-21\",\"SibraService\":{\"sb2-21-1\":{\"Public\":[{\"L4Port\":31043,\"Addr\":\"203.0.113.180\"}]}}}",
+    "is_core_ad": true,
+    "md_host": "127.0.0.1"
+  },
+  "model": "ad_manager.ad",
+  "pk": 21
 },
 {
-    "fields": {
-        "is_open": true,
-        "original_topology": "{\"Zookeepers\":{},\"BeaconServers\":{\"1\":{\"Addr\":\"127.0.0.59\",\"AddrType\":\"IPV4\"}},\"BorderRouters\":{\"2\":{\"Addr\":\"127.0.0.29\",\"AddrType\":\"IPV4\",\"Interface\":{\"Addr\":\"127.0.0.30\",\"ToUdpPort\":50000,\"IFID\":2,\"NeighborAD\":5,\"NeighborType\":\"CORE\",\"ToAddr\":\"127.0.0.36\",\"NeighborISD\":2,\"UdpPort\":50000,\"AddrType\":\"IPV4\"}},\"1\":{\"Addr\":\"127.0.0.27\",\"AddrType\":\"IPV4\",\"Interface\":{\"Addr\":\"127.0.0.28\",\"ToUdpPort\":50000,\"IFID\":1,\"NeighborAD\":3,\"NeighborType\":\"PARENT\",\"ToAddr\":\"127.0.0.4\",\"NeighborISD\":2,\"UdpPort\":50000,\"AddrType\":\"IPV4\"}}},\"ADID\":4,\"CertificateServers\":{\"1\":{\"Addr\":\"127.0.0.60\",\"AddrType\":\"IPV4\"}},\"Core\":0,\"PathServers\":{\"1\":{\"Addr\":\"127.0.0.61\",\"AddrType\":\"IPV4\"}},\"ISDID\":2}",
-        "as_id": 4,
-        "isd": 2,
-        "is_core_ad": false,
-        "md_host": "127.0.0.1"
-    },
-    "pk": 4,
-    "model": "ad_manager.ad"
+  "fields": {
+    "as_id": 22,
+    "isd": 2,
+    "is_open": false,
+    "original_topology": "{\"MTU\":1472,\"Core\":false,\"CertificateService\":{\"cs2-22-1\":{\"Public\":[{\"L4Port\":31042,\"Addr\":\"173.239.151.139\"}],\"Bind\":[{\"L4Port\":31042,\"Addr\":\"10.64.7.21\"}]}},\"Overlay\":\"UDP/IPv4\",\"BorderRouters\":{\"br2-22-1\":{\"Interfaces\":{\"1\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.198\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.165\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"PARENT\",\"ISD_AS\":\"2-21\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.198\"}]}]}},\"PathService\":{\"ps2-22-1\":{\"Public\":[{\"L4Port\":31041,\"Addr\":\"203.0.113.198\"}]}},\"BeaconService\":{\"bs2-22-1\":{\"Public\":[{\"L4Port\":31041,\"Addr\":\"173.239.151.139\"}],\"Bind\":[{\"L4Port\":31041,\"Addr\":\"10.64.7.21\"}]}},\"ZookeeperService\":{\"1\":{\"L4Port\":2181,\"Addr\":\"203.0.113.198\"}},\"ISD_AS\":\"2-22\",\"SibraService\":{\"sb2-22-1\":{\"Public\":[{\"L4Port\":31043,\"Addr\":\"203.0.113.198\"}]}}}",
+    "is_core_ad": false,
+    "md_host": "127.0.0.1"
+  },
+  "model": "ad_manager.ad",
+  "pk": 22
 },
 {
-    "fields": {
-        "is_open": true,
-        "original_topology": "{\"Zookeepers\":{},\"BeaconServers\":{\"1\":{\"Addr\":\"127.0.0.63\",\"AddrType\":\"IPV4\"}},\"BorderRouters\":{\"2\":{\"Addr\":\"127.0.0.35\",\"AddrType\":\"IPV4\",\"Interface\":{\"Addr\":\"127.0.0.36\",\"ToUdpPort\":50000,\"IFID\":2,\"NeighborAD\":4,\"NeighborType\":\"CORE\",\"ToAddr\":\"127.0.0.30\",\"NeighborISD\":2,\"UdpPort\":50000,\"AddrType\":\"IPV4\"}},\"1\":{\"Addr\":\"127.0.0.33\",\"AddrType\":\"IPV4\",\"Interface\":{\"Addr\":\"127.0.0.34\",\"ToUdpPort\":50000,\"IFID\":1,\"NeighborAD\":3,\"NeighborType\":\"PARENT\",\"ToAddr\":\"127.0.0.8\",\"NeighborISD\":2,\"UdpPort\":50000,\"AddrType\":\"IPV4\"}}},\"ADID\":5,\"CertificateServers\":{\"1\":{\"Addr\":\"127.0.0.64\",\"AddrType\":\"IPV4\"}},\"Core\":0,\"PathServers\":{\"1\":{\"Addr\":\"127.0.0.65\",\"AddrType\":\"IPV4\"}},\"ISDID\":2}",
-        "as_id": 5,
-        "isd": 2,
-        "is_core_ad": false,
-        "md_host": "127.0.0.1"
-    },
-    "pk": 5,
-    "model": "ad_manager.ad"
+  "fields": {
+    "as_id": 31,
+    "isd": 3,
+    "is_open": false,
+    "original_topology": "{\"MTU\":1472,\"Core\":true,\"CertificateService\":{\"cs3-31-1\":{\"Public\":[{\"L4Port\":31041,\"Addr\":\"203.0.113.193\"}],\"Bind\":[{\"L4Port\":null,\"Addr\":\"203.0.113.88\"}]}},\"Overlay\":\"UDP/IPv4\",\"BorderRouters\":{\"br3-31-1\":{\"Interfaces\":{\"1\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.115\"},\"Remote\":{\"L4Port\":50000,\"Addr\":\"203.0.113.154\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"CORE\",\"ISD_AS\":\"1-1\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.115\"}]}]}},\"PathService\":{\"ps3-31-1\":{\"Public\":[{\"L4Port\":31041,\"Addr\":\"203.0.113.34\"}],\"Bind\":[{\"L4Port\":null,\"Addr\":\"203.0.113.177\"}]}},\"BeaconService\":{\"bs3-31-1\":{\"Public\":[{\"L4Port\":31041,\"Addr\":\"203.0.113.185\"}]}},\"ZookeeperService\":{\"1\":{\"L4Port\":2181,\"Addr\":\"203.0.113.185\"}},\"ISD_AS\":\"3-31\",\"SibraService\":{\"sb3-31-1\":{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.185\"}]}}}",
+    "is_core_ad": true,
+    "md_host": "127.0.0.1"
+  },
+  "model": "ad_manager.ad",
+  "pk": 31
 },
 {
-    "fields": {
-        "is_open": true,
-        "original_topology": "{\"Zookeepers\":{},\"BeaconServers\":{\"1\":{\"Addr\":\"127.0.0.47\",\"AddrType\":\"IPV4\"}},\"BorderRouters\":{\"2\":{\"Addr\":\"127.0.0.13\",\"AddrType\":\"IPV4\",\"Interface\":{\"Addr\":\"127.0.0.14\",\"ToUdpPort\":50000,\"IFID\":2,\"NeighborAD\":7,\"NeighborType\":\"CHILD\",\"ToAddr\":\"127.0.0.24\",\"NeighborISD\":10,\"UdpPort\":50000,\"AddrType\":\"IPV4\"}},\"1\":{\"Addr\":\"127.0.0.11\",\"AddrType\":\"IPV4\",\"Interface\":{\"Addr\":\"127.0.0.12\",\"ToUdpPort\":50000,\"IFID\":1,\"NeighborAD\":3,\"NeighborType\":\"CORE\",\"ToAddr\":\"127.0.0.6\",\"NeighborISD\":2,\"UdpPort\":50000,\"AddrType\":\"IPV4\"}}},\"ADID\":6,\"CertificateServers\":{\"1\":{\"Addr\":\"127.0.0.48\",\"AddrType\":\"IPV4\"}},\"Core\":1,\"PathServers\":{\"1\":{\"Addr\":\"127.0.0.49\",\"AddrType\":\"IPV4\"}},\"ISDID\":10}",
-        "as_id": 6,
-        "isd": 10,
-        "is_core_ad": true,
-        "md_host": "127.0.0.1"
-    },
-    "pk": 6,
-    "model": "ad_manager.ad"
+  "fields": {
+    "as_id": 23,
+    "isd": 2,
+    "is_open": false,
+    "original_topology": "{\"MTU\":1472,\"Core\":false,\"CertificateService\":{\"cs2-23-1\":{\"Public\":[{\"L4Port\":31042,\"Addr\":\"203.0.113.208\"}]}},\"Overlay\":\"UDP/IPv4\",\"BorderRouters\":{\"br2-23-1\":{\"Interfaces\":{\"1\":{\"InternalAddrIdx\":0,\"Public\":{\"L4Port\":50000,\"Addr\":\"203.0.113.208\"},\"Remote\":{\"L4Port\":50001,\"Addr\":\"203.0.113.165\"},\"Bandwidth\":1000,\"MTU\":1472,\"LinkType\":\"PARENT\",\"ISD_AS\":\"2-21\",\"Overlay\":\"UDP/IPv4\"}},\"InternalAddrs\":[{\"Public\":[{\"L4Port\":31044,\"Addr\":\"203.0.113.208\"}]}]}},\"PathService\":{\"ps2-23-1\":{\"Public\":[{\"L4Port\":31043,\"Addr\":\"203.0.113.208\"}]}},\"BeaconService\":{\"bs2-23-1\":{\"Public\":[{\"L4Port\":31041,\"Addr\":\"203.0.113.208\"}]}},\"ZookeeperService\":{\"1\":{\"L4Port\":2181,\"Addr\":\"203.0.113.208\"}},\"ISD_AS\":\"2-23\",\"SibraService\":{\"sb2-23-1\":{\"Public\":[{\"L4Port\":31045,\"Addr\":\"203.0.113.208\"}]}}}",
+    "is_core_ad": false,
+    "md_host": "127.0.0.1"
+  },
+  "model": "ad_manager.ad",
+  "pk": 48
 },
 {
-    "fields": {
-        "is_open": true,
-        "original_topology": "{\"Zookeepers\":{},\"BeaconServers\":{\"1\":{\"Addr\":\"127.0.0.55\",\"AddrType\":\"IPV4\"}},\"BorderRouters\":{\"1\":{\"Addr\":\"127.0.0.23\",\"AddrType\":\"IPV4\",\"Interface\":{\"Addr\":\"127.0.0.24\",\"ToUdpPort\":50000,\"IFID\":1,\"NeighborAD\":6,\"NeighborType\":\"PARENT\",\"ToAddr\":\"127.0.0.14\",\"NeighborISD\":10,\"UdpPort\":50000,\"AddrType\":\"IPV4\"}}},\"ADID\":7,\"CertificateServers\":{\"1\":{\"Addr\":\"127.0.0.56\",\"AddrType\":\"IPV4\"}},\"Core\":0,\"PathServers\":{\"1\":{\"Addr\":\"127.0.0.57\",\"AddrType\":\"IPV4\"}},\"ISDID\":10}",
-        "as_id": 7,
-        "isd": 10,
-        "is_core_ad": false,
-        "md_host": "127.0.0.1"
-    },
-    "pk": 7,
-    "model": "ad_manager.ad"
+  "fields": {
+    "ad": 1,
+    "name": "bs1-1-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 1
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 1,
-        "addr": "127.0.0.51",
-        "port": 31041
-    },
-    "pk": 136,
-    "model": "ad_manager.beaconserverweb"
+  "fields": {
+    "ad": 1,
+    "name": "cs1-1-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 2
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 2,
-        "addr": "127.0.0.67",
-        "port": 31041
-    },
-    "pk": 137,
-    "model": "ad_manager.beaconserverweb"
+  "fields": {
+    "ad": 1,
+    "name": "ps1-1-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 3
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 3,
-        "addr": "127.0.0.43",
-        "port": 31041
-    },
-    "pk": 138,
-    "model": "ad_manager.beaconserverweb"
+  "fields": {
+    "ad": 1,
+    "name": "sb1-1-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 4
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 4,
-        "addr": "127.0.0.59",
-        "port": 31041
-    },
-    "pk": 139,
-    "model": "ad_manager.beaconserverweb"
+  "fields": {
+    "ad": 2,
+    "name": "bs1-2-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 5
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 5,
-        "addr": "127.0.0.63",
-        "port": 31041
-    },
-    "pk": 140,
-    "model": "ad_manager.beaconserverweb"
+  "fields": {
+    "ad": 2,
+    "name": "cs1-2-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 6
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 6,
-        "addr": "127.0.0.47",
-        "port": 31041
-    },
-    "pk": 141,
-    "model": "ad_manager.beaconserverweb"
+  "fields": {
+    "ad": 2,
+    "name": "ps1-2-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 7
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 7,
-        "addr": "127.0.0.55",
-        "port": 31041
-    },
-    "pk": 142,
-    "model": "ad_manager.beaconserverweb"
+  "fields": {
+    "ad": 2,
+    "name": "sb1-2-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 8
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 1,
-        "addr": "127.0.0.52",
-        "port": 31041
-    },
-    "pk": 118,
-    "model": "ad_manager.certificateserverweb"
+  "fields": {
+    "ad": 21,
+    "name": "bs2-21-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 37
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 2,
-        "addr": "127.0.0.68",
-        "port": 31041
-    },
-    "pk": 119,
-    "model": "ad_manager.certificateserverweb"
+  "fields": {
+    "ad": 21,
+    "name": "cs2-21-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 38
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 3,
-        "addr": "127.0.0.44",
-        "port": 31041
-    },
-    "pk": 120,
-    "model": "ad_manager.certificateserverweb"
+  "fields": {
+    "ad": 21,
+    "name": "ps2-21-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 39
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 4,
-        "addr": "127.0.0.60",
-        "port": 31041
-    },
-    "pk": 121,
-    "model": "ad_manager.certificateserverweb"
+  "fields": {
+    "ad": 21,
+    "name": "sb2-21-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 40
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 5,
-        "addr": "127.0.0.64",
-        "port": 31041
-    },
-    "pk": 122,
-    "model": "ad_manager.certificateserverweb"
+  "fields": {
+    "ad": 22,
+    "name": "bs2-22-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 41
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 6,
-        "addr": "127.0.0.48",
-        "port": 31041
-    },
-    "pk": 123,
-    "model": "ad_manager.certificateserverweb"
+  "fields": {
+    "ad": 22,
+    "name": "cs2-22-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 42
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 7,
-        "addr": "127.0.0.56",
-        "port": 31041
-    },
-    "pk": 124,
-    "model": "ad_manager.certificateserverweb"
+  "fields": {
+    "ad": 22,
+    "name": "ps2-22-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 43
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 1,
-        "addr": "127.0.0.53",
-        "port": 31041
-    },
-    "pk": 94,
-    "model": "ad_manager.pathserverweb"
+  "fields": {
+    "ad": 22,
+    "name": "sb2-22-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 44
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 2,
-        "addr": "127.0.0.69",
-        "port": 31041
-    },
-    "pk": 95,
-    "model": "ad_manager.pathserverweb"
+  "fields": {
+    "ad": 48,
+    "name": "bs2-23-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 45
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 3,
-        "addr": "127.0.0.45",
-        "port": 31041
-    },
-    "pk": 96,
-    "model": "ad_manager.pathserverweb"
+  "fields": {
+    "ad": 48,
+    "name": "cs2-23-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 46
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 4,
-        "addr": "127.0.0.61",
-        "port": 31041
-    },
-    "pk": 97,
-    "model": "ad_manager.pathserverweb"
+  "fields": {
+    "ad": 48,
+    "name": "ps2-23-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 47
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 5,
-        "addr": "127.0.0.65",
-        "port": 31041
-    },
-    "pk": 98,
-    "model": "ad_manager.pathserverweb"
+  "fields": {
+    "ad": 48,
+    "name": "sb2-23-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 48
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 6,
-        "addr": "127.0.0.49",
-        "port": 31041
-    },
-    "pk": 99,
-    "model": "ad_manager.pathserverweb"
+  "fields": {
+    "ad": 31,
+    "name": "bs3-31-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 49
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 7,
-        "addr": "127.0.0.57",
-        "port": 31041
-    },
-    "pk": 100,
-    "model": "ad_manager.pathserverweb"
+  "fields": {
+    "ad": 31,
+    "name": "cs3-31-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 50
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 1,
-        "addr": "127.0.0.17",
-        "port": 31041,
-        "interface_port": 50000,
-        "interface_addr": "127.0.0.18",
-        "interface_toport": 50000,
-        "neighbor_isd_id": 2,
-        "neighbor_as_id": 3,
-        "interface_id": 1,
-        "interface_toaddr": "127.0.0.2",
-        "neighbor_type": "CORE"
-    },
-    "pk": 307,
-    "model": "ad_manager.routerweb"
+  "fields": {
+    "ad": 31,
+    "name": "ps3-31-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 51
 },
 {
-    "fields": {
-        "name": "2",
-        "ad": 1,
-        "addr": "127.0.0.19",
-        "port": 31041,
-        "interface_port": 50000,
-        "interface_addr": "127.0.0.20",
-        "interface_toport": 50000,
-        "neighbor_isd_id": 1,
-        "neighbor_as_id": 2,
-        "interface_id": 2,
-        "interface_toaddr": "127.0.0.40",
-        "neighbor_type": "CHILD"
-    },
-    "pk": 308,
-    "model": "ad_manager.routerweb"
+  "fields": {
+    "ad": 31,
+    "name": "sb3-31-1"
+  },
+  "model": "ad_manager.service",
+  "pk": 52
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 2,
-        "addr": "127.0.0.39",
-        "port": 31041,
-        "interface_port": 50000,
-        "interface_addr": "127.0.0.40",
-        "interface_toport": 50000,
-        "neighbor_isd_id": 1,
-        "neighbor_as_id": 1,
-        "interface_id": 1,
-        "interface_toaddr": "127.0.0.20",
-        "neighbor_type": "PARENT"
-    },
-    "pk": 309,
-    "model": "ad_manager.routerweb"
+  "fields": {
+    "l4port": 31041,
+    "addr_type": "IPv4",
+    "service": 1,
+    "ad": 1,
+    "overlay_port": null,
+    "addr": "203.0.113.130",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 1
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 3,
-        "addr": "127.0.0.1",
-        "port": 31041,
-        "interface_port": 50000,
-        "interface_addr": "127.0.0.2",
-        "interface_toport": 50000,
-        "neighbor_isd_id": 1,
-        "neighbor_as_id": 1,
-        "interface_id": 1,
-        "interface_toaddr": "127.0.0.18",
-        "neighbor_type": "CORE"
-    },
-    "pk": 310,
-    "model": "ad_manager.routerweb"
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "service": 2,
+    "ad": 1,
+    "overlay_port": null,
+    "addr": "203.0.113.130",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 2
 },
 {
-    "fields": {
-        "name": "4",
-        "ad": 3,
-        "addr": "127.0.0.7",
-        "port": 31041,
-        "interface_port": 50000,
-        "interface_addr": "127.0.0.8",
-        "interface_toport": 50000,
-        "neighbor_isd_id": 2,
-        "neighbor_as_id": 5,
-        "interface_id": 4,
-        "interface_toaddr": "127.0.0.34",
-        "neighbor_type": "CHILD"
-    },
-    "pk": 311,
-    "model": "ad_manager.routerweb"
+  "fields": {
+    "l4port": 31043,
+    "addr_type": "IPv4",
+    "service": 3,
+    "ad": 1,
+    "overlay_port": null,
+    "addr": "203.0.113.130",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 3
 },
 {
-    "fields": {
-        "name": "2",
-        "ad": 3,
-        "addr": "127.0.0.3",
-        "port": 31041,
-        "interface_port": 50000,
-        "interface_addr": "127.0.0.4",
-        "interface_toport": 50000,
-        "neighbor_isd_id": 2,
-        "neighbor_as_id": 4,
-        "interface_id": 2,
-        "interface_toaddr": "127.0.0.28",
-        "neighbor_type": "CHILD"
-    },
-    "pk": 312,
-    "model": "ad_manager.routerweb"
+  "fields": {
+    "l4port": 31045,
+    "addr_type": "IPv4",
+    "service": 4,
+    "ad": 1,
+    "overlay_port": null,
+    "addr": "203.0.113.130",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 4
 },
 {
-    "fields": {
-        "name": "3",
-        "ad": 3,
-        "addr": "127.0.0.5",
-        "port": 31041,
-        "interface_port": 50000,
-        "interface_addr": "127.0.0.6",
-        "interface_toport": 50000,
-        "neighbor_isd_id": 10,
-        "neighbor_as_id": 6,
-        "interface_id": 3,
-        "interface_toaddr": "127.0.0.12",
-        "neighbor_type": "CORE"
-    },
-    "pk": 313,
-    "model": "ad_manager.routerweb"
+  "fields": {
+    "l4port": 31041,
+    "addr_type": "IPv4",
+    "service": 5,
+    "ad": 2,
+    "overlay_port": null,
+    "addr": "203.0.113.211",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 5
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 4,
-        "addr": "127.0.0.27",
-        "port": 31041,
-        "interface_port": 50000,
-        "interface_addr": "127.0.0.28",
-        "interface_toport": 50000,
-        "neighbor_isd_id": 2,
-        "neighbor_as_id": 3,
-        "interface_id": 1,
-        "interface_toaddr": "127.0.0.4",
-        "neighbor_type": "PARENT"
-    },
-    "pk": 314,
-    "model": "ad_manager.routerweb"
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "service": 6,
+    "ad": 2,
+    "overlay_port": null,
+    "addr": "203.0.113.211",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 6
 },
 {
-    "fields": {
-        "name": "2",
-        "ad": 4,
-        "addr": "127.0.0.29",
-        "port": 31041,
-        "interface_port": 50000,
-        "interface_addr": "127.0.0.30",
-        "interface_toport": 50000,
-        "neighbor_isd_id": 2,
-        "neighbor_as_id": 5,
-        "interface_id": 2,
-        "interface_toaddr": "127.0.0.36",
-        "neighbor_type": "CORE"
-    },
-    "pk": 315,
-    "model": "ad_manager.routerweb"
+  "fields": {
+    "l4port": 31043,
+    "addr_type": "IPv4",
+    "service": 7,
+    "ad": 2,
+    "overlay_port": null,
+    "addr": "203.0.113.211",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 7
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 5,
-        "addr": "127.0.0.33",
-        "port": 31041,
-        "interface_port": 50000,
-        "interface_addr": "127.0.0.34",
-        "interface_toport": 50000,
-        "neighbor_isd_id": 2,
-        "neighbor_as_id": 3,
-        "interface_id": 1,
-        "interface_toaddr": "127.0.0.8",
-        "neighbor_type": "PARENT"
-    },
-    "pk": 316,
-    "model": "ad_manager.routerweb"
+  "fields": {
+    "l4port": 31045,
+    "addr_type": "IPv4",
+    "service": 8,
+    "ad": 2,
+    "overlay_port": null,
+    "addr": "203.0.113.211",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 8
 },
 {
-    "fields": {
-        "name": "2",
-        "ad": 5,
-        "addr": "127.0.0.35",
-        "port": 31041,
-        "interface_port": 50000,
-        "interface_addr": "127.0.0.36",
-        "interface_toport": 50000,
-        "neighbor_isd_id": 2,
-        "neighbor_as_id": 4,
-        "interface_id": 2,
-        "interface_toaddr": "127.0.0.30",
-        "neighbor_type": "CORE"
-    },
-    "pk": 317,
-    "model": "ad_manager.routerweb"
+  "fields": {
+    "l4port": 31041,
+    "addr_type": "IPv4",
+    "service": 37,
+    "ad": 21,
+    "overlay_port": null,
+    "addr": "203.0.113.138",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 40
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 6,
-        "addr": "127.0.0.11",
-        "port": 31041,
-        "interface_port": 50000,
-        "interface_addr": "127.0.0.12",
-        "interface_toport": 50000,
-        "neighbor_isd_id": 2,
-        "neighbor_as_id": 3,
-        "interface_id": 1,
-        "interface_toaddr": "127.0.0.6",
-        "neighbor_type": "CORE"
-    },
-    "pk": 318,
-    "model": "ad_manager.routerweb"
+  "fields": {
+    "l4port": 31041,
+    "addr_type": "IPv4",
+    "service": 37,
+    "ad": 21,
+    "overlay_port": null,
+    "addr": "203.0.113.47",
+    "is_public": false
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 41
 },
 {
-    "fields": {
-        "name": "2",
-        "ad": 6,
-        "addr": "127.0.0.13",
-        "port": 31041,
-        "interface_port": 50000,
-        "interface_addr": "127.0.0.14",
-        "interface_toport": 50000,
-        "neighbor_isd_id": 10,
-        "neighbor_as_id": 7,
-        "interface_id": 2,
-        "interface_toaddr": "127.0.0.24",
-        "neighbor_type": "CHILD"
-    },
-    "pk": 319,
-    "model": "ad_manager.routerweb"
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "service": 38,
+    "ad": 21,
+    "overlay_port": null,
+    "addr": "203.0.113.138",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 42
 },
 {
-    "fields": {
-        "name": "1",
-        "ad": 7,
-        "addr": "127.0.0.23",
-        "port": 31041,
-        "interface_port": 50000,
-        "interface_addr": "127.0.0.24",
-        "interface_toport": 50000,
-        "neighbor_isd_id": 10,
-        "neighbor_as_id": 6,
-        "interface_id": 1,
-        "interface_toaddr": "127.0.0.14",
-        "neighbor_type": "PARENT"
-    },
-    "pk": 320,
-    "model": "ad_manager.routerweb"
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "service": 38,
+    "ad": 21,
+    "overlay_port": null,
+    "addr": "203.0.113.47",
+    "is_public": false
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 43
+},
+{
+  "fields": {
+    "l4port": 31041,
+    "addr_type": "IPv4",
+    "service": 39,
+    "ad": 21,
+    "overlay_port": null,
+    "addr": "203.0.113.180",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 44
+},
+{
+  "fields": {
+    "l4port": 31043,
+    "addr_type": "IPv4",
+    "service": 40,
+    "ad": 21,
+    "overlay_port": null,
+    "addr": "203.0.113.180",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 45
+},
+{
+  "fields": {
+    "l4port": 31041,
+    "addr_type": "IPv4",
+    "service": 41,
+    "ad": 22,
+    "overlay_port": null,
+    "addr": "173.239.151.139",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 46
+},
+{
+  "fields": {
+    "l4port": 31041,
+    "addr_type": "IPv4",
+    "service": 41,
+    "ad": 22,
+    "overlay_port": null,
+    "addr": "10.64.7.21",
+    "is_public": false
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 47
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "service": 42,
+    "ad": 22,
+    "overlay_port": null,
+    "addr": "173.239.151.139",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 48
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "service": 42,
+    "ad": 22,
+    "overlay_port": null,
+    "addr": "10.64.7.21",
+    "is_public": false
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 49
+},
+{
+  "fields": {
+    "l4port": 31041,
+    "addr_type": "IPv4",
+    "service": 43,
+    "ad": 22,
+    "overlay_port": null,
+    "addr": "203.0.113.198",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 50
+},
+{
+  "fields": {
+    "l4port": 31043,
+    "addr_type": "IPv4",
+    "service": 44,
+    "ad": 22,
+    "overlay_port": null,
+    "addr": "203.0.113.198",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 51
+},
+{
+  "fields": {
+    "l4port": 31041,
+    "addr_type": "IPv4",
+    "service": 45,
+    "ad": 48,
+    "overlay_port": null,
+    "addr": "203.0.113.208",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 52
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "service": 46,
+    "ad": 48,
+    "overlay_port": null,
+    "addr": "203.0.113.208",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 53
+},
+{
+  "fields": {
+    "l4port": 31043,
+    "addr_type": "IPv4",
+    "service": 47,
+    "ad": 48,
+    "overlay_port": null,
+    "addr": "203.0.113.208",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 54
+},
+{
+  "fields": {
+    "l4port": 31045,
+    "addr_type": "IPv4",
+    "service": 48,
+    "ad": 48,
+    "overlay_port": null,
+    "addr": "203.0.113.208",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 55
+},
+{
+  "fields": {
+    "l4port": 31041,
+    "addr_type": "IPv4",
+    "service": 49,
+    "ad": 31,
+    "overlay_port": null,
+    "addr": "203.0.113.185",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 56
+},
+{
+  "fields": {
+    "l4port": 31041,
+    "addr_type": "IPv4",
+    "service": 50,
+    "ad": 31,
+    "overlay_port": null,
+    "addr": "203.0.113.193",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 57
+},
+{
+  "fields": {
+    "l4port": 31041,
+    "addr_type": "IPv4",
+    "service": 50,
+    "ad": 31,
+    "overlay_port": null,
+    "addr": "203.0.113.88",
+    "is_public": false
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 58
+},
+{
+  "fields": {
+    "l4port": 31041,
+    "addr_type": "IPv4",
+    "service": 51,
+    "ad": 31,
+    "overlay_port": null,
+    "addr": "203.0.113.34",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 59
+},
+{
+  "fields": {
+    "l4port": 31041,
+    "addr_type": "IPv4",
+    "service": 51,
+    "ad": 31,
+    "overlay_port": null,
+    "addr": "203.0.113.177",
+    "is_public": false
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 60
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "service": 52,
+    "ad": 31,
+    "overlay_port": null,
+    "addr": "203.0.113.185",
+    "is_public": true
+  },
+  "model": "ad_manager.serviceaddress",
+  "pk": 61
+},
+{
+  "fields": {
+    "ad": 1,
+    "name": "br1-1-3"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 1
+},
+{
+  "fields": {
+    "ad": 1,
+    "name": "br1-1-7"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 2
+},
+{
+  "fields": {
+    "ad": 1,
+    "name": "br1-1-1"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 3
+},
+{
+  "fields": {
+    "ad": 1,
+    "name": "br1-1-5"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 4
+},
+{
+  "fields": {
+    "ad": 1,
+    "name": "br1-1-4"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 5
+},
+{
+  "fields": {
+    "ad": 1,
+    "name": "br1-1-2"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 6
+},
+{
+  "fields": {
+    "ad": 1,
+    "name": "br1-1-6"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 7
+},
+{
+  "fields": {
+    "ad": 2,
+    "name": "br1-2-4"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 8
+},
+{
+  "fields": {
+    "ad": 2,
+    "name": "br1-2-3"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 9
+},
+{
+  "fields": {
+    "ad": 2,
+    "name": "br1-2-1"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 10
+},
+{
+  "fields": {
+    "ad": 2,
+    "name": "br1-2-2"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 11
+},
+{
+  "fields": {
+    "ad": 2,
+    "name": "br1-2-5"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 12
+},
+{
+  "fields": {
+    "ad": 21,
+    "name": "br2-21-1"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 30
+},
+{
+  "fields": {
+    "ad": 21,
+    "name": "br2-21-2"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 31
+},
+{
+  "fields": {
+    "ad": 21,
+    "name": "br2-21-3"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 32
+},
+{
+  "fields": {
+    "ad": 22,
+    "name": "br2-22-1"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 33
+},
+{
+  "fields": {
+    "ad": 48,
+    "name": "br2-23-1"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 34
+},
+{
+  "fields": {
+    "ad": 31,
+    "name": "br3-31-1"
+  },
+  "model": "ad_manager.borderrouter",
+  "pk": 35
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "ad": 1,
+    "router": 1,
+    "overlay_port": null,
+    "addr": "203.0.113.142",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 1
+},
+{
+  "fields": {
+    "l4port": 31043,
+    "addr_type": "IPv4",
+    "ad": 1,
+    "router": 2,
+    "overlay_port": null,
+    "addr": "203.0.113.150",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 2
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "ad": 1,
+    "router": 3,
+    "overlay_port": null,
+    "addr": "203.0.113.150",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 3
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "ad": 1,
+    "router": 4,
+    "overlay_port": null,
+    "addr": "203.0.113.154",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 4
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "ad": 1,
+    "router": 5,
+    "overlay_port": null,
+    "addr": "203.0.113.134",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 5
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "ad": 1,
+    "router": 6,
+    "overlay_port": null,
+    "addr": "203.0.113.138",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 6
+},
+{
+  "fields": {
+    "l4port": 31044,
+    "addr_type": "IPv4",
+    "ad": 1,
+    "router": 7,
+    "overlay_port": null,
+    "addr": "203.0.113.130",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 7
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "ad": 2,
+    "router": 8,
+    "overlay_port": null,
+    "addr": "203.0.113.190",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 8
+},
+{
+  "fields": {
+    "l4port": 31044,
+    "addr_type": "IPv4",
+    "ad": 2,
+    "router": 9,
+    "overlay_port": null,
+    "addr": "203.0.113.211",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 9
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "ad": 2,
+    "router": 10,
+    "overlay_port": null,
+    "addr": "203.0.113.146",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 10
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "ad": 2,
+    "router": 11,
+    "overlay_port": null,
+    "addr": "203.0.113.194",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 11
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "ad": 2,
+    "router": 12,
+    "overlay_port": null,
+    "addr": "203.0.113.68",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 12
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "ad": 21,
+    "router": 30,
+    "overlay_port": null,
+    "addr": "203.0.113.180",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 30
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "ad": 21,
+    "router": 31,
+    "overlay_port": null,
+    "addr": "203.0.113.165",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 31
+},
+{
+  "fields": {
+    "l4port": 31043,
+    "addr_type": "IPv4",
+    "ad": 21,
+    "router": 32,
+    "overlay_port": null,
+    "addr": "203.0.113.165",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 32
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "ad": 22,
+    "router": 33,
+    "overlay_port": null,
+    "addr": "203.0.113.198",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 33
+},
+{
+  "fields": {
+    "l4port": 31044,
+    "addr_type": "IPv4",
+    "ad": 48,
+    "router": 34,
+    "overlay_port": null,
+    "addr": "203.0.113.208",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 34
+},
+{
+  "fields": {
+    "l4port": 31042,
+    "addr_type": "IPv4",
+    "ad": 31,
+    "router": 35,
+    "overlay_port": null,
+    "addr": "203.0.113.115",
+    "is_public": true
+  },
+  "model": "ad_manager.borderrouteraddress",
+  "pk": 35
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "CHILD",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 1,
+    "neighbor_isd_id": 1,
+    "remote_addr": "203.0.113.2",
+    "internal_addr_idx": 0,
+    "interface_id": 3,
+    "router_addr": 1,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.1",
+    "neighbor_as_id": 3
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 1
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50001,
+    "neighbor_type": "CHILD",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 1,
+    "neighbor_isd_id": 1,
+    "remote_addr": "203.0.113.254",
+    "internal_addr_idx": 0,
+    "interface_id": 7,
+    "router_addr": 2,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.150",
+    "neighbor_as_id": 4
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 2
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "CHILD",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 1,
+    "neighbor_isd_id": 1,
+    "remote_addr": "203.0.113.114",
+    "internal_addr_idx": 0,
+    "interface_id": 1,
+    "router_addr": 3,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.150",
+    "neighbor_as_id": 5
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 3
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "CORE",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 1,
+    "neighbor_isd_id": 3,
+    "remote_addr": "203.0.113.115",
+    "internal_addr_idx": 0,
+    "interface_id": 5,
+    "router_addr": 4,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.154",
+    "neighbor_as_id": 31
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 4
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "CORE",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 1,
+    "neighbor_isd_id": 2,
+    "remote_addr": "203.0.113.180",
+    "internal_addr_idx": 0,
+    "interface_id": 4,
+    "router_addr": 5,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.134",
+    "neighbor_as_id": 21
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 5
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "CHILD",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 1,
+    "neighbor_isd_id": 1,
+    "remote_addr": "203.0.113.211",
+    "internal_addr_idx": 0,
+    "interface_id": 2,
+    "router_addr": 6,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.138",
+    "neighbor_as_id": 2
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 6
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "CORE",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 1,
+    "neighbor_isd_id": 4,
+    "remote_addr": "203.0.113.18",
+    "internal_addr_idx": 0,
+    "interface_id": 6,
+    "router_addr": 7,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.130",
+    "neighbor_as_id": 41
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 7
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "CHILD",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 2,
+    "neighbor_isd_id": 1,
+    "remote_addr": "203.0.113.191",
+    "internal_addr_idx": 0,
+    "interface_id": 4,
+    "router_addr": 8,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.190",
+    "neighbor_as_id": 6
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 8
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "PARENT",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 2,
+    "neighbor_isd_id": 1,
+    "remote_addr": "203.0.113.138",
+    "internal_addr_idx": 0,
+    "interface_id": 3,
+    "router_addr": 9,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.211",
+    "neighbor_as_id": 1
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 9
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "PARENT",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 2,
+    "neighbor_isd_id": 1,
+    "remote_addr": "203.0.113.1",
+    "internal_addr_idx": 0,
+    "interface_id": 1,
+    "router_addr": 10,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.2",
+    "neighbor_as_id": 3
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 10
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "PEER",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 2,
+    "neighbor_isd_id": 1,
+    "remote_addr": "203.0.113.122",
+    "internal_addr_idx": 0,
+    "interface_id": 2,
+    "router_addr": 11,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.194",
+    "neighbor_as_id": 5
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 11
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "PARENT",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 2,
+    "neighbor_isd_id": 1,
+    "remote_addr": "203.0.113.69",
+    "internal_addr_idx": 0,
+    "interface_id": 5,
+    "router_addr": 12,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.68",
+    "neighbor_as_id": 3
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 12
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "CORE",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 21,
+    "neighbor_isd_id": 1,
+    "remote_addr": "203.0.113.134",
+    "internal_addr_idx": 0,
+    "interface_id": 1,
+    "router_addr": 30,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.180",
+    "neighbor_as_id": 1
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 30
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "CHILD",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 21,
+    "neighbor_isd_id": 2,
+    "remote_addr": "203.0.113.198",
+    "internal_addr_idx": 0,
+    "interface_id": 2,
+    "router_addr": 31,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.165",
+    "neighbor_as_id": 22
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 31
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50001,
+    "neighbor_type": "CHILD",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 21,
+    "neighbor_isd_id": 2,
+    "remote_addr": "203.0.113.208",
+    "internal_addr_idx": 0,
+    "interface_id": 3,
+    "router_addr": 32,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.165",
+    "neighbor_as_id": 23
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 32
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "PARENT",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 22,
+    "neighbor_isd_id": 2,
+    "remote_addr": "203.0.113.165",
+    "internal_addr_idx": 0,
+    "interface_id": 1,
+    "router_addr": 33,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.198",
+    "neighbor_as_id": 21
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 33
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "PARENT",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 48,
+    "neighbor_isd_id": 2,
+    "remote_addr": "203.0.113.165",
+    "internal_addr_idx": 0,
+    "interface_id": 1,
+    "router_addr": 34,
+    "remote_l4port": 50001,
+    "bind_addr": null,
+    "addr": "203.0.113.208",
+    "neighbor_as_id": 21
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 34
+},
+{
+  "fields": {
+    "bind_l4port": null,
+    "l4port": 50000,
+    "neighbor_type": "CORE",
+    "bandwidth": 1000,
+    "mtu": 1472,
+    "ad": 31,
+    "neighbor_isd_id": 1,
+    "remote_addr": "203.0.113.154",
+    "internal_addr_idx": 0,
+    "interface_id": 1,
+    "router_addr": 35,
+    "remote_l4port": 50000,
+    "bind_addr": null,
+    "addr": "203.0.113.115",
+    "neighbor_as_id": 1
+  },
+  "model": "ad_manager.borderrouterinterface",
+  "pk": 35
 }
 ]

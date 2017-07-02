@@ -4,14 +4,22 @@
   <tr>
     <th></th>
     <th class="col-md-3">Address</th>
+    <th class="col-md-3">Port</th>
   </tr>
   </thead>
   <tbody>
   {% for server in servers %}
-    <tr id="{{ server.id_str }}">
-      <td> {{ server.name }}</td>
-      <td>{{ server.addr }}</td>
-    </tr>
+    {% if type in server.name %}
+      {% for addr in addrs %}
+        {% if server.id == addr.service_id and addr.is_public%}
+          <tr id="{{ server.id_str }}">
+            <td> {{ server.name }}</td>
+            <td>{{ addr.addr }}</td>
+            <td>{{ addr.l4port }}</td>
+          </tr>
+        {% endif%}
+      {% endfor %}
+    {% endif%}
   {% empty %}
     <tr>
       <td colspan="4"><i>No servers</i></td>
