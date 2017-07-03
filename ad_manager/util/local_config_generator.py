@@ -343,7 +343,7 @@ def generate_prometheus_config(tp, local_gen_path, as_path):
                     router['InternalAddrs'][int_addr_idx]['Public'][addr_idx]['L4Port'] +
                     PROM_BR_PORT_OFFSET))
     targets_path = os.path.join(as_path, PrometheusGenerator.PROM_DIR,
-                                PrometheusGenerator.BR_TARGET_FILE)
+                                PrometheusGenerator.TARGET_FILES["BorderRouters"])
     target_config = [{'targets': router_list}]
     write_file(targets_path, yaml.dump(target_config, default_flow_style=False))
     write_prometheus_config_file(as_path, [targets_path])
@@ -354,7 +354,7 @@ def generate_prometheus_config(tp, local_gen_path, as_path):
         ia = ISD_AS.from_values(as_obj.isd_id, as_obj.as_id)
         targets_path = os.path.join(
             get_elem_dir(local_gen_path, ia, ""),
-            PrometheusGenerator.PROM_DIR, PrometheusGenerator.BR_TARGET_FILE)
+            PrometheusGenerator.PROM_DIR, PrometheusGenerator.TARGET_FILES["BorderRouters"])
         file_paths.append(targets_path)
     write_prometheus_config_file(local_gen_path, file_paths)
 
