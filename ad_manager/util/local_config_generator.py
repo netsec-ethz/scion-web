@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # Stdlib
+from collections import defaultdict
 import configparser
 import json
 import logging
@@ -54,7 +55,7 @@ from topology.generator import PrometheusGenerator, _topo_json_to_yaml
 # SCION-WEB
 from ad_manager.models import AD
 from ad_manager.util.simple_config.simple_config import check_simple_conf_mode
-from ad_manager.util.defines import PROM_BR_PORT_OFFSET
+from ad_manager.util.defines import PROM_PORT_OFFSET
 
 WEB_ROOT = os.path.join(PROJECT_ROOT, 'sub', 'web')
 logger = logging.getLogger("scion-web")
@@ -144,14 +145,16 @@ def prep_supervisord_conf(instance_dict, executable_name, service_type, instance
         env_tmpl += ',GODEBUG="cgocheck=0"'
         prom_addr = "%s:%s" % (instance_dict['InternalAddrs'][0]['Public'][0]['Addr'],
                                instance_dict['InternalAddrs'][0]['Public'][0]['L4Port'] +
-                               PROM_BR_PORT_OFFSET)
+                               PROM_PORT_OFFSET)
         cmd = ('bash -c \'exec bin/%s -id "%s" -confd "%s" -prom "%s" &>logs/%s.OUT\'') % (
             executable_name, instance_name, get_elem_dir(GEN_PATH, isd_as, instance_name),
             prom_addr, instance_name)
     else:  # other infrastructure elements
-        cmd = ('bash -c \'exec bin/%s "%s" "%s" &>logs/%s.OUT\'') % (
+        prom_addr = "%s:%s" % (instance_dict['Public'][0]['Addr'],
+                               instance_dict['Public'][0]['L4Port'] + PROM_PORT_OFFSET)
+        cmd = ('bash -c \'exec bin/%s "%s" "%s" --prom "%s" &>logs/%s.OUT\'') % (
             executable_name, instance_name, get_elem_dir(GEN_PATH, isd_as, instance_name),
-            instance_name)
+            prom_addr, instance_name)
     env = env_tmpl % (get_elem_dir(GEN_PATH, isd_as, instance_name),
                       instance_name)
     config['program:' + instance_name] = {
@@ -328,45 +331,59 @@ def write_as_conf_and_path_policy(isd_as, instance_path):
 
 def generate_prometheus_config(tp, local_gen_path, as_path):
     """
-    Writes Prometheus configuration files for the given AS. Currently only
-    generates for border routers.
+    Writes Prometheus configuration files for the given AS.
     :param dict tp: the topology of the AS provided as a dict of dicts.
     :param str local_gen_path: The gen path of scion-web.
     :param str as_path: The path of the given AS.
     """
-    router_list = []
-    for router in tp['BorderRouters'].values():
-        for int_addr_idx in range(len(router['InternalAddrs'])):
-            for addr_idx in range(len(router['InternalAddrs'][int_addr_idx]['Public'])):
-                router_list.append("%s:%s" % (
-                    router['InternalAddrs'][int_addr_idx]['Public'][addr_idx]['Addr'],
-                    router['InternalAddrs'][int_addr_idx]['Public'][addr_idx]['L4Port'] +
-                    PROM_BR_PORT_OFFSET))
-    targets_path = os.path.join(as_path, PrometheusGenerator.PROM_DIR,
-                                PrometheusGenerator.TARGET_FILES["BorderRouters"])
-    target_config = [{'targets': router_list}]
-    write_file(targets_path, yaml.dump(target_config, default_flow_style=False))
-    write_prometheus_config_file(as_path, [targets_path])
-    # Create the config for the top level gen directory as well.
-    file_paths = []
-    all_ases = AD.objects.all()
-    for as_obj in all_ases:
-        ia = ISD_AS.from_values(as_obj.isd_id, as_obj.as_id)
+    elem_dict = defaultdict(list)
+    for br_id, br_elem in tp['BorderRouters'].items():
+        for int_addrs in br_elem['InternalAddrs']:
+            for addr_info in int_addrs['Public']:
+                prom_addr = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'] + PROM_PORT_OFFSET)
+                elem_dict['BorderRouters'].append(prom_addr)
+    for svc_type in ['BeaconService', 'PathService', 'CertificateService']:
+        for elem_id, elem in tp[svc_type].items():
+            for addr_info in elem['Public']:
+                prom_addr = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'] + PROM_PORT_OFFSET)
+                elem_dict[svc_type].append(prom_addr)
+    _write_prometheus_config_files(local_gen_path, as_path, elem_dict)
+
+
+def _write_prometheus_config_files(local_gen_path, as_path, elem_dict):
+    """
+    Helper function to generate all the prometheus config and target files.
+    :param str local_gen_path: The gen path of scion-web.
+    :param str as_path: The path of the given AS.
+    :param dict elem_dict: A dict mapping from element types to target addresses.
+    """
+    job_dict = {}
+    for ele_type, target_list in elem_dict.items():
         targets_path = os.path.join(
-            get_elem_dir(local_gen_path, ia, ""),
-            PrometheusGenerator.PROM_DIR, PrometheusGenerator.TARGET_FILES["BorderRouters"])
-        file_paths.append(targets_path)
-    write_prometheus_config_file(local_gen_path, file_paths)
+            as_path, PrometheusGenerator.PROM_DIR, PrometheusGenerator.TARGET_FILES[ele_type])
+        job_dict[PrometheusGenerator.JOB_NAMES[ele_type]] = [targets_path]
+        _write_prometheus_target_file(as_path, target_list, ele_type)
+    _write_prometheus_config_file(as_path, job_dict)
+    # Regenerate the top-level prometheus config file.
+    # TODO(shitz): Generation of the top level prometheus file should happen further
+    # up and not where the prometheus configuration is done for a single AS. Needs
+    # refactoring of the code.
+    _generate_toplevel_prom_config(local_gen_path)
 
-
-def write_prometheus_config_file(path, file_paths):
+def _write_prometheus_config_file(path, job_dict):
     """
     Writes a Prometheus configuration file into the given path
     generates for border routers.
     :param str path: The path to write the configuration file into.
-    :param list file_paths: A list of file paths to be provided to
-    file_sd_configs field of the configuration file.
+    :param dict job_dict: A dictionary mapping from job name to a list of file
+        paths to be provided to file_sd_configs field of the configuration file.
     """
+    scrape_configs = []
+    for job_name, file_paths in job_dict.items():
+        scrape_configs.append({
+            'job_name': job_name,
+            'file_sd_configs': [{'files': file_paths}],
+        })
     config = {
         'global': {
             'scrape_interval': '5s',
@@ -375,14 +392,39 @@ def write_prometheus_config_file(path, file_paths):
                 'monitor': 'scion-monitor'
             }
         },
-        'scrape_configs': [{
-            'job_name': 'border',
-            'file_sd_configs': [{'files': file_paths}]
-        }],
+        'scrape_configs': scrape_configs
     }
     write_file(os.path.join(path, PROM_FILE),
                yaml.dump(config, default_flow_style=False))
 
+
+def _write_prometheus_target_file(base_path, target_addrs, ele_type):
+    """
+    Writes the target file into the given path.
+    :param str base_path: The base path of the target file.
+    :param list target_addrs: A list of target addresses.
+    :param str ele_type: The type of the infrastructure element.
+    """
+    targets_path = os.path.join(
+        base_path, PrometheusGenerator.PROM_DIR, PrometheusGenerator.TARGET_FILES[ele_type])
+    target_config = [{'targets': target_addrs}]
+    write_file(targets_path, yaml.dump(target_config, default_flow_style=False))
+
+
+def _generate_toplevel_prom_config(local_gen_path):
+    """
+    Generates the top level prometheus config file.
+    :param str local_gen_path: The gen path of scion-web.
+    """
+    job_dict = defaultdict(list)
+    all_ases = AD.objects.all()
+    for as_obj in all_ases:
+        ia = ISD_AS.from_values(as_obj.isd_id, as_obj.as_id)
+        for ele_type, target_file in PrometheusGenerator.TARGET_FILES.items():
+            targets_path = os.path.join(
+                get_elem_dir(local_gen_path, ia, ""), PrometheusGenerator.PROM_DIR, target_file)
+            job_dict[PrometheusGenerator.JOB_NAMES[ele_type]].append(targets_path)
+    _write_prometheus_config_file(local_gen_path, job_dict)
 
 def generate_zk_config(tp, isd_as, local_gen_path):
     """
