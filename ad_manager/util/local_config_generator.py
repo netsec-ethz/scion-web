@@ -139,7 +139,7 @@ def prep_supervisord_conf(instance_dict, executable_name, service_type, instance
     :rtype: ConfigParser
     """
     config = configparser.ConfigParser()
-    env_tmpl = 'PYTHONPATH=.,ZLOG_CFG="%s/%s.zlog.conf"'
+    env_tmpl = 'PYTHONPATH=python:.,ZLOG_CFG="%s/%s.zlog.conf"'
     if service_type == 'router':  # go router
         env_tmpl += ',GODEBUG="cgocheck=0"'
         prom_addr = "%s:%s" % (instance_dict['InternalAddrs'][0]['Public'][0]['Addr'],
@@ -187,7 +187,7 @@ def prep_dispatcher_supervisord_conf():
     :rtype: ConfigParser
     """
     config = configparser.ConfigParser()
-    env = 'PYTHONPATH=.,ZLOG_CFG="gen/dispatcher/dispatcher.zlog.conf"'
+    env = 'PYTHONPATH=python:.,ZLOG_CFG="gen/dispatcher/dispatcher.zlog.conf"'
     cmd = """bash -c 'exec bin/dispatcher &>logs/dispatcher.OUT'"""
     config['program:dispatcher'] = {
         'autostart': 'false',
