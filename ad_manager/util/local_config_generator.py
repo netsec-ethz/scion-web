@@ -336,30 +336,38 @@ def generate_prometheus_config(tp, local_gen_path, as_path):
     :param str local_gen_path: The gen path of scion-web.
     :param str as_path: The path of the given AS.
     """
-    ele_dict = defaultdict(list)
-    for br_id, br_ele in tp['BorderRouters'].items():
-        for int_addrs in br_ele['InternalAddrs']:
+    elem_dict = defaultdict(list)
+    for br_id, br_elem in tp['BorderRouters'].items():
+        for int_addrs in br_elem['InternalAddrs']:
             for addr_info in int_addrs['Public']:
                 prom_addr = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'] + PROM_PORT_OFFSET)
-                ele_dict['BorderRouters'].append(prom_addr)
+                elem_dict['BorderRouters'].append(prom_addr)
     for svc_type in ['BeaconService', 'PathService', 'CertificateService']:
         for elem_id, elem in tp[svc_type].items():
             for addr_info in elem['Public']:
                 prom_addr = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'] + PROM_PORT_OFFSET)
-                ele_dict[svc_type].append(prom_addr)
-    _write_prometheus_config_files(local_gen_path, as_path, ele_dict)
+                elem_dict[svc_type].append(prom_addr)
+    _write_prometheus_config_files(local_gen_path, as_path, elem_dict)
 
 
-def _write_prometheus_config_files(local_gen_path, as_path, ele_dict):
+def _write_prometheus_config_files(local_gen_path, as_path, elem_dict):
+    """
+    Helper function to generate all the prometheus config and target files.
+    :param str local_gen_path: The gen path of scion-web.
+    :param str as_path: The path of the given AS.
+    :param dict elem_dict: A dict mapping from element types to target addresses.
+    """
     job_dict = {}
-    for ele_type, target_list in ele_dict.items():
+    for ele_type, target_list in elem_dict.items():
         targets_path = os.path.join(
             as_path, PrometheusGenerator.PROM_DIR, PrometheusGenerator.TARGET_FILES[ele_type])
         job_dict[PrometheusGenerator.JOB_NAMES[ele_type]] = [targets_path]
         _write_prometheus_target_file(as_path, target_list, ele_type)
     _write_prometheus_config_file(as_path, job_dict)
     # Regenerate the top-level prometheus config file.
-    # XXX: This shouldn't be here.
+    # TODO(shitz): Generation of the top level prometheus file should happen further
+    # up and not where the prometheus configuration is done for a single AS. Needs
+    # refactoring of the code.
     _generate_toplevel_prom_config(local_gen_path)
 
 def _write_prometheus_config_file(path, job_dict):
@@ -414,8 +422,7 @@ def _generate_toplevel_prom_config(local_gen_path):
         ia = ISD_AS.from_values(as_obj.isd_id, as_obj.as_id)
         for ele_type, target_file in PrometheusGenerator.TARGET_FILES.items():
             targets_path = os.path.join(
-                get_elem_dir(local_gen_path, ia, ""),
-                PrometheusGenerator.PROM_DIR, target_file)
+                get_elem_dir(local_gen_path, ia, ""), PrometheusGenerator.PROM_DIR, target_file)
             job_dict[PrometheusGenerator.JOB_NAMES[ele_type]].append(targets_path)
     _write_prometheus_config_file(local_gen_path, job_dict)
 
