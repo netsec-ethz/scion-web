@@ -223,6 +223,38 @@ def handle_join_reply(request, reply, jr_id):
 
 
 @require_POST
+def save_topology(request):
+    """
+    Generate topology files for all ASes or specific ASes in a ISD.
+    :param HttpRequest request: Django HTTP request passed on through urls.py
+    :returns: Django HTTP Response object.
+    :rtype: HttpResponse.
+    """
+    current_page = request.META.get('HTTP_REFERER')
+    post_obj = request.POST.copy()
+    isd_as_list = post_obj['ISD_AS']
+    if isd_as_list:
+        for isd_as in isd_as_list:
+            isd_id, as_id = ISD_AS(isd_as)
+            try:
+                ad_obj = AD.objects.get(isd_id=isd_id, as_id=as_id)
+            except AD.DoesNotExist:
+                logger.error("AS %s was not found." % isd_as)
+                return HttpResponseNotFound("AS %s was not found" % isd_as)
+            topo_dict = ad_obj.original_topology
+            # write the topology file
+            create_local_gen(isd_as, topo_dict)
+    else:
+        all_ases = AD.objects.all()
+        for ad_obj in all_ases:
+            isd_as = '%s-%s' % (ad_obj.isd_id, ad_obj.as_id)
+            topo_dict = ad_obj.original_topology
+            # write the topology file
+            create_local_gen(isd_as, topo_dict)
+    return redirect(current_page)
+
+
+@require_POST
 @login_required
 def join_request_action(request, isd_as, request_id):
     """
@@ -705,8 +737,7 @@ def add_to_topology(request):
 
 def as_topo_hash(request, isd_id, as_id):
     try:
-        ad = AD.objects.get(as_id=as_id,
-                            isd=isd_id)
+        ad = AD.objects.get(as_id=as_id, isd=isd_id)
         flat_string = json.dumps(ad.original_topology, sort_keys=True)
         # hash for non cryptographic purpose (state comparison for user warning)
         topo_hash = hashlib.md5(flat_string.encode('utf-8')).hexdigest()
@@ -1013,7 +1044,6 @@ def generate_topology(request):
     if len(all_ip_port_pairs) != len(set(all_ip_port_pairs)):
         return JsonResponse(
             {'data': 'IP:port combinations not unique within AS'})
-
     create_local_gen(isd_as, topo_dict)
     commit_hash = tp['commitHash']
     # sanitize commit hash from comments, take first part up to |, strip spaces

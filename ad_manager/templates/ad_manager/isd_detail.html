@@ -50,6 +50,17 @@
               Create AS from file
         </button>
       </form>
+
+      <form method="POST" action="/as_manager/isds/save_topology">
+        {% csrf_token %}
+        {% for ad in object_list %}
+          <input type="hidden" name="ISD_AS" value="{{ad.isd.id}}-{{ad.as_id}}">
+        {% endfor %}
+        <div class="form-group">
+            <br/>
+            <button type="submit" class="btn">Save All Topology Files</button>
+        </div>
+      </form>
   </div>
 
   <br/>
