@@ -370,6 +370,7 @@ def _write_prometheus_config_files(local_gen_path, as_path, elem_dict):
     # refactoring of the code.
     _generate_toplevel_prom_config(local_gen_path)
 
+
 def _write_prometheus_config_file(path, job_dict):
     """
     Writes a Prometheus configuration file into the given path
@@ -425,6 +426,7 @@ def _generate_toplevel_prom_config(local_gen_path):
                 get_elem_dir(local_gen_path, ia, ""), PrometheusGenerator.PROM_DIR, target_file)
             job_dict[PrometheusGenerator.JOB_NAMES[ele_type]].append(targets_path)
     _write_prometheus_config_file(local_gen_path, job_dict)
+
 
 def generate_zk_config(tp, isd_as, local_gen_path):
     """
