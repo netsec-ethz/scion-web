@@ -1,47 +1,84 @@
-BeaconServers:
-  bs${ISD_ID}-${AS_ID}-1:
-    Addr: ${IP}
-    Port: 31041
-    AddrInternal:
-    PortInternal:
-BorderRouters:
-  br${ISD_ID}-${AS_ID}-1:
-    Addr: ${IP}
-    Interface:
-      Addr: ${IP}
-      Bandwidth: 1000
-      IFID: 1
-      ISD_AS: ${TARGET_ISDAS}
-      LinkType: PARENT
-      MTU: 1472
-      ToAddr:
-      ToUdpPort:
-      UdpPort: 50000
-    Port: 31042
-CertificateServers:
-  cs${ISD_ID}-${AS_ID}-1:
-    Addr: ${IP}
-    Port: 31043
-    AddrInternal:
-    PortInternal:
-Core: false
-ISD_AS: ${ISD_ID}-${AS_ID}
-MTU: 1472
-PathServers:
-  ps${ISD_ID}-${AS_ID}-1:
-    Addr: ${IP}
-    Port: 31044
-    AddrInternal:
-    PortInternal:
-SibraServers:
-  sb${ISD_ID}-${AS_ID}-1:
-    Addr: ${IP}
-    Port: 31045
-    AddrInternal:
-    PortInternal:
-Zookeepers:
-  1:
-    Addr: 127.0.0.1
-    Port: 2181
-    AddrInternal:
-    PortInternal:
+{
+  "BeaconService": {
+    "bs${ISD_ID}-${AS_ID}-1": {
+      "Public": [
+        {
+          "Addr": "${IP}",
+          "L4Port": 31041
+        }
+      ]
+    }
+  },
+  "BorderRouters": {
+    "br${ISD_ID}-${AS_ID}-1": {
+      "InternalAddrs": [
+        {
+          "Public": [
+            {
+              "Addr": "${IP}",
+              "L4Port": 31042
+            }
+          ]
+        }
+      ],
+      "Interfaces": {
+        "1": {
+          "InternalAddrIdx": 0,
+          "Overlay": "UDP/IPv4",
+          "LinkType": "PARENT",
+          "Bandwidth": 1000,
+          "MTU": 1472,
+          "Remote": {
+            "Addr": "",
+            "L4Port": null
+          },
+          "ISD_AS": "${TARGET_ISDAS}",
+          "Public": {
+            "Addr": "${IP}",
+            "L4Port": 50000
+          }
+        }
+      }
+    }
+  },
+  "Overlay": "UDP/IPv4",
+  "CertificateService": {
+    "cs${ISD_ID}-${AS_ID}-1": {
+      "Public": [
+        {
+          "Addr": "${IP}",
+          "L4Port": 31043
+        }
+      ]
+    }
+  },
+  "PathService": {
+    "ps${ISD_ID}-${AS_ID}-1": {
+      "Public": [
+        {
+          "Addr": "${IP}",
+          "L4Port": 31044
+        }
+      ]
+    }
+  },
+  "Core": false,
+  "SibraService": {
+    "sb${ISD_ID}-${AS_ID}-1": {
+      "Public": [
+        {
+          "Addr": "${IP}",
+          "L4Port": 31045
+        }
+      ]
+    }
+  },
+  "MTU": 1472,
+  "ISD_AS": "${ISD_ID}-${AS_ID}",
+  "ZookeeperService": {
+    "1": {
+      "Addr": "127.0.0.1",
+      "L4Port": 2181
+    }
+  }
+}

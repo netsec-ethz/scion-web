@@ -21,7 +21,6 @@ import os
 import posixpath
 import socket
 import time
-import yaml
 from collections import deque
 from urllib.parse import urljoin
 
@@ -636,10 +635,13 @@ def simple_configuration(request, isd_id, as_id):
     current_page = request.META.get('HTTP_REFERER')
     target_isdas = request.POST['inputTargetISDAS']
     host_IP = request.POST['inputHostIP']
-    yml_str = SimpleConfTemplate.substitute(
-        IP=host_IP, ISD_ID=isd_id, AS_ID=as_id,
-        TARGET_ISDAS=target_isdas)
-    topo_dict = yaml.load(yml_str)
+    json_str = SimpleConfTemplate.substitute(IP=host_IP, ISD_ID=isd_id, AS_ID=as_id,
+                                             TARGET_ISDAS=target_isdas)
+    try:
+        topo_dict = json.loads(json_str)
+    except ValueError:
+        logger.error("Decoding JSON for Simple Configuration failed.")
+        return redirect(current_page)
     as_obj = get_object_or_404(AD, isd_id=int(isd_id), as_id=int(as_id))
     as_obj.simple_conf_mode = True
     as_obj.save()
