@@ -49,15 +49,10 @@
 
     {% with 'Beacon Certificate Path' as serverTypes %}
     {% for type in serverTypes.split %}
-    <div class="control-group well {% if forloop.counter0 == 2 %}hidden{% endif %}">
-      <div class="chevron {% if forloop.counter0 == 2 %}collapsed{% endif %}" data-toggle="collapse"
+    <div class="control-group well">
+      <div class="chevron" data-toggle="collapse"
       href="#{{ type|lower }}Accordion"><span class="sectionTitle">{{ type }} servers</span></div>
-      <div id="{{ type|lower }}Accordion" class="accordion collapse {% if forloop.counter0 != 2 %}in{% endif %}"
-      {% comment%}
-      comment:  'if forloop.counter0 == 2 -> in' expands the 2nd accordion, to show user how to
-      interact with input, that these accordions can be collapsed
-      {%  endcomment %}
-      aria-expanded="true">
+      <div id="{{ type|lower }}Accordion" class="accordion collapse in" aria-expanded="true">
       <br/>
       <div class="{{ type }}Item item" id="{{ type }}Item-1">
 
