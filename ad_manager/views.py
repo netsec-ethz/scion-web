@@ -284,12 +284,18 @@ def prep_approved_join_reply(request, join_rep_dict, own_isdas, own_as_obj):
     enc_pub_key = from_b64(request.POST['enc_pub_key'])
     signing_as_sig_priv_key = from_b64(own_as_obj.sig_priv_key)
     joining_ia = ISD_AS.from_values(own_isdas[0], joining_as)
+    if is_core.lower() == "true":
+        validity = Certificate.CORE_AS_VALIDITY_PERIOD
+        comment = "Core AS Certificate"
+    else:
+        validity = Certificate.AS_VALIDITY_PERIOD
+        comment = "AS Certificate"
     cert = Certificate.from_values(
-        str(joining_ia), str(own_isdas), INITIAL_TRC_VERSION, INITIAL_CERT_VERSION, "", False,
-        enc_pub_key, sig_pub_key, SigningKey(signing_as_sig_priv_key)
+        str(joining_ia), str(own_isdas), INITIAL_TRC_VERSION, INITIAL_CERT_VERSION, comment,
+        is_core, validity, enc_pub_key, sig_pub_key, SigningKey(signing_as_sig_priv_key)
     )
     respond_ia_chain = CertificateChain.from_raw(own_as_obj.certificate)
-    request_ia_chain = CertificateChain([cert, respond_ia_chain.certs[0]])
+    request_ia_chain = CertificateChain([cert, respond_ia_chain.core_as_cert])
     join_rep_dict['JoiningIA'] = str(joining_ia)
     join_rep_dict['IsCore'] = is_core.lower() == "true"
     join_rep_dict['RespondIA'] = str(own_isdas)
