@@ -623,9 +623,12 @@ class ADDetailView(DetailView):
                            'Coordination Service!')
             return context
         resp = r.json()
+        print(resp)
         context['join_requests'] = resp['JoinRequests']
         context['received_requests'] = resp['ConnRequests']
         context['received_conn_replies'] = resp['ConnReplies']
+        # Credit overview tab
+        context['credit_transactions'] = resp['Transactions']
         return context
 
 
