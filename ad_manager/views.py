@@ -324,7 +324,7 @@ def request_join_isd(request):
     # get the account_id and secret necessary to query SCION-coord.
     coord = get_object_or_404(OrganisationAdmin, user_id=request.user.id)
     # generate the sign and encryption keys
-    private_key_sign, public_key_sign = generate_sign_keypair()
+    public_key_sign, private_key_sign = generate_sign_keypair()
     public_key_encr, private_key_encr = generate_enc_keypair()
     join_req = JoinRequest.objects.create(
         created_by=request.user,
