@@ -19,4 +19,6 @@ UPLOAD_CONN_REPLY_SVC = "/api/as/uploadConnReply/"
 POLL_CONN_REPLY_SVC = "/api/as/pollConnReply/"
 POLL_EVENTS_SVC = "/api/as/pollEvents/"
 
+POLL_CREDIT_SVC = "/api/listASConnections/"
+
 ADDR_ATTRIBUTES = ['Public', 'Bind']

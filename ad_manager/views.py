@@ -94,6 +94,7 @@ from ad_manager.util.defines import (
     UPLOAD_CONN_REPLY_SVC,
     UPLOAD_JOIN_REQUEST_SVC,
     UPLOAD_JOIN_REPLY_SVC,
+    POLL_CREDIT_SVC,
 )
 from scripts.reload_data import reload_data_from_files
 
@@ -614,6 +615,7 @@ class ADDetailView(DetailView):
             return context
         request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
                               POLL_EVENTS_SVC, coord.account_id, coord.secret))
+
         logger.info("Polling Events for %s", context['isdas'])
         r, error = post_req_to_scion_coord(
             request_url, {'IsdAs': context['isdas']},
@@ -622,14 +624,37 @@ class ADDetailView(DetailView):
             messages.error(self.request, 'Could not poll events from SCION '
                            'Coordination Service!')
             return context
+
+   
+
+        credit_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                              POLL_CREDIT_SVC, coord.account_id, coord.secret, context['isdas']))
+
+        p, error = post_req_to_scion_coord(
+            credit_url, {'IsdAs': context['isdas']},
+            "poll events for ISD-AS %s" % context['isdas'])
+        if error is not None:
+            messages.error(self.request, 'Could not poll events from SCION '
+                           'Coordination Service!')
+            return context
+                    
+        outCredit = p.json()
+
+        #outCredit = ({"ISD": "1","AS": "1","Credits": "10","Connections": [{"ISD": "1","AS": "2","Bandwidth": "100","CreditBalance": "10","IsOutgoing": "true","Time":"10:15:01.01.17"},{"ISD": "1","AS": "3","Bandwidth":          "200","CreditBalance": "20","IsOutgoing": "false","Time":"04:54:07.09.17"}]})
+
+
         resp = r.json()
-        print(resp)
+
         context['join_requests'] = resp['JoinRequests']
         context['received_requests'] = resp['ConnRequests']
         context['received_conn_replies'] = resp['ConnReplies']
+
         # Credit overview tab
-        context['credit_transactions'] = resp['Transactions']
+        context['current_credit'] = outCredit['Credits']
+        context['current_connections'] = outCredit['Connections']
+
         return context
+                
 
 
 @require_POST
