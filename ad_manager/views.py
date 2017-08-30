@@ -613,6 +613,7 @@ class ADDetailView(DetailView):
         except OrganisationAdmin.DoesNotExist:
             logger.error("Retrieving account_id and secret failed!!.")
             return context
+
         request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
                               POLL_EVENTS_SVC, coord.account_id, coord.secret))
 
@@ -625,11 +626,9 @@ class ADDetailView(DetailView):
                            'Coordination Service!')
             return context
 
-   
-
         credit_url = urljoin(COORD_SERVICE_URI, posixpath.join(
                               POLL_CREDIT_SVC, coord.account_id, coord.secret, context['isdas']))
-
+        
         p, error = post_req_to_scion_coord(
             credit_url, {'IsdAs': context['isdas']},
             "poll events for ISD-AS %s" % context['isdas'])
@@ -640,11 +639,7 @@ class ADDetailView(DetailView):
                     
         outCredit = p.json()
 
-        #outCredit = ({"ISD": "1","AS": "1","Credits": "10","Connections": [{"ISD": "1","AS": "2","Bandwidth": "100","CreditBalance": "10","IsOutgoing": "true","Time":"10:15:01.01.17"},{"ISD": "1","AS": "3","Bandwidth":          "200","CreditBalance": "20","IsOutgoing": "false","Time":"04:54:07.09.17"}]})
-
-
         resp = r.json()
-
         context['join_requests'] = resp['JoinRequests']
         context['received_requests'] = resp['ConnRequests']
         context['received_conn_replies'] = resp['ConnReplies']
