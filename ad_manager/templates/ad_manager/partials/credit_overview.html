@@ -31,22 +31,22 @@
   </thead>
   <tbody>
     {% for request in current_connections %}
-	{% if request.IsOutgoing == "false" %}
-	    <tr class="success">
-	      <td>{{ request.Time }}</td>
-	      <td>{{ request.ISD }}</td>
-	      <td>{{ request.AS }}</td>
-	      <td>{{ request.Bandwidth }}</td>
-	      <td>+{{ request.CreditBalance }}</td>
-	      <td>{{ request.IsOutgoing }}</td>
-	    </tr>
-	{% else %}
+	{% if request.IsOutgoing %}
 	    <tr class="danger">
 	      <td>{{ request.Time }}</td>
 	      <td>{{ request.ISD }}</td>
 	      <td>{{ request.AS }}</td>
 	      <td>{{ request.Bandwidth }}</td>
 	      <td>-{{ request.CreditBalance }}</td>
+	      <td>{{ request.IsOutgoing }}</td>
+	    </tr>
+	{% else %}
+	    <tr class="success">
+	      <td>{{ request.Time }}</td>
+	      <td>{{ request.ISD }}</td>
+	      <td>{{ request.AS }}</td>
+	      <td>{{ request.Bandwidth }}</td>
+	      <td>+{{ request.CreditBalance }}</td>
 	      <td>{{ request.IsOutgoing }}</td>
 	    </tr>
 	{% endif %}
