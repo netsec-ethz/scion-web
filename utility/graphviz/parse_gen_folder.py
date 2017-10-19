@@ -1,3 +1,5 @@
+#parses the gen folder to a nested dictionary.
+
 import json
 import os
 from lib import AS_information

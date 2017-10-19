@@ -1,4 +1,4 @@
-#V1: Takes a gen folder and uses graphviz to draw a diagram of the topology. Configure if you want edge labes/node labels. Not Supported : Does not parse multiple links between ASes.
+#Takes a gen folder and uses graphviz to draw a diagram of the topology. Configure if you want edge labes/node labels. Not Supported : Does not parse multiple links between ASes.
 
 from graphviz import Graph
 import parse_gen_folder
