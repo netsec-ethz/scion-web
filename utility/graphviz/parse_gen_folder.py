@@ -92,3 +92,4 @@ def parse_gen_folder(gen_folder):
         json.dump(gen_dict,outfile)
 
     return gen_dict
+
