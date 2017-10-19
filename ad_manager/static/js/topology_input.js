@@ -246,6 +246,12 @@ function reloadRouterSection(reloadedTopology) {
         $(itemSelector + '#inputBorderRouterAddress').val(address);
         port = borderRouter['InternalAddrs'][0]['Public'][0]['L4Port'];
         $(itemSelector + '#inputBorderRouterPort').attr('value', port);
+        if ('Bind' in borderRouter['InternalAddrs'][0]) {
+            addressInternal = borderRouter['InternalAddrs'][0]['Bind'][0]['Addr'];
+            $(itemSelector + '#inputBorderRouterInternalAddress').val(addressInternal);
+            portInternal = borderRouter['InternalAddrs'][0]['Bind'][0]['L4Port'];
+            $(itemSelector + '#inputBorderRouterInternalPort').val(portInternal);
+        }
 
         var interfaces_obj = borderRouter['Interfaces'];
         var keys = Object.keys(interfaces_obj)
@@ -287,6 +293,9 @@ function reloadRouterInterfaceSection(if_id, interface_obj, itemSelector) {
                 break;
             case 'Bandwidth':
                 $(itemSelector + '#inputInterfaceBandwidth').attr('value', value);
+                break;
+            case 'Bind':
+                $(itemSelector + '#inputInterfaceInternalAddress').attr('value', value['Addr']);
                 break;
             // TODO(ercanucan): Futher items to be shown once the front-end is updated
             default:
