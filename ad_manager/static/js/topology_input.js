@@ -246,6 +246,12 @@ function reloadRouterSection(reloadedTopology) {
         $(itemSelector + '#inputBorderRouterAddress').val(address);
         port = borderRouter['InternalAddrs'][0]['Public'][0]['L4Port'];
         $(itemSelector + '#inputBorderRouterPort').attr('value', port);
+        if ('Bind' in borderRouter['InternalAddrs'][0]) {
+            addressInternal = borderRouter['InternalAddrs'][0]['Bind'][0]['Addr'];
+            $(itemSelector + '#inputBorderRouterInternalAddress').val(addressInternal);
+            portInternal = borderRouter['InternalAddrs'][0]['Bind'][0]['L4Port'];
+            $(itemSelector + '#inputBorderRouterInternalPort').val(portInternal);
+        }
 
         var interfaces_obj = borderRouter['Interfaces'];
         var keys = Object.keys(interfaces_obj)

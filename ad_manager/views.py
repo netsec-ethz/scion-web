@@ -632,6 +632,7 @@ class ADDetailView(DetailView):
         context['join_requests'] = resp['JoinRequests']
         context['received_requests'] = resp['ConnRequests']
         context['received_conn_replies'] = resp['ConnReplies']
+
         return context
 
 
@@ -922,6 +923,8 @@ def name_entry_dict_router(tp):
     name_list = tp.getlist('inputBorderRouterName')
     address_list = tp.getlist('inputBorderRouterAddress')
     port_list = tp.getlist('inputBorderRouterPort')
+    internal_address_list = tp.getlist('inputBorderRouterInternalAddress')
+    internal_port_list = tp.getlist('inputBorderRouterInternalPort')
     interface_list = tp.getlist('inputInterfaceAddr')
     bandwidth_list = tp.getlist('inputInterfaceBandwidth')
     if_id_list = tp.getlist('inputInterfaceIFID')
@@ -940,8 +943,6 @@ def name_entry_dict_router(tp):
                     'Addr': address_list[i],
                     'L4Port': st_int(port_list[i], None),
                 }],
-                # TODO(jonghoonkwon): Put the 'Bind' field after web UI
-                # provides internal address & port information
             }],
             'Interfaces': {
                 st_int(if_id_list[i], None): {
@@ -966,6 +967,11 @@ def name_entry_dict_router(tp):
                 }
             }
         }
+        if internal_address_list[i] is not '':
+            ret_dict[name_list[i]]['InternalAddrs'][0]['Bind'] = [{
+                'Addr': internal_address_list[i],
+                'L4Port': st_int(internal_port_list[i], None),
+            }]
     return ret_dict
 
 
@@ -975,7 +981,6 @@ def generate_topology(request):
     topology_params = request.POST.copy()
     topology_params.pop('csrfmiddlewaretoken',
                         None)  # remove csrf entry, as we don't need it here
-
     topo_dict = {}
     tp = topology_params
     isd_as = tp['inputISD_AS']
