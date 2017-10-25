@@ -136,7 +136,7 @@
               <label class="control-label" for="id_router_info">Border Router Information</label>
               <select class="form-control" id="id_router_info" name="router_info" required="required" title="" type="text">
                 {% for intf in interface_addrs %}
-                <option>{{ intf.addr }}:{{ intf.port }} </option>
+                <option>{{ intf.addr }}:{{ intf.l4port }} </option>
                 {% endfor %}
               </select>
             </div>
