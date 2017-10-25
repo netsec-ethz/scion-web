@@ -632,7 +632,6 @@ class ADDetailView(DetailView):
         context['join_requests'] = resp['JoinRequests']
         context['received_requests'] = resp['ConnRequests']
         context['received_conn_replies'] = resp['ConnReplies']
-
         return context
 
 
