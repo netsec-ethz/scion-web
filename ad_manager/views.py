@@ -619,10 +619,8 @@ class ADDetailView(DetailView):
         except OrganisationAdmin.DoesNotExist:
             logger.error("Retrieving account_id and secret failed!!.")
             return context
-
         request_url = urljoin(COORD_SERVICE_URI, posixpath.join(
                               POLL_EVENTS_SVC, coord.account_id, coord.secret))
-
         logger.info("Polling Events for %s", context['isdas'])
         r, error = post_req_to_scion_coord(
             request_url, {'IsdAs': context['isdas']},
