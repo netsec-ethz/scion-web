@@ -4,10 +4,9 @@
 This element is also called 'Breadcrumbs': http://en.wikipedia.org/wiki/Breadcrumb_%28navigation%29
 {% endcomment %}
 
-
-
+{% if virtual_credits_enabled %}
 <h4 class="text-right">Credits: {{ current_credit }}</h4>
-
+{% endif %}
 
 <h1 class="object-path">
   <a href="{% url 'list_isds' %}" class="glyphicon glyphicon-home"></a>

@@ -95,6 +95,7 @@ from ad_manager.util.defines import (
     UPLOAD_JOIN_REQUEST_SVC,
     UPLOAD_JOIN_REPLY_SVC,
     POLL_CREDIT_SVC,
+    VIRTUAL_CREDITS_ENABLED,
 )
 from scripts.reload_data import reload_data_from_files
 
@@ -629,31 +630,33 @@ class ADDetailView(DetailView):
             messages.error(self.request, 'Could not poll events from SCION '
                            'Coordination Service!')
             return context
-
-        credit_url = urljoin(COORD_SERVICE_URI, posixpath.join(
-                              POLL_CREDIT_SVC, coord.account_id, coord.secret, context['isdas']))
-        
-        p, error = post_req_to_scion_coord(
-            credit_url, {'IsdAs': context['isdas']},
-            "poll events for ISD-AS %s" % context['isdas'])
-        if error is not None:
-            messages.error(self.request, 'Could not poll events from SCION '
-                           'Coordination Service!')
-            return context
-                    
-        outCredit = p.json()
-
         resp = r.json()
         context['join_requests'] = resp['JoinRequests']
         context['received_requests'] = resp['ConnRequests']
         context['received_conn_replies'] = resp['ConnReplies']
 
-        # Credit overview tab
-        context['current_credit'] = outCredit['Credits']
-        context['current_connections'] = outCredit['Connections']
+        # Show only necessary content if virtual credit system is enabled
+        # To fully function, this must be also disabled/enabled by the SCION coord service!
+        context['virtual_credits_enabled'] = VIRTUAL_CREDITS_ENABLED
+        if VIRTUAL_CREDITS_ENABLED:
+            credit_url = urljoin(COORD_SERVICE_URI, posixpath.join(
+                                  POLL_CREDIT_SVC, coord.account_id, coord.secret, context['isdas']))
+
+            p, error = post_req_to_scion_coord(
+                credit_url, {'IsdAs': context['isdas']},
+                "poll events for ISD-AS %s" % context['isdas'])
+            if error is not None:
+                messages.error(self.request, 'Could not poll events from SCION '
+                               'Coordination Service!')
+                return context
+
+            outCredit = p.json()
+
+            # Credit overview tab
+            context['current_credit'] = outCredit['Credits']
+            context['current_connections'] = outCredit['Connections']
 
         return context
-                
 
 
 @require_POST

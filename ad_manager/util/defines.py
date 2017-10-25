@@ -22,3 +22,5 @@ POLL_EVENTS_SVC = "/api/as/pollEvents/"
 POLL_CREDIT_SVC = "/api/listASConnections/"
 
 ADDR_ATTRIBUTES = ['Public', 'Bind']
+
+VIRTUAL_CREDITS_ENABLED = True

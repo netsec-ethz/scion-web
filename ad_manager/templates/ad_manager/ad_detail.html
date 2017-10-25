@@ -43,7 +43,9 @@
       <li role="presentation"><a href="#topology" aria-controls="topology" role="tab" data-toggle="tab">Advanced AS Configuration</a></li>
       <li role="presentation"><a href="#requests_from_own" aria-controls="requests_from_own" role="tab" data-toggle="tab">Requests from My AS</a></li>
       <li role="presentation"><a href="#requests_from_others" aria-controls="requests_from_others" role="tab" data-toggle="tab">Requests from Other ASes</a></li>
+      {% if virtual_credits_enabled %}
       <li role="presentation"><a href="#credit_overview" aria-controls="credit_overview" role="tab" data-toggle="tab">Credit Overview</a></li>
+      {% endif %}
     </ul>
 
     <!-- Tab panes -->
@@ -98,6 +100,7 @@
           {% include 'ad_manager/partials/requests_from_other_ases.html' %}
         {% endwith %}
       </div>
+      {% if virtual_credits_enabled %}
 
       <!-- Credit Overvies -->
       <div role="tabpanel" class="tab-pane" id="credit_overview">
@@ -105,7 +108,7 @@
           {% include 'ad_manager/partials/credit_overview.html' %}
         {% endwith %}
       </div>
-
+      {% endif %}
     </div>
   </div>
 
