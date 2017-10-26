@@ -17,7 +17,7 @@ import argparse
 from graphviz import Graph
 
 # SCION
-from lib import IsdGraph
+from graphviz_lib import IsdGraph
 from parse_folder import parse_gen_folder
 
 
@@ -39,15 +39,16 @@ def draw_isd_graph(ISD, AS_list, edge_labels, ip_addresses):
     isd_graph.subgraph(core_graph)
     # add all non core nodes
     graph_lib.add_nodes(non_core_AS_list, isd_graph, False, ip_addresses)
-    # add all edges to the graph from core to leaf, order is important such that core ASes end up on top
-    current_neighbors = core_AS_list
-    next_neighbors = graph_lib.draw_edges_from_current(current_neighbors, isd_graph, edge_labels)
+    # add all edges to the graph from core to leaf,
+    # order is important such that core ASes end up on top
+    c_neighbors = core_AS_list
+    n_neighbors = graph_lib.draw_edges_from_current(c_neighbors, isd_graph, edge_labels)
     # loop while some nodes dont have all their edges, add edges of nodes in current neighbors,
     # add nodes to next neighbors if they are not in ASes done,
     # not in next neighbors yet and not in current neighbors
-    while len(next_neighbors) > 0:
-        current_neighbors = next_neighbors
-        next_neighbors = graph_lib.draw_edges_from_current(current_neighbors, isd_graph, edge_labels)
+    while len(n_neighbors) > 0:
+        c_neighbors = n_neighbors
+        n_neighbors = graph_lib.draw_edges_from_current(c_neighbors, isd_graph, edge_labels)
     return isd_graph
 
 
@@ -65,12 +66,12 @@ def draw_inter_ISD_edges(scion_graph, ISDs, edge_labels):
         AS_list = ISDs[ISD]["AS"]
         # for each AS draw its inter-ISD edges
         for AS in AS_list:
-            if len(AS_list[AS]["Inter_ISD_neighbors"]) > 0:
-                draw_edges_for_as(ISD, AS, AS_list, scion_graph, ISDs_done, ISDs, edge_labels)
+            if len(AS_list[AS]["inter_n"]) > 0:
+                draw_edges_for_as(ISDs, ISD, AS, ISDs_done, edge_labels, scion_graph)
     return scion_graph
 
 
-def draw_edges_for_as(ISD, AS, AS_list, scion_graph, ISDs_done, ISDs, edge_labels):
+def draw_edges_for_as(ISDs, ISD, AS, ISDs_done, edge_labels, scion_graph):
     """
     this function draws all the inter ISD edges for a list of ASes.
     :param: string ISD: ISD of the AS, string AS: AS number of the AS,
@@ -80,18 +81,21 @@ def draw_edges_for_as(ISD, AS, AS_list, scion_graph, ISDs_done, ISDs, edge_label
             array ISDs: list of ISDs,
             boolean edge_labels: indicates if edge labels are drawn
     """
+    AS_list = ISDs[ISD]["AS"]
     id = ISD + "-" + AS
-    for neighbor_ISD in AS_list[AS]["Inter_ISD_neighbors"]:
+    for neighbor_ISD in AS_list[AS]["inter_n"]:
         if neighbor_ISD not in ISDs_done:
-            for neighbor in AS_list[AS]["Inter_ISD_neighbors"][neighbor_ISD]:
+            for neighbor in AS_list[AS]["inter_n"][neighbor_ISD]:
                 # check if neighbor exits
+                o_as = ISDs[ISD]["AS"][AS]["inter_n"]
+                n_as = ISDs[neighbor_ISD]["AS"][neighbor]["inter_n"]
                 if neighbor_ISD not in ISDs:
                     continue
                 if neighbor not in ISDs[neighbor_ISD]["AS"]:
                     continue
                 neighbor_id = neighbor_ISD + "-" + neighbor
-                taillabel = str(ISDs[ISD]["AS"][AS]["Inter_ISD_neighbors"][neighbor_ISD][neighbor]["br-id"])
-                headlabel = str(ISDs[neighbor_ISD]["AS"][neighbor]["Inter_ISD_neighbors"][ISD][AS]["br-id"])
+                taillabel = str(o_as[neighbor_ISD][neighbor]["br-id"])
+                headlabel = str(n_as[ISD][AS]["br-id"])
                 if edge_labels:
                     scion_graph.edge(id, neighbor_id,
                                      _attributes={'constraint': 'false', 'headlabel': headlabel,
@@ -100,27 +104,26 @@ def draw_edges_for_as(ISD, AS, AS_list, scion_graph, ISDs_done, ISDs, edge_label
                     scion_graph.edge(id, neighbor_id, _attributes={'constraint': 'false'})
 
 
-
-def draw_SCION_topology(topology_dict, ip_addresses, edge_labels):
+def draw_SCION_topology(topology_dict, n_labels, e_labels):
     """
-    this function draws the Scion topology from a topology dictionary returned by parse_gen_folder.
+    this function draws the Scion topology from a topology dictionary
+    returned by parse_gen_folder.
     :param dictionary topology_dict: dictionary returned by parse_gen_folder,
             boolean ip_addresses: indicates if node labels are drawn,
             boolean edge_labels: indicates if edge labels are drawn
     :return dot graph: graph of the SCION topology
     """
-    # variables
     isd_graphs = {}
     dot = Graph(comment='SCION-net')
     ISDs = topology_dict["ISD"]
     # draw each ISD graph
     for ISD in ISDs:
-        isd_graphs[ISD] = draw_isd_graph(ISD, topology_dict["ISD"][ISD]["AS"], edge_labels, ip_addresses)
+        isd_graphs[ISD] = draw_isd_graph(ISD, ISDs[ISD]["AS"], e_labels, n_labels)
     # put all isd graphs into the same graph
     for ISD in isd_graphs:
         dot.subgraph(isd_graphs[ISD])
     # add edges between ISDs
-    dot = draw_inter_ISD_edges(dot, ISDs, edge_labels)
+    dot = draw_inter_ISD_edges(dot, ISDs, e_labels)
     return dot
 
 
@@ -130,6 +133,10 @@ def main():
     example: python scion_topology_graph -g "gen", -e, -n:
     will place a pdf file of the scion topology with edge and node labels
     into output/scion_topo.gv
+    -g: path to the gen folder ex: SCION/gen
+    -e: set this flag if edge labels should be drawn
+    -n: set this flag if node labels should be drawn
+    -o: path to the output file ex: output/scion_topo.gv
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('-g', '--gen_folder_path', default="gen",

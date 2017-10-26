@@ -17,12 +17,13 @@ import json
 import os
 
 # SCION
-from lib import ASInformation
+from graphviz_lib import ASInformation
 
 
 def get_topology_file(as_folder):
     """
-    this function looks for a topology file inside an AS folder, opens it and returns the opened file
+    this function looks for a topology file inside an AS folder, opens it
+    and returns the opened file
     :param: string AS_folder: filepath to the AS folder
     """
     topology_file = ""
@@ -55,8 +56,8 @@ def parse_as_folder(isd_number, as_number, as_folder):
     info_dict["ps"] = as_info.ps_addr
     info_dict["zk"] = as_info.zk_addr
     as_dict['info'] = info_dict
-    as_dict['Intra_ISD_neighbors'] = as_info.intra_isd_neighbors
-    as_dict['Inter_ISD_neighbors'] = as_info.inter_isd_neighbors
+    as_dict['intra_n'] = as_info.intra_isd_neighbors
+    as_dict['inter_n'] = as_info.inter_isd_neighbors
     return as_dict
 
 
@@ -81,7 +82,9 @@ def parse_gen_folder(gen_folder):
     """
     this function returns all the necessary information from a gen folder to draw the graph
     and returns a dictionary
-    example gen folder: ISD1/AS2/,AS1/;ISD2/AS1/,AS3/ -> dictionary {'ISD':{1:{'AS':{2:{..},1:{..}}2:{'AS':{1:{..}2:{..}}}
+    example gen folder: ISD1/AS2/,AS1/;ISD2/AS1/,AS3/
+    ->
+    dictionary {'ISD':{1:{'AS':{2:{..},1:{..}}2:{'AS':{1:{..}2:{..}}}
     :param: string gen_folder: filepath to the gen folder
     """
     gen_dict = {}

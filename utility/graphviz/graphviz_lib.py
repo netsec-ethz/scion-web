@@ -15,6 +15,9 @@
 # Stdlib
 from graphviz import Graph
 
+# SCION
+from lib.packet.scion_addr import ISD_AS
+
 
 class ASInformation(object):
     """
@@ -30,8 +33,8 @@ class ASInformation(object):
         self.cs_addr = self.get_cs_addr()
         self.zk_addr = self.get_zk_addr()
         self.core = self.get_core_bool()
-        self.intra_isd_neighbors = self.get_neighbors()['intra-ISD']
-        self.inter_isd_neighbors = self.get_neighbors()['inter-ISD']
+        self.intra_isd_neighbors = self.get_neighbors()['intra']
+        self.inter_isd_neighbors = self.get_neighbors()['inter']
 
     def get_AS_name(self):
         """
@@ -74,7 +77,7 @@ class ASInformation(object):
         :param self
         """
         ps_addr = ""
-        # only save one ip address  !multiple beaconservice ip addresses not supported!
+        # only save one ip address
         for item in self.topology["PathService"]:
             ps_addr = self.topology["PathService"][item]["Public"][0]["Addr"]
             break
@@ -86,7 +89,7 @@ class ASInformation(object):
         :param self
         """
         zk_addr = ""
-        # only save one ip address  !multiple beaconservice ip addresses not supported!
+        # only save one ip address
         for item in self.topology["ZookeeperService"]:
             zk_addr = self.topology["ZookeeperService"][item]["Addr"]
             break
@@ -104,35 +107,38 @@ class ASInformation(object):
         returns a nested dictionary with intra and inter isd neighbor dictionaries
         :param self
         """
-        intra_isd_neighbor_dict = {}
-        inter_isd_neighbor_dict = {}
-        for border_router in self.topology["BorderRouters"]:
-            neighbor_IA = self.get_neighbor_IA_interface(border_router)['IA']
-            interface = self.get_neighbor_IA_interface(border_router)['interface']
-            neighbor_ISD = self.get_ISD_AS(neighbor_IA)['ISD']
-            neighbor_AS = self.get_ISD_AS(neighbor_IA)['AS']
-            if neighbor_ISD == self.ISD:
-                intra_isd_neighbor = {'br-id': interface, 'br-ip':
-                    self.topology["BorderRouters"][border_router]["Interfaces"][interface]["Public"]["Addr"]}
-                intra_isd_neighbor_dict[neighbor_AS] = intra_isd_neighbor
+        intra_dict = {}
+        inter_dict = {}
+        border_routers = self.topology["BorderRouters"]
+        for br in border_routers:
+            neighbor_IA = self.get_neighbor_IA_interface(br)['IA']
+            ie = self.get_neighbor_IA_interface(br)['interface']
+            n_isd = str(self.get_ISD_AS(neighbor_IA)._isd)
+            n_as = str(self.get_ISD_AS(neighbor_IA)._as)
+            if n_isd == self.ISD:
+                intra_isd_neighbor = \
+                    {'br-id': ie, 'br-ip': border_routers[br]["Interfaces"][ie]["Public"]["Addr"]}
+                intra_dict[n_as] = intra_isd_neighbor
             else:
-                inter_isd_neighbor = {'br-id': interface, 'br-ip':
-                    self.topology["BorderRouters"][border_router]["Interfaces"][interface]["Public"]["Addr"]}
-                if neighbor_ISD not in inter_isd_neighbor_dict:
-                    inter_isd_neighbor_dict[neighbor_ISD] = {}
-                inter_isd_neighbor_dict[neighbor_ISD][neighbor_AS] = inter_isd_neighbor
-        return {'intra-ISD': intra_isd_neighbor_dict, 'inter-ISD': inter_isd_neighbor_dict}
+                inter_isd_neighbor = \
+                    {'br-id': ie, 'br-ip': border_routers[br]["Interfaces"][ie]["Public"]["Addr"]}
+                if n_isd not in inter_dict:
+                    inter_dict[n_isd] = {}
+                inter_dict[n_isd][n_as] = inter_isd_neighbor
+        return {'intra': intra_dict, 'inter': inter_dict}
 
-    def get_neighbor_IA_interface(self, border_router):
+    def get_neighbor_IA_interface(self, br):
         """
-        returns a dictionary with the neighbor IA and interface of the border router connected to that IA
+        returns a dictionary with the neighbor IA and interface
+        of the border router connected to that IA
         :param self, string border router id ex: 'br-1-2-1'
         """
         interface = ""
         neighbor_IA = ""
         # extract neighbor IA for this border router
-        for item in self.topology["BorderRouters"][border_router]["Interfaces"]:
-            neighbor_IA = self.topology["BorderRouters"][border_router]["Interfaces"][item]["ISD_AS"]
+        brs = self.topology["BorderRouters"]
+        for item in brs[br]["Interfaces"]:
+            neighbor_IA = brs[br]["Interfaces"][item]["ISD_AS"]
             interface = item
             break
         return {'IA': neighbor_IA, 'interface': interface}
@@ -142,15 +148,9 @@ class ASInformation(object):
         splits an IA into ISD and AS identifiers, return a dictionary with ISD: and AS:.
         :param self, string IA ex: "1-4"
         """
-        neighbor_ISD = ""
-        for k in IA:
-            if k == "-":
-                break
-            else:
-                neighbor_ISD = neighbor_ISD + k
-        k = len(neighbor_ISD) + 1
-        neighbor_AS = IA[k:]
-        return {'ISD': neighbor_ISD, 'AS': neighbor_AS}
+        ia = ISD_AS(raw=IA)
+        ia._parse_str(IA)
+        return ia
 
 
 class IsdGraph(object):
@@ -170,7 +170,8 @@ class IsdGraph(object):
         """
         graph_name = 'cluster_' + "ISD " + self.ISD
         label = "ISD " + self.ISD
-        isd_graph = Graph(name=graph_name, graph_attr={'color': 'blue', 'label': label, 'style': 'rounded'})
+        isd_graph = Graph(name=graph_name,
+                          graph_attr={'color': 'blue', 'label': label, 'style': 'rounded'})
         return isd_graph
 
     def get_core_graph(self):
@@ -178,14 +179,16 @@ class IsdGraph(object):
         this function returns the isd graphviz core graph with correct formatting
         :param: self
         """
-        return Graph(name='cluster_core', graph_attr={'color': 'red', 'label': '', 'style': 'rounded'})
+        return Graph(name='cluster_core',
+                     graph_attr={'color': 'red', 'label': '', 'style': 'rounded'})
 
     def add_nodes(self, to_draw_list, graph, core, ip_addresses):
         """
         this function adds nodes of ASes to a graph
-        :param: self, array to_draw_list: an array of ASes, graphviz graph: Graph to which we add the nodes
-                bool core: boolean that indicates if the graph to which we add the nodes is a core graph
-                bool ip_addresses: boolean that indicates wether or not we add additional information
+        :param: self, array to_draw_list: an array of ASes,
+                graphviz graph: Graph to which we add the nodes,
+                bool core: indicates if we add core nodes
+                bool ip_addresses: indicates if we have edge labels
         """
         for AS in to_draw_list:
             if ip_addresses:
@@ -228,11 +231,11 @@ class IsdGraph(object):
         """
         node_id = self.ISD + "-" + AS
         node_name = self.AS_list[AS]["name"]
-        node_name = self.ISD_prefix + AS + node_name + " (core)"
+        node_name = self.ISD_prefix + AS + node_name
         if core:
             node_name = node_name + " (core)"
         node_name = node_name + "\n"
-        node_attributes = self.NodeAttributes(self.AS_list[AS], AS, self.ISD_prefix)
+        node_attributes = self.NodeAttributes(self.AS_list[AS], AS, self.ISD)
         node_name = node_name + node_attributes.assemble_string()
         graph.node(node_id, node_name, _attributes={'shape': 'box'})
 
@@ -247,19 +250,19 @@ class IsdGraph(object):
         for AS in current_neighbors:
             self.ASes_done.append(AS)
             id = self.ISD_prefix + AS
-            for neighbor in self.AS_list[AS]["Intra_ISD_neighbors"]:
+            for neighbor in self.AS_list[AS]["intra_n"]:
+                n_dict = self.AS_list[AS]["intra_n"][neighbor]
                 # check if neighbor exists
                 if neighbor not in self.AS_list:
                     continue
                 # check if we have not drawn edges for the neighbor
                 if neighbor not in self.ASes_done:
                     neighbor_id = self.ISD_prefix + neighbor
-                    taillabel = self.AS_list[AS]["Intra_ISD_neighbors"][neighbor]["br-id"]
-                    headlabel = self.AS_list[neighbor]["Intra_ISD_neighbors"][AS]["br-id"]
-                    taillabel = str(taillabel)
-                    headlabel = str(headlabel)
+                    taillabel = str(n_dict["br-id"])
+                    headlabel = str(self.AS_list[neighbor]["intra_n"][AS]["br-id"])
                     if edge_labels:
-                        graph.edge(id, neighbor_id, _attributes={'headlabel': headlabel, 'taillabel': taillabel})
+                        graph.edge(id, neighbor_id,
+                                   _attributes={'headlabel': headlabel, 'taillabel': taillabel})
                     else:
                         graph.edge(id, neighbor_id)
                     # add node to next rotation if not in current/next
@@ -272,14 +275,14 @@ class IsdGraph(object):
         """
         Class to collect all attributes of an AS (br,ps,bs ..)
         """
-        def __init__(self, AS, AS_number, ISD_prefix):
+        def __init__(self, AS, AS_number, ISD):
             # ex: info_dict[br] = ip address of br
             # ex: reverse_info_dict[1.3.3.3] = ['zk', 'bs']
             self.info_dict = {}
-            self.reverse_info_dict = {}
+            self.rev_info_dict = {}
             self.AS = AS
             self.AS_number = AS_number
-            self.ISD_prefix = ISD_prefix
+            self.ISD = ISD
             self.gather_non_br_info()
             self.gather_intra_br_info()
             self.gather_inter_br_info()
@@ -287,53 +290,54 @@ class IsdGraph(object):
 
         def gather_non_br_info(self):
             """
-            this function gathers info for all non border router elements and writes the info to the
-            info and reverse info dict.
+            this function gathers info for all non border router elements
+            and writes the info to the info and reverse info dict.
             :param: self
             """
             for info in self.AS["info"]:
                 self.info_dict[info] = self.AS["info"][info]
-                if self.AS["info"][info] not in self.reverse_info_dict:
-                    self.reverse_info_dict[self.AS["info"][info]] = [info]
+                if self.AS["info"][info] not in self.rev_info_dict:
+                    self.rev_info_dict[self.AS["info"][info]] = [info]
                 else:
-                    self.reverse_info_dict[self.AS["info"][info]].append(info)
+                    self.rev_info_dict[self.AS["info"][info]].append(info)
 
         def gather_intra_br_info(self):
             """
-            this function gathers info for all intra isd border router elements and writes the info to the
-            info and reverse info dict.
+            this function gathers info for all intra isd border router elements
+            and writes the info to the info and reverse info dict.
             :param: self
             """
-            for neighbor in self.AS["Intra_ISD_neighbors"]:
-                br_id = str(self.AS["Intra_ISD_neighbors"][neighbor]["br-id"])
-                self.info_dict["br" + self.ISD_prefix + "-" + br_id] = self.AS["Intra_ISD_neighbors"][neighbor]["br-ip"]
-                if self.AS["Intra_ISD_neighbors"][neighbor]["br-ip"] not in self.reverse_info_dict:
-                    self.reverse_info_dict[self.AS["Intra_ISD_neighbors"][neighbor]["br-ip"]] = ["br" + self.ISD_prefix + "-" + br_id]
+            for neighbor in self.AS["intra_n"]:
+                n_dict = self.AS["intra_n"][neighbor]
+                br_id = str(n_dict["br-id"])
+                self.info_dict["br" + self.ISD + "-" + br_id] = n_dict["br-ip"]
+                if n_dict["br-ip"] not in self.rev_info_dict:
+                    self.rev_info_dict[n_dict["br-ip"]] = ["br" + self.ISD + "-" + br_id]
                 else:
-                    self.reverse_info_dict[self.AS["Intra_ISD_neighbors"][neighbor]["br-ip"]].append(
-                        "br" + self.ISD_prefix + "-" + br_id)
+                    self.rev_info_dict[n_dict["br-ip"]].append(
+                        "br" + self.ISD + "-" + br_id)
 
         def gather_inter_br_info(self):
             """
-            this function gathers info for all inter isd border router elements and writes the info to the
-            info and reverse info dict.
+            this function gathers info for all inter isd border router elements
+            and writes the info to the info and reverse info dict.
             :param: self
             """
-            for neighbor_ISD in self.AS["Inter_ISD_neighbors"]:
-                for neighbor in self.AS["Inter_ISD_neighbors"][neighbor_ISD]:
-                    br_id = str(self.AS["Inter_ISD_neighbors"][neighbor_ISD][neighbor]["br-id"])
-                    self.info_dict["br" + self.ISD_prefix + "-" + br_id] = self.AS["Inter_ISD_neighbors"][neighbor_ISD][neighbor][
-                        "br-ip"]
-                    if self.AS["Inter_ISD_neighbors"][neighbor_ISD][neighbor]["br-ip"] not in self.reverse_info_dict:
-                        self.reverse_info_dict[self.AS["Inter_ISD_neighbors"][neighbor_ISD][neighbor]["br-ip"]] = [
-                            "br" + self.ISD_prefix + "-" + br_id]
+            for neighbor_ISD in self.AS["inter_n"]:
+                n_dict = self.AS["inter_n"][neighbor_ISD]
+                for neighbor in n_dict:
+                    n_isd = n_dict[neighbor]
+                    br_id = str(n_isd["br-id"])
+                    self.info_dict["br" + self.ISD + "-" + br_id] = n_isd["br-ip"]
+                    if n_isd["br-ip"] not in self.rev_info_dict:
+                        self.rev_info_dict[n_isd["br-ip"]] = "br" + self.ISD + "-" + br_id
                     else:
-                        self.reverse_info_dict[self.AS["Inter_ISD_neighbors"][neighbor_ISD][neighbor]["br-ip"]].append(
-                            "br" + self.ISD_prefix + "-" + br_id)
+                        self.rev_info_dict[n_isd["br-ip"]].append("br" + self.ISD + "-" + br_id)
 
         def assemble_string(self):
             """
-            this function builds the string for the node label from the info in the info dict and reverse info dict
+            this function builds the string for the node label from
+            the info in the info dict and reverse info dict
             :param: self
             """
             info_string = ""
@@ -341,7 +345,7 @@ class IsdGraph(object):
             printed_ip = []
             for key in self.info_dict:
                 ip_address = self.info_dict[key]
-                for node in self.reverse_info_dict[ip_address]:
+                for node in self.rev_info_dict[ip_address]:
                     if node not in printed:
                         printed.append(node)
                         info_string = info_string + node + ","
