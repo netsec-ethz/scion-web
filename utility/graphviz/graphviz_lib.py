@@ -281,7 +281,7 @@ class IsdGraph(object):
             self.info_dict = {}
             self.rev_info_dict = {}
             self.AS = AS
-            self.AS_number = AS_number
+            self.AS_n = AS_number
             self.ISD = ISD
             self.gather_non_br_info()
             self.gather_intra_br_info()
@@ -310,12 +310,13 @@ class IsdGraph(object):
             for neighbor in self.AS["intra_n"]:
                 n_dict = self.AS["intra_n"][neighbor]
                 br_id = str(n_dict["br-id"])
-                self.info_dict["br" + self.ISD + "-" + br_id] = n_dict["br-ip"]
+                self.info_dict["br" + self.ISD + "-" + self.AS_n + "-" + br_id] = n_dict["br-ip"]
                 if n_dict["br-ip"] not in self.rev_info_dict:
-                    self.rev_info_dict[n_dict["br-ip"]] = ["br" + self.ISD + "-" + br_id]
+                    self.rev_info_dict[n_dict["br-ip"]] = \
+                        ["br" + self.ISD + "-" + self.AS_n + "-" + br_id]
                 else:
                     self.rev_info_dict[n_dict["br-ip"]].append(
-                        "br" + self.ISD + "-" + br_id)
+                        "br" + self.ISD + "-" + self.AS_n + "-" + br_id)
 
         def gather_inter_br_info(self):
             """
@@ -328,11 +329,13 @@ class IsdGraph(object):
                 for neighbor in n_dict:
                     n_isd = n_dict[neighbor]
                     br_id = str(n_isd["br-id"])
-                    self.info_dict["br" + self.ISD + "-" + br_id] = n_isd["br-ip"]
+                    self.info_dict["br" + self.ISD + "-" + self.AS_n + "-" + br_id] = n_isd["br-ip"]
                     if n_isd["br-ip"] not in self.rev_info_dict:
-                        self.rev_info_dict[n_isd["br-ip"]] = "br" + self.ISD + "-" + br_id
+                        self.rev_info_dict[n_isd["br-ip"]] = \
+                            ["br" + self.ISD + "-" + self.AS_n + "-" + br_id]
                     else:
-                        self.rev_info_dict[n_isd["br-ip"]].append("br" + self.ISD + "-" + br_id)
+                        self.rev_info_dict[n_isd["br-ip"]].append(
+                            "br" + self.ISD + "-" + self.AS_n + "-" + br_id)
 
         def assemble_string(self):
             """
