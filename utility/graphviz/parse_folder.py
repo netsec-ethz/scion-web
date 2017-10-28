@@ -22,9 +22,10 @@ from graphviz_lib import ASInformation
 
 def get_topology_file(as_folder):
     """
-    this function looks for a topology file inside an AS folder, opens it
+    Looks for a topology file inside an AS folder, opens it
     and returns the opened file
     :param: string AS_folder: filepath to the AS folder
+    :return: topology dictionary
     """
     topology_file = ""
     # find topology file, just enter first br folder
@@ -41,9 +42,9 @@ def get_topology_file(as_folder):
 
 def parse_as_folder(isd_number, as_number, as_folder):
     """
-    this function returns all the necessary information from a AS folder to draw the graph
-    and returns a dictionary
+    Parses a AS folder to a nested dict
     :param: string ISD_number, string AS_number,string AS_folder: filepath to AS folder
+    :return: Dictionary with info from an AS folder
     """
     as_dict = {}
     as_topo = get_topology_file(as_folder)
@@ -63,9 +64,9 @@ def parse_as_folder(isd_number, as_number, as_folder):
 
 def parse_isd_folder(isd_number, isd_folder):
     """
-    this function returns all the necessary information from a ISD folder to draw the graph
-    and returns a dictionary
-    :param: string ISD number, string ISD_folder: filepath to ISD folder
+    Parses a ISD folder to a nested dict
+    :param: String ISD number, string ISD_folder: filepath to ISD folder
+    :return: Dictionary with info from an ISD folder
     """
     isd_dict = {}
     isd_dict['AS'] = {}
@@ -80,12 +81,12 @@ def parse_isd_folder(isd_number, isd_folder):
 
 def parse_gen_folder(gen_folder):
     """
-    this function returns all the necessary information from a gen folder to draw the graph
-    and returns a dictionary
+    Parses a gen folder to a nested dict
     example gen folder: ISD1/AS2/,AS1/;ISD2/AS1/,AS3/
     ->
     dictionary {'ISD':{1:{'AS':{2:{..},1:{..}}2:{'AS':{1:{..}2:{..}}}
-    :param: string gen_folder: filepath to the gen folder
+    :param: String gen_folder: filepath to the gen folder
+    :return: Dictionary with all the informatino to draw the graph
     """
     gen_dict = {}
     gen_dict['ISD'] = {}
