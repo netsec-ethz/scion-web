@@ -144,12 +144,14 @@ def generate_prometheus_config(tp, local_gen_path, as_path):
     elem_dict = defaultdict(list)
     for br_id, br_elem in tp['BorderRouters'].items():
         for int_addrs in br_elem['InternalAddrs']:
-            for addr_info in int_addrs['Public']:
+            addr_type = 'Bind' if 'Bind' in int_addrs.keys() else 'Public'
+            for addr_info in int_addrs[addr_type]:
                 prom_addr = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'] + PROM_PORT_OFFSET)
                 elem_dict['BorderRouters'].append(prom_addr)
     for svc_type in ['BeaconService', 'PathService', 'CertificateService']:
         for elem_id, elem in tp[svc_type].items():
-            for addr_info in elem['Public']:
+            addr_type = 'Bind' if 'Bind' in elem.keys() else 'Public'
+            for addr_info in elem[addr_type]:
                 prom_addr = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'] + PROM_PORT_OFFSET)
                 elem_dict[svc_type].append(prom_addr)
     _write_prometheus_config_files(local_gen_path, as_path, elem_dict)

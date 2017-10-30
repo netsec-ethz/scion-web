@@ -114,15 +114,17 @@ def prep_supervisord_conf(instance_dict, executable_name, service_type, instance
     env_tmpl = 'PYTHONPATH=python:.,ZLOG_CFG="%s/%s.zlog.conf"'
     if service_type == 'router':  # go router
         env_tmpl += ',GODEBUG="cgocheck=0"'
-        prom_addr = "%s:%s" % (instance_dict['InternalAddrs'][0]['Public'][0]['Addr'],
-                               instance_dict['InternalAddrs'][0]['Public'][0]['L4Port'] +
+        addr_type = 'Bind' if 'Bind' in instance_dict['InternalAddrs'][0].keys() else 'Public'
+        prom_addr = "%s:%s" % (instance_dict['InternalAddrs'][0][addr_type][0]['Addr'],
+                               instance_dict['InternalAddrs'][0][addr_type][0]['L4Port'] +
                                PROM_PORT_OFFSET)
         cmd = ('bash -c \'exec bin/%s -id "%s" -confd "%s" -prom "%s" &>logs/%s.OUT\'') % (
             executable_name, instance_name, get_elem_dir(GEN_PATH, isd_as, instance_name),
             prom_addr, instance_name)
     else:  # other infrastructure elements
-        prom_addr = "%s:%s" % (instance_dict['Public'][0]['Addr'],
-                               instance_dict['Public'][0]['L4Port'] + PROM_PORT_OFFSET)
+        addr_type = 'Bind' if 'Bind' in instance_dict.keys() else 'Public'
+        prom_addr = "%s:%s" % (instance_dict[addr_type][0]['Addr'],
+                               instance_dict[addr_type][0]['L4Port'] + PROM_PORT_OFFSET)
         cmd = ('bash -c \'exec bin/%s "%s" "%s" --prom "%s" &>logs/%s.OUT\'') % (
             executable_name, instance_name, get_elem_dir(GEN_PATH, isd_as, instance_name),
             prom_addr, instance_name)
