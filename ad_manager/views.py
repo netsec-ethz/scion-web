@@ -175,7 +175,7 @@ def poll_join_reply(request):
         logger.info('url = %s' % request_url)
         r, error = post_req_to_scion_coord(request_url, {'request_id': jr_id},
                                            "poll join reply %s" % jr_id)
-        if error is not None:
+        if error:
             return error
         handle_join_reply(request, r, jr_id)
     return redirect(current_page)
@@ -268,7 +268,7 @@ def send_join_reply(request, status, isd_as, request_id):
                           coord.secret))
     _, error = post_req_to_scion_coord(request_url, join_rep_dict,
                                        "join reply %s" % request_id)
-    if error is not None:
+    if error:
         return error
     return redirect(current_page)
 
@@ -347,7 +347,7 @@ def request_join_isd(request):
                           coord.secret))
     _, error = post_req_to_scion_coord(request_url, join_req_dict,
                                        "join request %s" % join_req.id)
-    if error is not None:
+    if error:
         return error
     logger.info("Request = %s, Join Request Dict = %s", request_url,
                 join_req_dict)
@@ -488,7 +488,7 @@ def send_connection_request(request, con_req, con_req_dict):
                           coord.secret))
     resp, error = post_req_to_scion_coord(request_url, con_req_dict,
                                           "connection request %s" % con_req_id)
-    if error is not None:
+    if error:
         return None, error
     logging.info("Connection request %s successfully sent.", con_req_id)
     # set the status of the connection request to SENT
@@ -559,7 +559,7 @@ def send_connection_reply(request, con_req_id, status, respond_as, data):
                           coord.secret))
     _, error = post_req_to_scion_coord(request_url, con_rep_dict,
                                        "connection reply %s" % con_req_id)
-    if error is not None:
+    if error:
         return error
     logging.info("Connection reply %s successfully sent.",
                  con_rep_dict['RequestId'])
@@ -624,7 +624,7 @@ class ADDetailView(DetailView):
         r, error = post_req_to_scion_coord(
             request_url, {'IsdAs': context['isdas']},
             "poll events for ISD-AS %s" % context['isdas'])
-        if error is not None:
+        if error:
             messages.error(self.request, 'Could not poll events from SCION '
                            'Coordination Service!')
             return context
@@ -896,7 +896,7 @@ def name_entry_dict(name_l, address_l, port_l, addr_int_l, port_int_l):
                 'L4Port': st_int(port_l[i], SCION_SUGGESTED_PORT),
             }]
         }
-        if addr_int_l[i] is not '':
+        if addr_int_l[i]:
             ret_dict[name_l[i]]['Bind'] = [{
                 'Addr': addr_int_l[i],
                 'L4Port': st_int(port_int_l[i], None),
@@ -922,6 +922,8 @@ def name_entry_dict_router(tp):
     name_list = tp.getlist('inputBorderRouterName')
     address_list = tp.getlist('inputBorderRouterAddress')
     port_list = tp.getlist('inputBorderRouterPort')
+    internal_address_list = tp.getlist('inputBorderRouterInternalAddress')
+    internal_port_list = tp.getlist('inputBorderRouterInternalPort')
     interface_list = tp.getlist('inputInterfaceAddr')
     bandwidth_list = tp.getlist('inputInterfaceBandwidth')
     if_id_list = tp.getlist('inputInterfaceIFID')
@@ -931,6 +933,7 @@ def name_entry_dict_router(tp):
     remote_address_list = tp.getlist('inputInterfaceRemoteAddress')
     remote_port_list = tp.getlist('inputInterfaceRemotePort')
     own_port_list = tp.getlist('inputInterfaceOwnPort')
+    interface_internal_addr_list = tp.getlist('inputInterfaceInternalAddress')
     for i in range(len(name_list)):
         if address_list[i] == '':
             continue  # don't include empty entries
@@ -940,8 +943,6 @@ def name_entry_dict_router(tp):
                     'Addr': address_list[i],
                     'L4Port': st_int(port_list[i], None),
                 }],
-                # TODO(jonghoonkwon): Put the 'Bind' field after web UI
-                # provides internal address & port information
             }],
             'Interfaces': {
                 st_int(if_id_list[i], None): {
@@ -966,6 +967,18 @@ def name_entry_dict_router(tp):
                 }
             }
         }
+        if internal_address_list[i]:
+            # TODO(jonghoonkwon): Initial version of scion web assumes that
+            # we have only one bind address. Need to be fixed.
+            ret_dict[name_list[i]]['InternalAddrs'][0]['Bind'] = [{
+                'Addr': internal_address_list[i],
+                'L4Port': st_int(internal_port_list[i], None),
+            }]
+        if interface_internal_addr_list[i]:
+            ret_dict[name_list[i]]['Interfaces'][st_int(if_id_list[i], None)]['Bind'] = {
+                'Addr': interface_internal_addr_list[i],
+                'L4Port': st_int(own_port_list[i], None),
+            }
     return ret_dict
 
 
@@ -975,7 +988,6 @@ def generate_topology(request):
     topology_params = request.POST.copy()
     topology_params.pop('csrfmiddlewaretoken',
                         None)  # remove csrf entry, as we don't need it here
-
     topo_dict = {}
     tp = topology_params
     isd_as = tp['inputISD_AS']
@@ -1015,7 +1027,6 @@ def generate_topology(request):
         int_key += 1
 
     topo_dict['ZookeeperService'] = zk_dict
-
     # IP:port uniqueness in AS check
     all_ip_port_pairs = get_all_ip_port_pairs(topo_dict, service_types)
     if len(all_ip_port_pairs) != len(set(all_ip_port_pairs)):

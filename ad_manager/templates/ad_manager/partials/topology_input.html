@@ -13,12 +13,9 @@
         <br/>
         <label class="control-label col-sm-2" for="inputIsCore">Is Core: </label>
         <div class="controls">
-          <input class="hidden" id="inputIsCore" name="inputIsCore" type="hidden" value="false"
-          alt="get a value even for false checkbox"/>
-          <input id="inputIsCore" name="inputIsCore" class="shownCheckbox" type="checkbox" data-toggle='tooltip'
-          data-placement='right'
-          data-original-title="Is core checkbox: True, False (is of importance for Beacon, Certificate,
-          Path server; stored as single entry in topo file).
+          <input class="hidden" id="inputIsCore" name="inputIsCore" type="hidden" value="false" alt="get a value even for false checkbox"/>
+          <input id="inputIsCore" name="inputIsCore" class="shownCheckbox" type="checkbox" data-toggle='tooltip' data-placement='right'
+          data-original-title="Is core checkbox: True, False (is of importance for Beacon, Certificate, Path server; stored as single entry in topo file). 
           Enables the link type CORE for border routers when checked">
         </div>
       </div>
@@ -26,8 +23,7 @@
       <div class="form-group">
         <label class="control-label col-sm-2" for="inputISD_AS">AS name: </label>
         <div class="controls">
-          <input type="text" id="inputISD_AS" name="inputISD_AS" placeholder="{{ isd_id|add:'-'|add:as_id }}"
-          value="{{ isd_id }}-{{as_id }}" alt="readonly" readonly>
+          <input type="text" id="inputISD_AS" name="inputISD_AS" placeholder="{{ isd_id|add:'-'|add:as_id }}" value="{{ isd_id }}-{{as_id }}" alt="readonly" readonly>
         </div>
       </div>
       <div class="control-group">
@@ -50,47 +46,41 @@
     {% with 'Beacon Certificate Path' as serverTypes %}
     {% for type in serverTypes.split %}
     <div class="control-group well">
-      <div class="chevron" data-toggle="collapse"
-      href="#{{ type|lower }}Accordion"><span class="sectionTitle">{{ type }} servers</span></div>
+      <div class="chevron" data-toggle="collapse" href="#{{ type|lower }}Accordion">
+        <span class="sectionTitle">{{ type }} servers</span>
+      </div>
       <div id="{{ type|lower }}Accordion" class="accordion collapse in" aria-expanded="true">
       <br/>
       <div class="{{ type }}Item item" id="{{ type }}Item-1">
-
-        <input class="hidden" type="text" id="input{{ type }}ServiceType" name="input{{ type }}ServiceType" title="server type"
-        value="{{ type|lower }}_server">
+        <input class="hidden" type="text" id="input{{ type }}ServiceType" name="input{{ type }}ServiceType" title="server type" value="{{ type|lower }}_server">
         <label class="control-label col-sm-2 server-name-label" for="input{{ type }}ServiceName">Service name: </label>
         <div class="form-group">
           <div class="controls">
-            <input class="server-name-input" type="text" id="input{{ type }}ServiceName" name="input{{ type }}ServiceName"
-            value="{{ type|lower|slice:":1" }}s{{ isd_id }}-{{ as_id }}-1">
+            <input class="server-name-input" type="text" id="input{{ type }}ServiceName" name="input{{ type }}ServiceName" value="{{ type|lower|slice:":1" }}s{{ isd_id }}-{{ as_id }}-1">
           </div>
         </div>
 
-        <label class="control-label col-sm-2 server-address-label" for="input{{ type }}ServiceAddress">Address &
-          port: </label>
+        <label class="control-label col-sm-2 server-address-label" for="input{{ type }}ServiceAddress">Address & port: </label>
           <div class="controls">
-            <input class="server-address-input" type="text" id="input{{ type }}ServiceAddress" name="input{{ type }}ServiceAddress"
-            placeholder="127.0.0.{{ forloop.counter0|add:49 }}" value=""> :
-            <input class="server-port-input inputPort" id="input{{ type }}ServicePort" name="input{{ type }}ServicePort"
-            placeholder="{{ forloop.counter0|add:1025 }}" type="text">
+            <input class="server-address-input" type="text" id="input{{ type }}ServiceAddress" name="input{{ type }}ServiceAddress" placeholder="127.0.0.{{ forloop.counter0|add:49 }}" value=""> :
+            <input class="server-port-input inputPort" id="input{{ type }}ServicePort" name="input{{ type }}ServicePort" placeholder="{{ forloop.counter0|add:1025 }}" type="text">
             <label class="server-internal-address-label m-l-3" for="input{{ type }}ServiceInternalAddress">Internal address & port: </label>
             <input class="server-internal-address-input" id="input{{ type }}ServiceInternalAddress" name="input{{ type }}ServiceInternalAddress" type="text"> :
-            <input class="server-internal-port-input inputPort" id="input{{ type }}ServiceInternalPort" name="input{{ type }}ServiceInternalPort"
-            placeholder="" type="text">
-            <button class="btn btn-success btn-add pull-right" type="button"
-            onclick="toggleInput(this);">
+            <input class="server-internal-port-input inputPort" id="input{{ type }}ServiceInternalPort" name="input{{ type }}ServiceInternalPort" placeholder="" type="text">
+            <button class="btn btn-success btn-add pull-right" type="button" onclick="toggleInput(this);">
             <span class="glyphicon glyphicon-plus"></span>
-          </button>
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-  {% endfor %}
-  {% endwith %}
+    {% endfor %}
+    {% endwith %}
 
-  <div class="control-group well">
-    <div class="chevron collapsed" data-toggle="collapse" href="#routerAccordion"><span
-      class="sectionTitle">Border routers: </span></div>
+    <div class="control-group well">
+      <div class="chevron collapsed" data-toggle="collapse" href="#routerAccordion">
+        <span class="sectionTitle">Border routers: </span>
+      </div>
       <div id="routerAccordion" class="accordion collapse" aria-expanded="true">
         <br/>
         <div class="routerItem item" id="routerItem-1">
@@ -103,34 +93,34 @@
           <div class="form-group">
             <label class="control-label col-sm-2 server-address-label" for="inputBorderRouterAddress">Address & port: </label>
             <div class="controls">
-              <input class="server-address-input" type="text" id="inputBorderRouterAddress" name="inputBorderRouterAddress"
-              placeholder="127.0.0.52/29"> :
-              <input class="server-port-input inputPort" id="inputBorderRouterPort" name="inputBorderRouterPort"
-              placeholder="2048" type="text">
-              <button id="addBorderRouterButton" class="btn btn-success btn-add pull-right" type="button"
-              onclick="toggleInput(this);">
+              <input class="server-address-input" type="text" id="inputBorderRouterAddress" name="inputBorderRouterAddress" placeholder="127.0.0.52/29"> :
+              <input class="server-port-input inputPort" id="inputBorderRouterPort" name="inputBorderRouterPort" placeholder="2048" type="text">
+              <label class="server-internal-address-label m-l-3" for="inputBorderRouterInternalAddress">Internal address & port: </label>
+              <input class="server-internal-address-input" id="inputBorderRouterInternalAddress" name="inputBorderRouterInternalAddress" type="text"> :
+              <input class="server-internal-port-input inputPort" id="inputBorderRouterInternalPort" name="inputBorderRouterInternalPort" placeholder="" type="text">
+              <button id="addBorderRouterButton" class="btn btn-success btn-add pull-right" type="button" onclick="toggleInput(this);">
               <span class="glyphicon glyphicon-plus"></span>
-            </button>
-          </div>
-        </div>
-        <br/>
-        <div class="control-group">
-          <b>Interface parameters:</b>
-          <br/><br/>
-          <div class="form-group">
-            <label class="control-label col-sm-2" for="inputInterfaceAddr">Interface address: </label>
-            <div class="controls">
-              <input type="text" id="inputInterfaceAddr" name="inputInterfaceAddr"
-              placeholder="127.0.0.4/31">
+              </button>
             </div>
           </div>
-
-          <div class="form-group">
-            <label class="control-label col-sm-2" for="inputInterfaceBandwidth">Interface
-              bandwidth: </label>
+          <br/>
+          <div class="control-group">
+            <b>Interface parameters:</b>
+            <br/><br/>
+            <div class="form-group">
+              <label class="control-label col-sm-2" for="inputInterfaceAddr">Interface address & port: </label>
               <div class="controls">
-                <input type="text" id="inputInterfaceBandwidth" name="inputInterfaceBandwidth"
-                placeholder="1000">
+                <input type="text" id="inputInterfaceAddr" name="inputInterfaceAddr" placeholder="127.0.0.4/31"> :
+                <input type="text" id="inputInterfaceOwnPort" name="inputInterfaceOwnPort" class="inputPort" placeholder="50000">
+                <label class="server-internal-address-label m-l-3" for="inputInterfaceInternalAddress">Internal interface address: </label>
+                <input class="server-internal-address-input" id="inputInterfaceInternalAddress" name="inputInterfaceInternalAddress" type="text">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="control-label col-sm-2" for="inputInterfaceBandwidth">Interface bandwidth: </label>
+              <div class="controls">
+                <input type="text" id="inputInterfaceBandwidth" name="inputInterfaceBandwidth" placeholder="1000">
               </div>
             </div>
 
@@ -142,232 +132,193 @@
             </div>
 
             <div class="form-group">
-              <label class="control-label col-sm-2" for="inputInterfaceRemoteName">Name of the remote the link
-                connects: </label>
-                <div class="controls">
-                  <input type="text" id="inputInterfaceRemoteName" name="inputInterfaceRemoteName"
-                  placeholder="1-19">
-                </div>
-              </div>
-              <br/>
-
-              <div class="form-group">
-                <label class="control-label col-sm-2" for="inputInterfaceType">Type of the link: </label>
-                <div class="controls">
-                  <select id="inputInterfaceType" name="inputInterfaceType" required>
-                    <option value="PARENT" selected>PARENT</option>
-                    <!--option value="CORE">CORE</option-->
-                    <!-- CORE option gets added by javascript, only if the AS is core-->
-                    <option value="PEER">PEER</option>
-                    <option value="CHILD">CHILD</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="control-label col-sm-2" for="inputLinkMTU">MTU: </label>
-                <div class="controls">
-                  <input type="text" id="inputLinkMTU" name="inputLinkMTU" placeholder="1472">
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="control-label col-sm-2" for="inputInterfaceRemoteAddress">Remote address the link
-                  connects to: </label>
-                  <div class="controls">
-                    <input type="text" id="inputInterfaceRemoteAddress" name="inputInterfaceRemoteAddress"
-                    placeholder="127.0.0.5/31">
-                  </div>
-                </div>
-                <br/>
-
-                <div class="form-group">
-                  <label class="control-label col-sm-2" for="inputInterfaceRemotePort">Remote port the link
-                    connects: </label>
-                    <div class="controls">
-                      <input type="text" id="inputInterfaceRemotePort" name="inputInterfaceRemotePort"
-                      class="inputPort" placeholder="50000">
-                    </div>
-                  </div>
-                  <br/>
-
-                  <div class="form-group">
-                    <label class="control-label col-sm-2" for="inputInterfaceOwnPort">Border router port from which
-                      the link connects: </label>
-                      <div class="controls">
-                        <input type="text" id="inputInterfaceOwnPort" name="inputInterfaceOwnPort"
-                        class="inputPort" placeholder="50000">
-                      </div>
-                    </div>
-                    <br/>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="control-group well">
-              <div class="chevron" data-toggle="collapse" href="#sibraAccordion"><span class="sectionTitle">Sibra servers</span>
-              </div>
-              <div id="sibraAccordion" class="accordion collapse in" aria-expanded="true">
-                <br/>
-                <div class="SibraItem item" id="SibraItem-1">
-
-                  <input class="hidden" type="text" id="inputSibraServiceType" name="inputSibraServiceType" title="server type"
-                  value="sibra_server">
-                  <label class="control-label col-sm-2 server-name-label" for="inputSibraServiceName">Server name: </label>
-                  <div class="form-group">
-                    <div class="controls">
-                      <input class="server-name-input" type="text" id="inputSibraServiceName" name="inputSibraServiceName" value="sb{{ isd_id }}-{{ as_id }}-1">
-                    </div>
-                  </div>
-
-                  <label class="control-label col-sm-2 server-address-label" for="inputSibraServiceAddress">Address & port: </label>
-                  <div class="controls">
-                    <input class="server-address-input" type="text" id="inputSibraServiceAddress" name="inputSibraServiceAddress"
-                    placeholder="127.0.0.54"> :
-                    <input class="server-port-input inputPort" id="inputSibraServicePort" name="inputSibraServicePort"
-                    placeholder="2048" type="text">
-                    <label class="server-internal-address-label m-l-3" for="inputSibraServiceInternalAddress">Internal address & port: </label>
-                    <input class="server-internal-address-input" id="inputSibraServiceInternalAddress" name="inputSibraServiceInternalAddress" type="text"> :
-                    <input class="server-internal-port-input inputPort" id="inputSibraServiceInternalPort" name="inputSibraServiceInternalPort"
-                    placeholder="" type="text">
-                    <button class="btn btn-success btn-add pull-right" type="button"
-                    onclick="toggleInput(this);">
-                    <span class="glyphicon glyphicon-plus"></span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="control-group well">
-            <div class="chevron" data-toggle="collapse" href="#zookeeperAccordion"><span class="sectionTitle">Zookeeper servers</span>
-            </div>
-            <div id="zookeeperAccordion" class="accordion collapse in" aria-expanded="true">
-              <br/>
-              <div class="zookeeperItem item" id="zookeeperItem-1">
-
-                <input class="hidden" type="text" id="inputZookeeperServerType" name="inputZookeeperServerType" title="server type"
-                value="zookeeper_server">
-                <label class="control-label col-sm-2 server-name-label" for="inputZookeeperServerName">Server name: </label>
-                <div class="form-group">
-                  <div class="controls">
-                    <input class="server-name-input" type="text" id="inputZookeeperServerName" name="inputZookeeperServerName"
-                    value="zk{{ isd_id }}-{{ as_id }}-1">
-                  </div>
-                </div>
-
-                <label class="control-label col-sm-2 server-address-label" for="inputZookeeperServerAddress">Address: </label>
-                <div class="controls">
-                  <input class="server-address-input" type="text" id="inputZookeeperServerAddress" name="inputZookeeperServerAddress"
-                  placeholder="127.0.0.1">
-                  <button class="btn btn-success btn-add pull-right" type="button"
-                  onclick="toggleInput(this);">
-                  <span class="glyphicon glyphicon-plus"></span>
-                </button>
-              </div>
-              <label class="control-label col-sm-2 server-port-label" for="inputZookeeperServerPort">Zookeeper port: </label>
+              <label class="control-label col-sm-2" for="inputInterfaceRemoteName">Name of the remote the link connects: </label>
               <div class="controls">
-                <input class="server-port-input inputPort" type="text" id="inputZookeeperServerPort" name="inputZookeeperServerPort"
-                placeholder="2181">
+                <input type="text" id="inputInterfaceRemoteName" name="inputInterfaceRemoteName" placeholder="1-19">
               </div>
-              <div class="hidden">
-                <label class="server-internal-address-label m-l-3" for="inputZookeeperServerInternalAddress">Internal address & port: </label>
-                <input class="server-internal-address-input" id="inputZookeeperServerInternalAddress" name="inputZookeeperServerInternalAddress" type="text"> :
-                <input class="server-internal-port-input inputPort" id="inputZookeeperServerInternalPort" name="inputZookeeperServerInternalPort"
-                placeholder="" type="text">
+            </div>
+            <br/>
+
+            <div class="form-group">
+              <label class="control-label col-sm-2" for="inputInterfaceType">Type of the link: </label>
+              <div class="controls">
+                <select id="inputInterfaceType" name="inputInterfaceType" required>
+                  <option value="PARENT" selected>PARENT</option>
+                  <!--option value="CORE">CORE</option-->
+                  <!-- CORE option gets added by javascript, only if the AS is core-->
+                  <option value="PEER">PEER</option>
+                  <option value="CHILD">CHILD</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="control-label col-sm-2" for="inputLinkMTU">MTU: </label>
+              <div class="controls">
+                <input type="text" id="inputLinkMTU" name="inputLinkMTU" placeholder="1472">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="control-label col-sm-2" for="inputInterfaceRemoteAddress">Remote address the link</label>
+              <div class="controls">
+                <input type="text" id="inputInterfaceRemoteAddress" name="inputInterfaceRemoteAddress" placeholder="127.0.0.5/31"> :
+                <input type="text" id="inputInterfaceRemotePort" name="inputInterfaceRemotePort" class="inputPort" placeholder="50000">
               </div>
             </div>
           </div>
         </div>
-
-        <div class="control-group well">
-          <span class="sectionTitle" id="titleIPList">Optional settings: Select here cloud provider specific setups and git version to deploy</span>
-          <button id="updateIPListButton" type="button" onclick="gatherIPsforCloudEngines();">Update IP address list</button>
-          <div class="controls hidden cloudEngineItemModel">
-            <br/>
-            <label class="control-label col-sm-2 server-cloud-address-label" for="inputCloudAddress">IP address: </label>
-            <input class="server-cloud-address-input" type="text" id="inputCloudAddress" name="inputCloudAddress"
-            value="123" readonly>
-            <label class="control-label server-hostname-label" for="inputHostname">Hostname: </label>
-            <input class="server-hostname-input" type="text" id="inputHostname" name="inputHostname" placeholder="scion-node-1">
-            <label class="control-label" for="inputCloudEngine">cloud provider: </label>
-            <select id="inputCloudEngine" name="inputCloudEngine">
-              <option value="own" selected></option>
-              <option value="switch_engines">switchEngine</option>
-              <option value="amazon_ec2">Amazon ec2</option>
-            </select>
-          </div>
-          <div class="form-group cloudEngineItemList">
-          </div>
-
-          <br/>
-          <br/>
-          <label for="backLog" style="font-weight: normal;">Show commit hashes for last <input id="backLog" type="text" size="1" placeholder="2"> weeks</label>
-          <br/>
-          <label for="commitHash1" >Version to deploy from Github:</label>
-          <input id="commitHash1" name="commitHash" list="queriedHashes1" type="text" size="72" placeholder="df9d702d9e77a503b475c501df035d95e5152ee9 |      Latest compatible commit" class="selectpicker" data-show-subtext="true"
-          onfocus="queryForHashes('#queriedHashes1');">
-          <datalist id="queriedHashes1" class="selectpicker" data-show-subtext="true">
-            <option data-subtext="Latest compatible" value="df9d702d9e77a503b475c501df035d95e5152ee9 |      Latest compatible commit"></option>
-          </datalist>
-        </div>
-
-        <br/>
-        <div class="control-group">
-          <button id="submitButton" type="button" class="btn" onclick=checkFreshness("{% url 'topo_hash' isd_id as_id %}");>Save to topology file</button>
-          <div id="forceSubmitDiv" class="hidden">
-            <label class="control-label" for="forceSubmit">Force submit: </label>
-            <input id="forceSubmit" name="forceSubmit" type="checkbox" value="false"/>
-          </div>
-        </div>
-      </form>
-
+      </div>
     </div>
 
-    <style>
-      #addBorderRouterButton {
-        margin-right: 1.2em;
-      }
+    <div class="control-group well">
+      <div class="chevron" data-toggle="collapse" href="#sibraAccordion">
+        <span class="sectionTitle">Sibra servers</span>
+      </div>
+      <div id="sibraAccordion" class="accordion collapse in" aria-expanded="true">
+        <br/>
+        <div class="SibraItem item" id="SibraItem-1">
+          <input class="hidden" type="text" id="inputSibraServiceType" name="inputSibraServiceType" title="server type" value="sibra_server">
+          <label class="control-label col-sm-2 server-name-label" for="inputSibraServiceName">Server name: </label>
+          <div class="form-group">
+            <div class="controls">
+              <input class="server-name-input" type="text" id="inputSibraServiceName" name="inputSibraServiceName" value="sb{{ isd_id }}-{{ as_id }}-1">
+            </div>
+          </div>
+          <label class="control-label col-sm-2 server-address-label" for="inputSibraServiceAddress">Address & port: </label>
+          <div class="controls">
+            <input class="server-address-input" type="text" id="inputSibraServiceAddress" name="inputSibraServiceAddress" placeholder="127.0.0.54"> :
+            <input class="server-port-input inputPort" id="inputSibraServicePort" name="inputSibraServicePort" placeholder="2048" type="text">
+            <label class="server-internal-address-label m-l-3" for="inputSibraServiceInternalAddress">Internal address & port: </label>
+            <input class="server-internal-address-input" id="inputSibraServiceInternalAddress" name="inputSibraServiceInternalAddress" type="text"> :
+            <input class="server-internal-port-input inputPort" id="inputSibraServiceInternalPort" name="inputSibraServiceInternalPort" placeholder="" type="text">
+            <button class="btn btn-success btn-add pull-right" type="button" onclick="toggleInput(this);">
+              <span class="glyphicon glyphicon-plus"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
-      #titleIPList {
-        float: left;
-      }
+    <div class="control-group well">
+      <div class="chevron" data-toggle="collapse" href="#zookeeperAccordion">
+        <span class="sectionTitle">Zookeeper servers</span>
+      </div>
+      <div id="zookeeperAccordion" class="accordion collapse in" aria-expanded="true">
+        <br/>
+        <div class="zookeeperItem item" id="zookeeperItem-1">
+          <input class="hidden" type="text" id="inputZookeeperServerType" name="inputZookeeperServerType" title="server type" value="zookeeper_server">
+          <label class="control-label col-sm-2 server-name-label" for="inputZookeeperServerName">Server name: </label>
+          <div class="form-group">
+            <div class="controls">
+              <input class="server-name-input" type="text" id="inputZookeeperServerName" name="inputZookeeperServerName" value="zk{{ isd_id }}-{{ as_id }}-1">
+            </div>
+          </div>
+          <label class="control-label col-sm-2 server-address-label" for="inputZookeeperServerAddress">Address: </label>
+          <div class="controls">
+            <input class="server-address-input" type="text" id="inputZookeeperServerAddress" name="inputZookeeperServerAddress" placeholder="127.0.0.1">
+            <button class="btn btn-success btn-add pull-right" type="button" onclick="toggleInput(this);">
+              <span class="glyphicon glyphicon-plus"></span>
+            </button>
+          </div>
+          <label class="control-label col-sm-2 server-port-label" for="inputZookeeperServerPort">Zookeeper port: </label>
+          <div class="controls">
+            <input class="server-port-input inputPort" type="text" id="inputZookeeperServerPort" name="inputZookeeperServerPort" placeholder="2181">
+          </div>
+          <div class="hidden">
+            <label class="server-internal-address-label m-l-3" for="inputZookeeperServerInternalAddress">Internal address & port: </label>
+            <input class="server-internal-address-input" id="inputZookeeperServerInternalAddress" name="inputZookeeperServerInternalAddress" type="text"> :
+            <input class="server-internal-port-input inputPort" id="inputZookeeperServerInternalPort" name="inputZookeeperServerInternalPort" placeholder="" type="text">
+          </div>
+        </div>
+      </div>
+    </div>
 
-      #updateIPListButton {
-        margin-left: 2em;
-      }
+    <div class="control-group well">
+      <span class="sectionTitle" id="titleIPList">Optional settings: Select here cloud provider specific setups and git version to deploy</span>
+      <button id="updateIPListButton" type="button" onclick="gatherIPsforCloudEngines();">Update IP address list</button>
+      <div class="controls hidden cloudEngineItemModel">
+        <br/>
+        <label class="control-label col-sm-2 server-cloud-address-label" for="inputCloudAddress">IP address: </label>
+        <input class="server-cloud-address-input" type="text" id="inputCloudAddress" name="inputCloudAddress" value="123" readonly>
+        <label class="control-label server-hostname-label" for="inputHostname">Hostname: </label>
+        <input class="server-hostname-input" type="text" id="inputHostname" name="inputHostname" placeholder="scion-node-1">
+        <label class="control-label" for="inputCloudEngine">cloud provider: </label>
+        <select id="inputCloudEngine" name="inputCloudEngine">
+          <option value="own" selected></option>
+          <option value="switch_engines">switchEngine</option>
+          <option value="amazon_ec2">Amazon ec2</option>
+        </select>
+      </div>
+      <div class="form-group cloudEngineItemList">
+      </div>
+      <br/>
+      <br/>
+      <label for="backLog" style="font-weight: normal;">Show commit hashes for last 
+        <input id="backLog" type="text" size="1" placeholder="2"> weeks
+      </label>
+      <br/>
+      <label for="commitHash1" >Version to deploy from Github:</label>
+      <input id="commitHash1" name="commitHash" list="queriedHashes1" type="text" size="72" placeholder="df9d702d9e77a503b475c501df035d95e5152ee9 |      Latest compatible commit" class="selectpicker" data-show-subtext="true" onfocus="queryForHashes('#queriedHashes1');">
+      <datalist id="queriedHashes1" class="selectpicker" data-show-subtext="true">
+        <option data-subtext="Latest compatible" value="df9d702d9e77a503b475c501df035d95e5152ee9 |      Latest compatible commit"></option>
+      </datalist>
+    </div>
 
-      #forceSubmitDiv {
-        display: inline-block; margin-left: 2em;
-      }
+    <br/>
+    <div class="control-group">
+      <button id="submitButton" type="button" class="btn" onclick=checkFreshness("{% url 'topo_hash' isd_id as_id %}");>Save to topology file</button>
+      <div id="forceSubmitDiv" class="hidden">
+        <label class="control-label" for="forceSubmit">Force submit: </label>
+        <input id="forceSubmit" name="forceSubmit" type="checkbox" value="false"/>
+      </div>
+    </div>
+  </form>
+</div>
 
-      .server-internal-address-label {
-        margin-left: 2em;
-      }
+<style>
+  #addBorderRouterButton {
+    margin-right: 1.2em;
+  }
 
-      .chevron:before {
-        /* symbol for "opening" panels */
-        font-family: 'Glyphicons Halflings';  /* essential for enabling glyphicon */
-        content: "\e114";    /* adjust as needed, taken from bootstrap.css */
-        color: grey;         /* adjust as needed */
-        float: left;
-      }
-      .chevron.collapsed:before {
-        /* symbol for "collapsed" panels */
-        content: "\e080";    /* adjust as needed, taken from bootstrap.css */
-      }
+  #titleIPList {
+    float: left;
+  }
 
-      .sectionTitle{
-        font-weight: bold;
-        margin-left: 10px;
-      }
+  #updateIPListButton {
+    margin-left: 2em;
+  }
 
-      .inputPort {
-        width: 4em;
-      }
+  #forceSubmitDiv {
+    display: inline-block; margin-left: 2em;
+  }
 
-      .bold {
-        font-weight: bold;
-      }
-    </style>
+  .server-internal-address-label {
+    margin-left: 2em;
+  }
+
+  .chevron:before {
+    /* symbol for "opening" panels */
+    font-family: 'Glyphicons Halflings';  /* essential for enabling glyphicon */
+    content: "\e114";    /* adjust as needed, taken from bootstrap.css */
+    color: grey;         /* adjust as needed */
+    float: left;
+  }
+  .chevron.collapsed:before {
+    /* symbol for "collapsed" panels */
+    content: "\e080";    /* adjust as needed, taken from bootstrap.css */
+  }
+
+  .sectionTitle{
+    font-weight: bold;
+    margin-left: 10px;
+  }
+
+  .inputPort {
+    width: 4em;
+  }
+
+  .bold {
+    font-weight: bold;
+  }
+</style>
