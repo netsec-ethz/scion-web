@@ -1,4 +1,4 @@
-# Copyright 2016 ETH Zurich
+# Copyright 2017 ETH Zurich
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ class ASInformation(object):
 
     def get_AS_name(self):
         """
-        :return: Name of the AS
+        :return: String: Name of the AS
         """
         name = ""
         for item in self.topology:
@@ -48,7 +48,7 @@ class ASInformation(object):
 
     def get_bs_addr(self):
         """
-        :return: Address of the bs
+        :return: String: Address of the bs
         """
         # TODO(@philippmao: add support for multiple bs)
         bs_id = self.topology["BeaconService"].keys()[0]
@@ -57,7 +57,7 @@ class ASInformation(object):
 
     def get_cs_addr(self):
         """
-        :return: Address of the cs
+        :return: String: Address of the cs
         """
         # TODO(@philippmao: add support for multiple cs)
         cs_id = self.topology["CertificateService"].keys()[0]
@@ -66,7 +66,7 @@ class ASInformation(object):
 
     def get_ps_addr(self):
         """
-        :return: Address of the ps
+        :return: String: Address of the ps
         """
         # TODO(@philippmao: add support for multiple ps)
         ps_id = self.topology["PathService"].keys()[0]
@@ -75,7 +75,7 @@ class ASInformation(object):
 
     def get_zk_addr(self):
         """
-        :return: Address of the zk
+        :return: String: Address of the zk
         """
         # TODO(@philippmao: add support for multiple zk)
         zk_id = self.topology["ZookeeperService"].keys()[0]
@@ -84,7 +84,7 @@ class ASInformation(object):
 
     def get_core_bool(self):
         """
-        :return: True if AS is core, False if not
+        :return: Boolean: True if AS is core, False if not
         """
         return self.topology["Core"]
 
@@ -116,7 +116,7 @@ class ASInformation(object):
         """
         :param:  br: Border router string
         :return: A dictionary with the neighbor IA and interface
-                of the border router connected to that IA
+                 of the border router connected to that IA
         """
         interface = ""
         neighbor_IA = ""

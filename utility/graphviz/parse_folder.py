@@ -1,4 +1,4 @@
-# Copyright 2016 ETH Zurich
+# Copyright 2017 ETH Zurich
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ def get_topology_file(as_folder):
     Looks for a topology file inside an AS folder, opens it
     and returns the opened file
     :param: string AS_folder: filepath to the AS folder
-    :return: topology dictionary
+    :return: Topology dictionary
     """
     topology_file = ""
     # find topology file, just enter first br folder
@@ -44,7 +44,7 @@ def parse_as_folder(isd_number, as_number, as_folder):
     """
     Parses a AS folder to a nested dict
     :param: string ISD_number, string AS_number,string AS_folder: filepath to AS folder
-    :return: Dictionary with info from an AS folder
+    :return: Nested Dictionary with info from an AS folder
     """
     as_dict = {}
     as_topo = get_topology_file(as_folder)
@@ -66,7 +66,7 @@ def parse_isd_folder(isd_number, isd_folder):
     """
     Parses a ISD folder to a nested dict
     :param: String ISD number, string ISD_folder: filepath to ISD folder
-    :return: Dictionary with info from an ISD folder
+    :return: Nested Dictionary with info from an ISD folder
     """
     isd_dict = {}
     isd_dict['AS'] = {}
@@ -86,7 +86,7 @@ def parse_gen_folder(gen_folder):
     ->
     dictionary {'ISD':{1:{'AS':{2:{..},1:{..}}2:{'AS':{1:{..}2:{..}}}
     :param: String gen_folder: filepath to the gen folder
-    :return: Dictionary with all the informatino to draw the graph
+    :return: Nested Dictionary with all the information to draw the graph
     """
     gen_dict = {}
     gen_dict['ISD'] = {}

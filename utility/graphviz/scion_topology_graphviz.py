@@ -1,4 +1,4 @@
-# Copyright 2016 ETH Zurich
+# Copyright 2017 ETH Zurich
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ def draw_isd_graph(ISD, AS_list, edge_labels, ip_addresses):
     :param: string ISD number, array AS_list: list of ASes in the isd
             boolean edge_labels: indicates if edge labels are drawn
             boolean ip_addresses: indicates if node labels are drawn
-    :return: dot graph: ISD graph
+    :return: Dot graph: ISD graph
     """
     graph_lib = IsdGraph(ISD, AS_list)
     isd_graph = graph_lib.get_graph()
@@ -60,7 +60,7 @@ def draw_inter_ISD_edges(scion_graph, ISDs, edge_labels):
     :param: graphviz scion_graph: graph of the topology,
             array ISDs: list of isds in the topology
             boolean edge_labels: boolean indicating if edge labels are drawn
-    :return: dot graph: modified topology graph
+    :return: Dot graph: modified topology graph
     """
     ISDs_done = []
     # go through each ISD and draw its inter-ISD edges
@@ -85,7 +85,7 @@ def draw_edges_for_as(ISDs, ISD, AS, ISDs_done, edge_labels, scion_graph):
             boolean edge_labels: indicates if edge labels are drawn
     """
     AS_list = ISDs[ISD]["AS"]
-    ia = ISD_AS.from_values(ISD,AS)
+    ia = ISD_AS.from_values(ISD, AS)
     id = ia.__str__()
     for neighbor_ISD in AS_list[AS]["inter_n"]:
         if neighbor_ISD not in ISDs_done:
@@ -116,7 +116,7 @@ def draw_SCION_topology(topology_dict, n_labels, e_labels):
     :param dictionary topology_dict: dictionary returned by parse_gen_folder,
             boolean ip_addresses: indicates if node labels are drawn,
             boolean edge_labels: indicates if edge labels are drawn
-    :return dot graph: graph of the SCION topology
+    :return Dot graph: graph of the SCION topology
     """
     isd_graphs = {}
     dot = Graph(comment='SCION-net')
