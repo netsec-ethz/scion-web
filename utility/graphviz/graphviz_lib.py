@@ -79,7 +79,7 @@ class ASInformation(object):
         """
         # TODO(@philippmao: add support for multiple zk)
         zk_id = self.topology["ZookeeperService"].keys()[0]
-        zk_addr = self.topology["ZookeeperService"][zk_id]["Public"][0]["Addr"]
+        zk_addr = self.topology["ZookeeperService"][zk_id]["Addr"]
         return zk_addr
 
     def get_core_bool(self):
@@ -244,9 +244,10 @@ class IsdGraph(object):
                 if neighbor not in self.ASes_done:
                     n_ia = ISD_AS.from_values(self.ISD, neighbor)
                     n_id = n_ia.__str__()
-                    taillabel = str(n_dict["br-id"])
-                    headlabel = str(self.AS_list[neighbor]["intra_n"][AS]["br-id"])
+                    print self.AS_list[AS]["intra_n"], id
                     if edge_labels:
+                        headlabel = str(self.AS_list[neighbor]["intra_n"][AS]["br-id"])
+                        taillabel = str(n_dict["br-id"])
                         graph.edge(id, n_id,
                                    _attributes={'headlabel': headlabel, 'taillabel': taillabel})
                     else:

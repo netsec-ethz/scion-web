@@ -15,6 +15,7 @@
 # Stdlib
 import argparse
 from graphviz import Graph
+from graphviz import Source
 
 # SCION
 from graphviz_lib import IsdGraph
@@ -99,9 +100,9 @@ def draw_edges_for_as(ISDs, ISD, AS, ISDs_done, edge_labels, scion_graph):
                     continue
                 n_ia = ISD_AS.from_values(neighbor_ISD,neighbor)
                 neighbor_id = n_ia.__str__()
-                taillabel = str(o_as[neighbor_ISD][neighbor]["br-id"])
-                headlabel = str(n_as[ISD][AS]["br-id"])
                 if edge_labels:
+                    taillabel = str(o_as[neighbor_ISD][neighbor]["br-id"])
+                    headlabel = str(n_as[ISD][AS]["br-id"])
                     scion_graph.edge(id, neighbor_id,
                                      _attributes={'constraint': 'false', 'headlabel': headlabel,
                                                   'taillabel': taillabel})
@@ -119,7 +120,7 @@ def draw_SCION_topology(topology_dict, n_labels, e_labels):
     :return Dot graph: graph of the SCION topology
     """
     isd_graphs = {}
-    dot = Graph(comment='SCION-net')
+    dot = Graph(name='topology',filename='topology.gv',comment='SCION-net')
     ISDs = topology_dict["ISD"]
     # draw each ISD graph
     for ISD in ISDs:
@@ -154,8 +155,10 @@ def main():
                         help='path to the output topology file')
     args = parser.parse_args()
     topo = parse_gen_folder(args.gen_folder_path)
+    print topo
     dot = draw_SCION_topology(topo, args.node_labels, args.edge_labels)
-    dot.render(args.output_path)
+    s = Source(dot, filename=dot.filename, format="pdf")
+    s.render(directory=args.output_path)
 
 if __name__ == '__main__':
     main()
