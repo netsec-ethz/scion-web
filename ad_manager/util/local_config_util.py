@@ -69,7 +69,7 @@ TYPES_TO_KEYS = {
 }
 
 #: Default SCION Prometheus port offset
-PROM_PORT_OFFSET = 100
+PROM_PORT_OFFSET = 1000
 
 
 class ASCredential(object):
@@ -112,7 +112,12 @@ def prep_supervisord_conf(instance_dict, executable_name, service_type, instance
     """
     config = configparser.ConfigParser()
     env_tmpl = 'PYTHONPATH=python:.,ZLOG_CFG="%s/%s.zlog.conf"'
-    if service_type == 'router':  # go router
+    if service_type == 'sciond':
+        cmd = ('bash -c \'exec bin/%s "--api-addr" "%s" "%s" "%s" &>logs/%s.OUT\'') % (
+            executable_name, "/run/shm/sciond/%s.sock" % instance_name, instance_name,
+            get_elem_dir(GEN_PATH, isd_as, "endhost"), instance_name)
+        env = 'PYTHONPATH=python/:.,TZ=UTC'
+    elif service_type == 'router':  # go router
         env_tmpl += ',GODEBUG="cgocheck=0"'
         addr_type = 'Bind' if 'Bind' in instance_dict['InternalAddrs'][0].keys() else 'Public'
         prom_addr = "%s:%s" % (instance_dict['InternalAddrs'][0][addr_type][0]['Addr'],
@@ -121,6 +126,8 @@ def prep_supervisord_conf(instance_dict, executable_name, service_type, instance
         cmd = ('bash -c \'exec bin/%s -id "%s" -confd "%s" -prom "%s" &>logs/%s.OUT\'') % (
             executable_name, instance_name, get_elem_dir(GEN_PATH, isd_as, instance_name),
             prom_addr, instance_name)
+        env = env_tmpl % (get_elem_dir(GEN_PATH, isd_as, instance_name),
+                          instance_name)
     else:  # other infrastructure elements
         addr_type = 'Bind' if 'Bind' in instance_dict.keys() else 'Public'
         prom_addr = "%s:%s" % (instance_dict[addr_type][0]['Addr'],
@@ -128,8 +135,8 @@ def prep_supervisord_conf(instance_dict, executable_name, service_type, instance
         cmd = ('bash -c \'exec bin/%s "%s" "%s" --prom "%s" &>logs/%s.OUT\'') % (
             executable_name, instance_name, get_elem_dir(GEN_PATH, isd_as, instance_name),
             prom_addr, instance_name)
-    env = env_tmpl % (get_elem_dir(GEN_PATH, isd_as, instance_name),
-                      instance_name)
+        env = env_tmpl % (get_elem_dir(GEN_PATH, isd_as, instance_name),
+                          instance_name)
     config['program:' + instance_name] = {
         'autostart': 'false',
         'autorestart': 'false',
@@ -301,3 +308,18 @@ def write_as_conf_and_path_policy(isd_as, as_obj, instance_path):
     write_file(conf_file, yaml.dump(conf, default_flow_style=False))
     path_policy_file = os.path.join(PROJECT_ROOT, DEFAULT_PATH_POLICY_FILE)
     copy_file(path_policy_file, os.path.join(instance_path, PATH_POLICY_FILE))
+
+
+def write_endhost_config(tp, isd_as, as_obj, local_gen_path):
+    """
+    Writes the endhost folder into the given location.
+    :param dict tp: the topology as a dict of dicts.
+    :param ISD_AS isd_as: ISD the AS belongs to.
+    :param local_gen_path: the location to create the endhost folder in.
+    """
+    endhost_path = get_elem_dir(local_gen_path, isd_as, 'endhost')
+    if not os.path.exists(endhost_path):
+        os.makedirs(endhost_path)
+    write_certs_trc_keys(isd_as, as_obj, endhost_path)
+    write_as_conf_and_path_policy(isd_as, as_obj, endhost_path)
+    write_topology_file(tp, 'endhost', endhost_path)

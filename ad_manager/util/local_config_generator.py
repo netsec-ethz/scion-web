@@ -45,6 +45,7 @@ from ad_manager.util.local_config_util import (
     write_as_conf_and_path_policy,
     write_certs_trc_keys,
     write_dispatcher_config,
+    write_endhost_config,
     write_supervisord_config,
     write_topology_file,
     write_zlog_file,
@@ -103,21 +104,6 @@ def remove_incomplete_router_info(topo):
         if complete_flag:
             complete_routers[name] = router
     topo['BorderRouters'] = complete_routers
-
-
-def write_endhost_config(tp, isd_as, as_obj, local_gen_path):
-    """
-    Writes the endhost folder into the given location.
-    :param dict tp: the topology as a dict of dicts.
-    :param ISD_AS isd_as: ISD the AS belongs to.
-    :param local_gen_path: the location to create the endhost folder in.
-    """
-    endhost_path = get_elem_dir(local_gen_path, isd_as, 'endhost')
-    if not os.path.exists(endhost_path):
-        os.makedirs(endhost_path)
-    write_certs_trc_keys(isd_as, as_obj, endhost_path)
-    write_as_conf_and_path_policy(isd_as, as_obj, endhost_path)
-    write_topology_file(tp, 'endhost', endhost_path)
 
 
 def _get_as_obj(isd_as):
