@@ -45,6 +45,7 @@ from ad_manager.util.local_config_util import (
     write_as_conf_and_path_policy,
     write_certs_trc_keys,
     write_dispatcher_config,
+    write_endhost_config,
     write_supervisord_config,
     write_topology_file,
     write_zlog_file,
@@ -105,21 +106,6 @@ def remove_incomplete_router_info(topo):
     topo['BorderRouters'] = complete_routers
 
 
-def write_endhost_config(tp, isd_as, as_obj, local_gen_path):
-    """
-    Writes the endhost folder into the given location.
-    :param dict tp: the topology as a dict of dicts.
-    :param ISD_AS isd_as: ISD the AS belongs to.
-    :param local_gen_path: the location to create the endhost folder in.
-    """
-    endhost_path = get_elem_dir(local_gen_path, isd_as, 'endhost')
-    if not os.path.exists(endhost_path):
-        os.makedirs(endhost_path)
-    write_certs_trc_keys(isd_as, as_obj, endhost_path)
-    write_as_conf_and_path_policy(isd_as, as_obj, endhost_path)
-    write_topology_file(tp, 'endhost', endhost_path)
-
-
 def _get_as_obj(isd_as):
     """
     Loads given AS information from DB.
@@ -144,12 +130,14 @@ def generate_prometheus_config(tp, local_gen_path, as_path):
     elem_dict = defaultdict(list)
     for br_id, br_elem in tp['BorderRouters'].items():
         for int_addrs in br_elem['InternalAddrs']:
-            for addr_info in int_addrs['Public']:
+            addr_type = 'Bind' if 'Bind' in int_addrs.keys() else 'Public'
+            for addr_info in int_addrs[addr_type]:
                 prom_addr = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'] + PROM_PORT_OFFSET)
                 elem_dict['BorderRouters'].append(prom_addr)
     for svc_type in ['BeaconService', 'PathService', 'CertificateService']:
         for elem_id, elem in tp[svc_type].items():
-            for addr_info in elem['Public']:
+            addr_type = 'Bind' if 'Bind' in elem.keys() else 'Public'
+            for addr_info in elem[addr_type]:
                 prom_addr = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'] + PROM_PORT_OFFSET)
                 elem_dict[svc_type].append(prom_addr)
     _write_prometheus_config_files(local_gen_path, as_path, elem_dict)

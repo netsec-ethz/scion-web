@@ -185,13 +185,10 @@ class AD(models.Model):
                     neighbor_as_id=as_id,
                     neighbor_type=intf["LinkType"],
                     router_addr=br_addr_obj,
-                    ad=self
+                    ad=self,
+                    bind_addr=intf['Bind']['Addr'] if 'Bind' in intf.keys() else None,
+                    bind_l4port=intf['Bind']['L4Port'] if 'Bind' in intf.keys() else None,
                 )
-                if 'Bind' in intf.keys():
-                    br_inft_obj.update(
-                        bind_addr=intf['Bind']['Addr'],
-                        bind_l4port=intf['Bind']['L4Port'],
-                    )
 
     def fill_service_info(self, service_dict):
         """
