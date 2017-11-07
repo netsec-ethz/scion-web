@@ -155,7 +155,6 @@ def main():
                         help='path to the output topology file')
     args = parser.parse_args()
     topo = parse_gen_folder(args.gen_folder_path)
-    print topo
     dot = draw_SCION_topology(topo, args.node_labels, args.edge_labels)
     s = Source(dot, filename=dot.filename, format="pdf")
     s.render(directory=args.output_path)
