@@ -51,7 +51,7 @@ class ASInformation(object):
         :return: String: Address of the bs
         """
         # TODO(@philippmao: add support for multiple bs)
-        bs_id = self.topology["BeaconService"].keys()[0]
+        bs_id = list(self.topology["BeaconService"].keys())[0]
         bs_addr = self.topology["BeaconService"][bs_id]["Public"][0]["Addr"]
         return bs_addr
 
@@ -60,7 +60,7 @@ class ASInformation(object):
         :return: String: Address of the cs
         """
         # TODO(@philippmao: add support for multiple cs)
-        cs_id = self.topology["CertificateService"].keys()[0]
+        cs_id = list(self.topology["CertificateService"].keys())[0]
         cs_addr = self.topology["CertificateService"][cs_id]["Public"][0]["Addr"]
         return cs_addr
 
@@ -69,7 +69,7 @@ class ASInformation(object):
         :return: String: Address of the ps
         """
         # TODO(@philippmao: add support for multiple ps)
-        ps_id = self.topology["PathService"].keys()[0]
+        ps_id = list(self.topology["PathService"].keys())[0]
         ps_addr = self.topology["PathService"][ps_id]["Public"][0]["Addr"]
         return ps_addr
 
@@ -78,7 +78,7 @@ class ASInformation(object):
         :return: String: Address of the zk
         """
         # TODO(@philippmao: add support for multiple zk)
-        zk_id = self.topology["ZookeeperService"].keys()[0]
+        zk_id = list(self.topology["ZookeeperService"].keys())[0]
         zk_addr = self.topology["ZookeeperService"][zk_id]["Addr"]
         return zk_addr
 
@@ -244,7 +244,6 @@ class IsdGraph(object):
                 if neighbor not in self.ASes_done:
                     n_ia = ISD_AS.from_values(self.ISD, neighbor)
                     n_id = n_ia.__str__()
-                    print self.AS_list[AS]["intra_n"], id
                     if edge_labels:
                         headlabel = str(self.AS_list[neighbor]["intra_n"][AS]["br-id"])
                         taillabel = str(n_dict["br-id"])
