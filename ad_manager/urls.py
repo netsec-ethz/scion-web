@@ -58,6 +58,8 @@ isd_patterns = patterns(
         views.request_join_isd, name='join_isd'),
     url(r'^isds/poll_join_reply/?$',
         views.poll_join_reply, name='poll_join_reply'),
+    url(r'^isds/save_all_topologies/?$',
+        views.save_all_topologies, name='save_all_topologies'),
     url(r'^isds/(?P<pk>\d+)/?$',
         views.ISDDetailView.as_view(), name='isd_detail'),
 )

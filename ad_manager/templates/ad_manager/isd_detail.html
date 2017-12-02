@@ -50,6 +50,15 @@
               Create AS from file
         </button>
       </form>
+
+      <form method="POST" action="/as_manager/isds/save_all_topologies">
+        {% csrf_token %}
+        <input type="hidden" name="ISD" value="{{object.id}}">
+        <div class="form-group">
+            <br/>
+            <button type="submit" class="btn">Save All Topologies</button>
+        </div>
+      </form>
   </div>
 
   <br/>

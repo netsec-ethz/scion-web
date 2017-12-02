@@ -65,6 +65,17 @@
     </div>
   </form>
 
+  <form method="POST" action="/as_manager/isds/save_all_topologies">
+    {% csrf_token %}
+    {% for isd in object_list %}
+      <input type="hidden" name="ISD" value="{{isd}}">
+    {% endfor %}
+    <div class="form-group">
+        <br/>
+        <button type="submit" class="btn">Save All Topologies</button>
+    </div>
+  </form>
+
   <script>
     function queryForAsId() {
         $.ajaxSetup({

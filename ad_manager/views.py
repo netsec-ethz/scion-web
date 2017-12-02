@@ -66,6 +66,7 @@ from ad_manager.models import (
     AD,
     BorderRouterAddress,
     BorderRouterInterface,
+    CloudMachine,
     ConnectionRequest,
     ISD,
     JoinRequest,
@@ -219,6 +220,44 @@ def handle_join_reply(request, reply, jr_id):
                                'by AS %s.' % (jr_id, join_reply['RespondIA']))
     # update join request's status based on the received join reply
     JoinRequest.objects.filter(id=jr_id).update(status=join_reply['Status'])
+
+
+@require_POST
+def save_all_topologies(request):
+    """
+    Generate topology files for all ASes or specific ASes in a ISD.
+    :param HttpRequest request: Django HTTP request passed on through urls.py
+    :returns: Django HTTP Response object.
+    :rtype: HttpResponse.
+    """
+    current_page = request.META.get('HTTP_REFERER')
+    topology_params = request.POST.copy()
+    isd_list = topology_params.getlist('ISD')
+    for isd in isd_list:
+        for ad_obj in AD.objects.filter(isd_id=isd):
+            isd_as_obj = ISD_AS.from_values(ad_obj.isd_id, ad_obj.as_id)
+            isd_as = str(isd_as_obj)
+            topo_dict = ad_obj.original_topology
+            # write the topology file
+            create_local_gen(isd_as, topo_dict)
+            addr_list = []
+            cloud_engine_list = []
+            host_name_list = []
+            for cloud in CloudMachine.objects.filter(ad_id=ad_obj):
+                addr_list.append(cloud.addr)
+                cloud_engine_list.append(cloud.cloud_provider)
+                host_name_list.append(cloud.host_name)
+            topology_params.setlist('inputCloudAddress', addr_list)
+            topology_params.setlist('inputCloudEngine', cloud_engine_list)
+            topology_params.setlist('inputHostname', host_name_list)
+            commit_hash = ad_obj.commit_hash
+            # sanitize commit hash from comments, take first part up to |, strip spaces
+            commit_hash = (commit_hash.split('|'))[0].strip()
+            generate_ansible_hostfile(topology_params,
+                                      topo_dict,
+                                      isd_as,
+                                      commit_hash)
+    return redirect(current_page)
 
 
 @require_POST
@@ -713,8 +752,7 @@ def add_to_topology(request):
 
 def as_topo_hash(request, isd_id, as_id):
     try:
-        ad = AD.objects.get(as_id=as_id,
-                            isd=isd_id)
+        ad = AD.objects.get(as_id=as_id, isd=isd_id)
         flat_string = json.dumps(ad.original_topology, sort_keys=True)
         # hash for non cryptographic purpose (state comparison for user warning)
         topo_hash = hashlib.md5(flat_string.encode('utf-8')).hexdigest()
@@ -1032,7 +1070,6 @@ def generate_topology(request):
     if len(all_ip_port_pairs) != len(set(all_ip_port_pairs)):
         return JsonResponse(
             {'data': 'IP:port combinations not unique within AS'})
-
     create_local_gen(isd_as, topo_dict)
     commit_hash = tp['commitHash']
     # sanitize commit hash from comments, take first part up to |, strip spaces
@@ -1048,6 +1085,7 @@ def generate_topology(request):
     # allow the user to write back the new configuration only if it hasn't
     # changed in the meantime
     curr_as.fill_from_topology(topo_dict, clear=True)
+    curr_as.fill_cloud_info(topology_params)
 
     current_page = request.META.get('HTTP_REFERER')
     return redirect(current_page)

@@ -86,6 +86,7 @@ class AD(models.Model):
     is_core_ad = models.BooleanField(default=False)
     simple_conf_mode = models.BooleanField(default=False)
     is_open = models.BooleanField(default=True)
+    commit_hash = models.CharField(max_length=100, default='')
     md_host = models.GenericIPAddressField(default='127.0.0.1')
     original_topology = jsonfield.JSONField(default=empty_dict)
     sig_pub_key = models.CharField(max_length=100, null=True, blank=True)
@@ -253,6 +254,24 @@ class AD(models.Model):
                             "ignoring")
             raise
 
+    def fill_cloud_info(self, topology_params):
+        """
+        Update cloud machine information in the database
+        :param QueryDict topology_params
+        """
+        self.commit_hash = topology_params['commitHash']
+        self.save()
+        unique_addr = topology_params.getlist('inputCloudAddress')
+        providers = topology_params.getlist('inputCloudEngine')
+        host_name = topology_params.getlist('inputHostname')
+        for i in range(len(unique_addr)):
+            cloud_obj, _ = CloudMachine.objects.update_or_create(
+                addr=unique_addr[i],
+                host_name=host_name[i],
+                cloud_provider=providers[i],
+                ad=self
+            )
+
     def get_absolute_url(self):
         return reverse('ad_detail', args=[self.as_id])
 
@@ -318,6 +337,13 @@ class BorderRouterInterface(models.Model):
     neighbor_as_id = models.IntegerField(null=True)
     neighbor_type = models.CharField(max_length=10, choices=NEIGHBOR_TYPES)
     router_addr = models.ForeignKey(BorderRouterAddress)
+    ad = models.ForeignKey(AD)
+
+
+class CloudMachine(models.Model):
+    addr = models.GenericIPAddressField()
+    host_name = models.CharField(max_length=20, null=True)
+    cloud_provider = models.CharField(max_length=20, null=True)
     ad = models.ForeignKey(AD)
 
 
