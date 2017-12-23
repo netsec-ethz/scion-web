@@ -184,7 +184,7 @@ function reloadServiceSection(reloadedTopology, entryKey) {
 
     var entry = reloadedTopology[entryKey];
     var type = entryKey.slice(0, -7); // remove the 'Service' part
-    names = Object.keys(entry); // get a list of keys
+    names = Object.keys(entry).sort(); // get a list of keys
 
     for (var i in names) {
         name = names[i];
@@ -232,14 +232,21 @@ function reloadRouterSection(reloadedTopology) {
     var address;
     var port;
 
-    for (var borderRouterKey in reloadedTopology['BorderRouters']) {
-        var borderRouter = reloadedTopology['BorderRouters'][borderRouterKey];
-        var name = borderRouterKey;
-        if (borderRouterIndex > 0) {
+    // sorting the router dictionary by the name
+    var borderRouterKeys = [];
+    for (var key in reloadedTopology['BorderRouters']) {
+        borderRouterKeys.push(key)
+    }
+    borderRouterKeys.sort();
+
+    for (var i in borderRouterKeys) {
+        var name = borderRouterKeys[i];
+        var borderRouter = reloadedTopology['BorderRouters'][name];
+        if (i > 0) {
             // if more than one entry, create additional form input
             $('.' + type + 'Item' + ':last').find('.btn-success').click()
         }
-        itemSelector = '#' + type + 'Item-' + (parseInt(borderRouterIndex) + 1).toString() + ' ';
+        itemSelector = '#' + type + 'Item-' + (parseInt(i) + 1).toString() + ' ';
         $(itemSelector + '#inputBorderRouterName').attr('value', name);
         address = borderRouter['InternalAddrs'][0]['Public'][0]['Addr'];
         $(itemSelector + '#inputBorderRouterAddress').attr('value', address);
@@ -256,8 +263,6 @@ function reloadRouterSection(reloadedTopology) {
         var interfaces_obj = borderRouter['Interfaces'];
         var keys = Object.keys(interfaces_obj)
         reloadRouterInterfaceSection(keys[0], interfaces_obj[keys[0]], itemSelector);
-
-        borderRouterIndex++;
     }
 }
 
