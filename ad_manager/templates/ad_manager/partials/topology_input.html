@@ -43,7 +43,7 @@
 
     <br/>
 
-    {% with 'Beacon Certificate Path Sibra' as serverTypes %}
+    {% with 'Beacon Certificate Path' as serverTypes %}
     {% for type in serverTypes.split %}
     <div class="control-group well">
       <div class="chevron" data-toggle="collapse" href="#{{ type|lower }}Accordion">
@@ -76,6 +76,35 @@
     </div>
     {% endfor %}
     {% endwith %}
+
+    <div class="control-group well">
+      <div class="chevron" data-toggle="collapse" href="#sibraAccordion">
+        <span class="sectionTitle">Sibra servers</span>
+      </div>
+      <div id="sibraAccordion" class="accordion collapse in" aria-expanded="true">
+        <br/>
+        <div class="SibraItem item" id="SibraItem-1">
+          <input class="hidden" type="text" id="inputSibraServiceType" name="inputSibraServiceType" title="server type" value="sibra_server">
+          <label class="control-label col-sm-2 server-name-label" for="inputSibraServiceName">Server name: </label>
+          <div class="form-group">
+            <div class="controls">
+              <input class="server-name-input" type="text" id="inputSibraServiceName" name="inputSibraServiceName" value="sb{{ isd_id }}-{{ as_id }}-1">
+            </div>
+          </div>
+          <label class="control-label col-sm-2 server-address-label" for="inputSibraServiceAddress">Address & port: </label>
+          <div class="controls">
+            <input class="server-address-input" type="text" id="inputSibraServiceAddress" name="inputSibraServiceAddress" placeholder="127.0.0.54"> :
+            <input class="server-port-input inputPort" id="inputSibraServicePort" name="inputSibraServicePort" placeholder="2048" type="text">
+            <label class="server-internal-address-label m-l-3" for="inputSibraServiceInternalAddress">Internal address & port: </label>
+            <input class="server-internal-address-input" id="inputSibraServiceInternalAddress" name="inputSibraServiceInternalAddress" type="text"> :
+            <input class="server-internal-port-input inputPort" id="inputSibraServiceInternalPort" name="inputSibraServiceInternalPort" placeholder="" type="text">
+            <button class="btn btn-success btn-add pull-right" type="button" onclick="toggleInput(this);">
+              <span class="glyphicon glyphicon-plus"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="control-group well">
       <div class="chevron collapsed" data-toggle="collapse" href="#routerAccordion">
