@@ -72,6 +72,7 @@ django.setup()  # noqa
 
 AS_PREFIX = 'AS'
 SIG_PRIV_KEY = 'as-sig.key'
+SIG_PRIV_KEY_OLD = 'as-sig.seed'
 ENC_PRIV_KEY = 'as-decrypt.key'
 
 
@@ -142,7 +143,10 @@ def _create_update_as(as_path, isd_id, as_id):
 
     cert_path = os.path.join(as_path, elem_id, CERT_DIR, cert_file)
     trc_path = os.path.join(as_path, elem_id, CERT_DIR, trc_file)
-    sig_priv_key_path = os.path.join(as_path, elem_id, KEYS_DIR, SIG_PRIV_KEY)
+    if os.path.exists(os.path.join(as_path, elem_id, KEYS_DIR, SIG_PRIV_KEY)):
+        sig_priv_key_path = os.path.join(as_path, elem_id, KEYS_DIR, SIG_PRIV_KEY)
+    else:
+        sig_priv_key_path = os.path.join(as_path, elem_id, KEYS_DIR, SIG_PRIV_KEY_OLD)
     enc_priv_key_path = os.path.join(as_path, elem_id, KEYS_DIR, ENC_PRIV_KEY)
     as_config_path = os.path.join(as_path, elem_id, AS_CONF_FILE)
 
