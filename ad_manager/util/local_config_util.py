@@ -113,7 +113,7 @@ def prep_supervisord_conf(instance_dict, executable_name, service_type, instance
     config = configparser.ConfigParser()
     env_tmpl = 'PYTHONPATH=python:.,TZ=UTC,ZLOG_CFG="%s/%s.zlog.conf"'
     if service_type == 'endhost':
-        cmd = ('bash -c \'exec "bin/%s" "--api-addr" "%s" "%s" "%s" &>logs/%s.OUT\'') % (
+        cmd = ('bash -c \'exec "python/bin/%s" "--api-addr" "%s" "%s" "%s" &>logs/%s.OUT\'') % (
             executable_name, "/run/shm/sciond/%s.sock" % instance_name, instance_name,
             get_elem_dir(GEN_PATH, isd_as, "endhost"), instance_name)
         env = 'PYTHONPATH=python/:.,TZ=UTC'
@@ -132,7 +132,7 @@ def prep_supervisord_conf(instance_dict, executable_name, service_type, instance
         addr_type = 'Bind' if 'Bind' in instance_dict.keys() else 'Public'
         prom_addr = "%s:%s" % (instance_dict[addr_type][0]['Addr'],
                                instance_dict[addr_type][0]['L4Port'] + PROM_PORT_OFFSET)
-        cmd = ('bash -c \'exec "bin/%s" -id "%s" -confd "%s" -prom "%s" &>logs/%s.OUT\'') % (
+        cmd = ('bash -c \'exec "python/bin/%s" -id "%s" -confd "%s" -prom "%s" &>logs/%s.OUT\'') % (
             executable_name, instance_name, get_elem_dir(GEN_PATH, isd_as, instance_name),
             prom_addr, instance_name)
         env = env_tmpl % (get_elem_dir(GEN_PATH, isd_as, instance_name),
