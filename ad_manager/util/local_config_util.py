@@ -111,9 +111,9 @@ def prep_supervisord_conf(instance_dict, executable_name, service_type, instance
     :rtype: ConfigParser
     """
     config = configparser.ConfigParser()
-    env_tmpl = 'PYTHONPATH=python:.,ZLOG_CFG="%s/%s.zlog.conf"'
+    env_tmpl = 'PYTHONPATH=python:.,TZ=UTC,ZLOG_CFG="%s/%s.zlog.conf"'
     if service_type == 'endhost':
-        cmd = ('bash -c \'exec bin/%s "--api-addr" "%s" "%s" "%s" &>logs/%s.OUT\'') % (
+        cmd = ('bash -c \'exec "bin/%s" "--api-addr" "%s" "%s" "%s" &>logs/%s.OUT\'') % (
             executable_name, "/run/shm/sciond/%s.sock" % instance_name, instance_name,
             get_elem_dir(GEN_PATH, isd_as, "endhost"), instance_name)
         env = 'PYTHONPATH=python/:.,TZ=UTC'
@@ -123,7 +123,7 @@ def prep_supervisord_conf(instance_dict, executable_name, service_type, instance
         prom_addr = "%s:%s" % (instance_dict['InternalAddrs'][0][addr_type][0]['Addr'],
                                instance_dict['InternalAddrs'][0][addr_type][0]['L4Port'] +
                                PROM_PORT_OFFSET)
-        cmd = ('bash -c \'exec bin/%s -id "%s" -confd "%s" -prom "%s" &>logs/%s.OUT\'') % (
+        cmd = ('bash -c \'exec "bin/%s" -id "%s" -confd "%s" -prom "%s" &>logs/%s.OUT\'') % (
             executable_name, instance_name, get_elem_dir(GEN_PATH, isd_as, instance_name),
             prom_addr, instance_name)
         env = env_tmpl % (get_elem_dir(GEN_PATH, isd_as, instance_name),
@@ -132,7 +132,7 @@ def prep_supervisord_conf(instance_dict, executable_name, service_type, instance
         addr_type = 'Bind' if 'Bind' in instance_dict.keys() else 'Public'
         prom_addr = "%s:%s" % (instance_dict[addr_type][0]['Addr'],
                                instance_dict[addr_type][0]['L4Port'] + PROM_PORT_OFFSET)
-        cmd = ('bash -c \'exec bin/%s "%s" "%s" --prom "%s" &>logs/%s.OUT\'') % (
+        cmd = ('bash -c \'exec "bin/%s" -id "%s" -confd "%s" -prom "%s" &>logs/%s.OUT\'') % (
             executable_name, instance_name, get_elem_dir(GEN_PATH, isd_as, instance_name),
             prom_addr, instance_name)
         env = env_tmpl % (get_elem_dir(GEN_PATH, isd_as, instance_name),
@@ -318,7 +318,7 @@ def generate_sciond_config(isd_as, as_obj, tp):
     :param obj as_obj: An object that stores crypto information for AS
     :param dict tp: the topology as a dict of dicts.
     """
-    executable_name = "bin/sciond"
+    executable_name = "sciond"
     instance_name = "sd%s" % str(isd_as)
     service_type = "endhost"
     instance_path = get_elem_dir(GEN_PATH, isd_as, service_type)

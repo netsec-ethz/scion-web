@@ -46,7 +46,6 @@ from ad_manager.util.local_config_util import (
     write_as_conf_and_path_policy,
     write_certs_trc_keys,
     write_dispatcher_config,
-    write_endhost_config,
     write_supervisord_config,
     write_topology_file,
     write_zlog_file,
