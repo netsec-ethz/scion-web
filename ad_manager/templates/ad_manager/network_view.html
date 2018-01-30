@@ -37,6 +37,10 @@
     - Double click on a node opens the corresponding AS page.
     <br />
     - Ctrl+click on a node opens the node-specific graph.
+  {% if pov_as %}
+    <br />
+    - Show the <a href="{% url 'network_view' %}">full network graph</a>
+  {% endif %}
   </i>
   <br />
   <svg></svg>
