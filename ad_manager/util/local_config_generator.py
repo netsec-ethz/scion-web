@@ -38,6 +38,7 @@ from ad_manager.util.defines import PROM_PORT_OFFSET
 from ad_manager.util.simple_config.simple_config import check_simple_conf_mode
 from ad_manager.util.local_config_util import (
     generate_zk_config,
+    generate_sciond_config,
     get_elem_dir,
     prep_supervisord_conf,
     TYPES_TO_EXECUTABLES,
@@ -82,7 +83,7 @@ def create_local_gen(isdas, tp):
             write_supervisord_config(config, instance_path)
             write_topology_file(tp, type_key, instance_path)
             write_zlog_file(service_type, instance_name, instance_path)
-    write_endhost_config(tp, ia, as_obj, local_gen_path)
+    generate_sciond_config(ia, as_obj, tp)
     generate_zk_config(tp, ia, local_gen_path, as_obj.simple_conf_mode)
     generate_prometheus_config(tp, local_gen_path, as_path)
 

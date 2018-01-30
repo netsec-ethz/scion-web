@@ -112,7 +112,7 @@ def prep_supervisord_conf(instance_dict, executable_name, service_type, instance
     """
     config = configparser.ConfigParser()
     env_tmpl = 'PYTHONPATH=python:.,ZLOG_CFG="%s/%s.zlog.conf"'
-    if service_type == 'sciond':
+    if service_type == 'endhost':
         cmd = ('bash -c \'exec bin/%s "--api-addr" "%s" "%s" "%s" &>logs/%s.OUT\'') % (
             executable_name, "/run/shm/sciond/%s.sock" % instance_name, instance_name,
             get_elem_dir(GEN_PATH, isd_as, "endhost"), instance_name)
@@ -294,6 +294,7 @@ def write_as_conf_and_path_policy(isd_as, as_obj, instance_path):
     """
     Writes AS configuration (i.e. as.yml) and path policy files.
     :param ISD_AS isd_as: ISD-AS for which the config will be written.
+    :param obj as_obj: An object that stores crypto information for AS
     :param str instance_path: Location (in the file system) to write
     the configuration into.
     """
@@ -310,16 +311,28 @@ def write_as_conf_and_path_policy(isd_as, as_obj, instance_path):
     copy_file(path_policy_file, os.path.join(instance_path, PATH_POLICY_FILE))
 
 
-def write_endhost_config(tp, isd_as, as_obj, local_gen_path):
+def generate_sciond_config(isd_as, as_obj, tp):
     """
     Writes the endhost folder into the given location.
-    :param dict tp: the topology as a dict of dicts.
     :param ISD_AS isd_as: ISD the AS belongs to.
-    :param local_gen_path: the location to create the endhost folder in.
+    :param obj as_obj: An object that stores crypto information for AS
+    :param dict tp: the topology as a dict of dicts.
     """
-    endhost_path = get_elem_dir(local_gen_path, isd_as, 'endhost')
-    if not os.path.exists(endhost_path):
-        os.makedirs(endhost_path)
-    write_certs_trc_keys(isd_as, as_obj, endhost_path)
-    write_as_conf_and_path_policy(isd_as, as_obj, endhost_path)
-    write_topology_file(tp, 'endhost', endhost_path)
+    executable_name = "bin/sciond"
+    instance_name = "sd%s" % str(isd_as)
+    service_type = "endhost"
+    instance_path = get_elem_dir(GEN_PATH, isd_as, service_type)
+    processes = []
+    for svc_type in ["BorderRouters", "BeaconService", "CertificateService",
+                     "HiddenPathService", "PathService"]:
+        if svc_type not in tp:
+            continue
+        for elem_id, elem in tp[svc_type].items():
+            processes.append(elem_id)
+    processes.append(instance_name)
+    config = prep_supervisord_conf(None, executable_name, service_type, instance_name, isd_as)
+    config['group:' + "as%s" % str(isd_as)] = {'programs': ",".join(processes)}
+    write_certs_trc_keys(isd_as, as_obj, instance_path)
+    write_as_conf_and_path_policy(isd_as, as_obj, instance_path)
+    write_supervisord_config(config, os.path.join(GEN_PATH, 'ISD%s/AS%s' % (isd_as[0], isd_as[1])))
+    write_topology_file(tp, None, instance_path)
