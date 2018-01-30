@@ -45,7 +45,6 @@ from lib.util import (
     write_file,
 )
 from topology.generator import (
-    _topo_json_to_yaml,
     DEFAULT_PATH_POLICY_FILE,
     INITIAL_CERT_VERSION,
     INITIAL_TRC_VERSION,
@@ -236,10 +235,6 @@ def write_topology_file(tp, type_key, instance_path):
     path = os.path.join(instance_path, 'topology.json')
     with open(path, 'w') as file:
         json.dump(tp, file, indent=2)
-    topo_yml = _topo_json_to_yaml(tp)
-    path = os.path.join(instance_path, 'topology.yml')
-    with open(path, 'w') as file:
-        yaml.dump(topo_yml, file, default_flow_style=False)
 
 
 def write_zlog_file(service_type, instance_name, instance_path):
