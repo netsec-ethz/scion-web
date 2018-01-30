@@ -71,8 +71,8 @@ from ad_manager.models import AD
 django.setup()  # noqa
 
 AS_PREFIX = 'AS'
-SIG_PRIV_KEY = 'as-sig.key'
-SIG_PRIV_KEY_OLD = 'as-sig.seed'
+SIG_PRIV_KEY = 'as-sig.seed'
+SIG_PRIV_KEY_OLD = 'as-sig.key'
 ENC_PRIV_KEY = 'as-decrypt.key'
 
 
