@@ -56,7 +56,6 @@ TYPES_TO_EXECUTABLES = {
     'beacon_server': 'beacon_server',
     'path_server': 'path_server',
     'certificate_server': 'cert_server',
-    'sibra_server': 'sibra_server'
 }
 
 TYPES_TO_KEYS = {
@@ -64,7 +63,6 @@ TYPES_TO_KEYS = {
     'certificate_server': 'CertificateService',
     'router': 'BorderRouters',
     'path_server': 'PathService',
-    'sibra_server': 'SibraService'
 }
 
 #: Default SCION Prometheus port offset

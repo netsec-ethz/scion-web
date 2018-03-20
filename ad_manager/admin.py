@@ -35,7 +35,6 @@ from ad_manager.models import (
     OrganisationAdmin,
     PathServerWeb,
     RouterWeb,
-    SibraServerWeb,
 )
 
 
@@ -97,7 +96,6 @@ class SortRelatedAdmin(PrivilegedChangeAdmin):
 @admin.register(BeaconServerWeb,
                 CertificateServerWeb,
                 PathServerWeb,
-                SibraServerWeb,
                 site=admin_site)
 class ServerAdmin(PrivilegedChangeAdmin):
     fields = ('name', 'addr', ('ad', 'ad_link'),)

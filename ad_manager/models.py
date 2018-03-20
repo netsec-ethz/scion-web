@@ -28,7 +28,6 @@ from lib.defines import (
     CERTIFICATE_SERVICE,
     DEFAULT_MTU,
     PATH_SERVICE,
-    SIBRA_SERVICE,
 )
 from lib.packet.scion_addr import ISD_AS
 
@@ -115,7 +114,7 @@ class AD(models.Model):
             'ISDID': int(self.isd_id), 'ADID': int(self.as_id),
             'Core': int(self.is_core_ad),
             'BorderRouters': {}, 'PathService': {}, 'BeaconService': {},
-            'CertificateService': {}, 'SibraService': {},
+            'CertificateService': {},
         })
         for router in self.borderrouter_set.all():
             out_dict['BorderRouters'][router.name] = router.get_dict()
@@ -126,8 +125,6 @@ class AD(models.Model):
                 out_dict['PathService'][service.name] = service.get_dict()
             elif service.name.startswith('cs'):
                 out_dict['CertificateService'][service.name] = service.get_dict()
-            elif service.name.startswith('sb'):
-                out_dict['SibraService'][service.name] = service.get_dict()
         return out_dict
 
     def get_all_elements(self):
@@ -240,14 +237,12 @@ class AD(models.Model):
         beacon_servers = topology_dict["BeaconService"]
         certificate_servers = topology_dict["CertificateService"]
         path_servers = topology_dict["PathService"]
-        sibra_servers = topology_dict["SibraService"]
 
         try:
             self.fill_router_info(routers)
             self.fill_service_info(beacon_servers)
             self.fill_service_info(certificate_servers)
             self.fill_service_info(path_servers)
-            self.fill_service_info(sibra_servers)
 
         except IntegrityError:
             logging.warning("Integrity error in AD.fill_from_topology(): "
@@ -433,14 +428,15 @@ class RouterWeb(SCIONWebElement):
         verbose_name = 'Router'
         unique_together = (("ad", "addr", "port"),)
 
-
+# Sibra service is no longer available until a new sibra service is delivered
+"""
 class SibraServerWeb(SCIONWebElement):
     prefix = SIBRA_SERVICE
 
     class Meta:
         verbose_name = 'SIBRA server'
         unique_together = (("ad", "addr", "port"),)
-
+"""
 
 class JoinRequest(models.Model):
     STATUS_OPTIONS = ['NONE', 'SENT', 'ACCEPTED', 'DECLINED']

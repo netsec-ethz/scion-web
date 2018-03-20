@@ -22,12 +22,13 @@ from collections import defaultdict
 from django.shortcuts import get_object_or_404
 
 # SCION
-from lib.defines import (BEACON_SERVICE,
-                         CERTIFICATE_SERVICE,
-                         PATH_SERVICE,
-                         ROUTER_SERVICE,
-                         SIBRA_SERVICE,
-                         PROJECT_ROOT)
+from lib.defines import (
+    BEACON_SERVICE,
+    CERTIFICATE_SERVICE,
+    PATH_SERVICE,
+    ROUTER_SERVICE,
+    PROJECT_ROOT
+)
 from lib.packet.scion_addr import ISD_AS
 
 # SCION-WEB
@@ -44,7 +45,6 @@ TYPES_TO_SERVICES = {
     'beacon_server': BEACON_SERVICE,
     'path_server': PATH_SERVICE,
     'cert_server': CERTIFICATE_SERVICE,
-    'sibra_server': SIBRA_SERVICE,
     'zookeeper_service': ZOOKEEPER_SERVICE
 }
 
@@ -170,7 +170,6 @@ def generate_ansible_hostfile(topology_params, topo_dict, isd_as,
                               ('CertificateService', 'cert_server'),
                               ('BorderRouters', 'router'),
                               ('PathService', 'path_server'),
-                              ('SibraService', 'sibra_server'),
                               ('ZookeeperService', 'zookeeper_service')]:
         val = get_section_addr(topo_dict, key)
         if not val:  # skip empty entries

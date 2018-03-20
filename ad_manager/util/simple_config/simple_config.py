@@ -68,7 +68,7 @@ def check_simple_conf_mode(topo_dict, isd_id, as_id):
     Checks if the AS is in simple mode and updates the simple_conf_mode
     accordingly.
     """
-    services = ['BeaconService', 'CertificateService', 'PathService', 'SibraService']
+    services = ['BeaconService', 'CertificateService', 'PathService']
     as_obj = get_object_or_404(AD, isd_id=isd_id, as_id=as_id)
     service_addrs = set()
     for service in services:

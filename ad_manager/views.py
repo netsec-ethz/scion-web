@@ -1032,7 +1032,7 @@ def generate_topology(request):
     isd_id, as_id = isd_as.split('-')
     topo_dict['Core'] = True if (tp['inputIsCore'] == 'on') else False
 
-    service_types = ['BeaconService', 'CertificateService', 'PathService', 'SibraService']
+    service_types = ['BeaconService', 'CertificateService', 'PathService']
 
     for s_type in service_types:
         topo_dict[s_type] = \
