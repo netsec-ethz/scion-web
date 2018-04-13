@@ -1,0 +1,3 @@
+[submodule "sub/util"]
+	path = sub/util
+	url = git@github.com:netsec-ethz/scion-utilities.git
