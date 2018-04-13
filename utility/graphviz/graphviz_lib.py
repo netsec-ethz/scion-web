@@ -13,6 +13,8 @@
 # limitations under the License.
 
 # Stdlib
+import json
+import random
 from graphviz import Graph
 
 # SCION
@@ -97,19 +99,23 @@ class ASInformation(object):
         border_routers = self.topology["BorderRouters"]
         for br in border_routers:
             neighbor_IA = self.get_neighbor_IA_interface(br)['IA']
-            ie = self.get_neighbor_IA_interface(br)['interface']
+            if_id = self.get_neighbor_IA_interface(br)['interface']
             n_isd = str(self.get_ISD_AS(neighbor_IA)._isd)
             n_as = str(self.get_ISD_AS(neighbor_IA)._as)
             if n_isd == self.ISD:
                 intra_isd_neighbor = \
-                    {'br-id': ie, 'br-ip': border_routers[br]["Interfaces"][ie]["Public"]["Addr"]}
-                intra_dict[n_as] = intra_isd_neighbor
+                    {'n_as': n_as, 'br-ip': border_routers[br]["Interfaces"][if_id]["Public"]["Addr"], \
+                        'br-port': border_routers[br]["Interfaces"][if_id]["Public"]["L4Port"],
+                    'remote-ip': border_routers[br]["Interfaces"][if_id]["Remote"]["Addr"], 'remote-port': \
+                        border_routers[br]["Interfaces"][if_id]["Remote"]["L4Port"]}
+                intra_dict[if_id] = intra_isd_neighbor
             else:
                 inter_isd_neighbor = \
-                    {'br-id': ie, 'br-ip': border_routers[br]["Interfaces"][ie]["Public"]["Addr"]}
-                if n_isd not in inter_dict:
-                    inter_dict[n_isd] = {}
-                inter_dict[n_isd][n_as] = inter_isd_neighbor
+                    {'n_isd': n_isd, 'n_as': n_as, 'br-ip': border_routers[br]["Interfaces"][if_id]["Public"]["Addr"], \
+                        'br-port': border_routers[br]["Interfaces"][if_id]["Public"]["L4Port"],
+                    'remote-ip': border_routers[br]["Interfaces"][if_id]["Remote"]["Addr"], 'remote-port': \
+                        border_routers[br]["Interfaces"][if_id]["Remote"]["L4Port"]}
+                inter_dict[if_id] = inter_isd_neighbor
         return {'intra': intra_dict, 'inter': inter_dict}
 
     def get_neighbor_IA_interface(self, br):
@@ -147,12 +153,15 @@ class IsdGraph(object):
         self.ASes_done = []
         self.AS_list = AS_list
 
-    def get_graph(self):
+    def get_graph(self, location_labels, labels):
         """
+        :param: dict labels: Dictionary containing labels for ISDs and ASes
         :return: Isd graphviz graph with correct formatting
         """
         graph_name = 'cluster_' + "ISD " + self.ISD
         label = "ISD " + self.ISD
+        if location_labels and self.ISD in labels['ISD']:
+            label += '\n' + labels['ISD'][self.ISD]
         isd_graph = Graph(name=graph_name,
                           graph_attr={'color': 'blue', 'label': label, 'style': 'rounded'})
         return isd_graph
@@ -164,19 +173,20 @@ class IsdGraph(object):
         return Graph(name='cluster_core',
                      graph_attr={'color': 'red', 'label': '', 'style': 'rounded'})
 
-    def add_nodes(self, to_draw_list, graph, core, ip_addresses):
+    def add_nodes(self, to_draw_list, graph, core, ip_addresses, location_labels, labels):
         """
         Adds nodes of ASes to a graph
         :param: self, array to_draw_list: an array of ASes,
                 graphviz graph: Graph to which we add the nodes,
                 bool core: indicates if we add core nodes
                 bool ip_addresses: indicates if we have edge labels
+                dict labels: Dictionary containing labels for ISDs and ASes
         """
         for AS in to_draw_list:
             if ip_addresses:
-                self.draw_node_with_attributes(AS, core, graph)
+                self.draw_node_with_attributes(AS, core, graph, location_labels, labels)
             else:
-                self.draw_node_without_attributes(AS, core, graph)
+                self.draw_node_without_attributes(AS, core, graph, location_labels, labels)
 
     def sort_ASes(self):
         """
@@ -192,70 +202,98 @@ class IsdGraph(object):
                 non_core_AS_list.append(AS)
         return {'core': core_AS_list, 'non-core': non_core_AS_list}
 
-    def draw_node_without_attributes(self, AS, core, graph):
+    def draw_node_without_attributes(self, AS, core, graph, location_labels, labels):
         """
         Adds a node without any attributes to the graph.
         :param: self, string AS: AS ID, boolean core: inidicates if the AS is core
                 graphviz graph: graph to which we add the AS
+                dict labels: Dictionary containing labels for ISDs and ASes
         """
         ia = ISD_AS.from_values(self.ISD, AS)
         node_id = ia.__str__()
         node_name = self.AS_list[AS]["name"]
         node_name = ia.__str__() + node_name
         if core:
-            node_name = node_name + " (core)"
+            node_name += " (core)"
+        if location_labels and ia.__str__() in labels['AS']:
+            node_name += '\n' + labels['AS'][ia.__str__()]
         graph.node(node_id, node_name, _attributes={'shape': 'box'})
 
-    def draw_node_with_attributes(self, AS, core, graph):
+    def draw_node_with_attributes(self, AS, core, graph, location_labels, labels):
         """
         Adds a node with attributes to the graph.
         :param: self, string AS: AS ID, boolean core: inidicates if the AS is core
                 graphviz graph: graph to which we add the AS
+                dict labels: Dictionary containing labels for ISDs and ASes
         """
         ia = ISD_AS.from_values(self.ISD, AS)
         node_id = ia.__str__()
         node_name = self.AS_list[AS]["name"]
         node_name = ia.__str__() + node_name
         if core:
-            node_name = node_name + " (core)"
-        node_name = node_name + "\n"
+            node_name += " (core)"
+        if location_labels and ia.__str__() in labels['AS']:
+            node_name += '\n' + labels['AS'][ia.__str__()]
+        node_name += "\n"
         node_attributes = self.NodeAttributes(self.AS_list[AS], AS, self.ISD)
         node_name = node_name + node_attributes.assemble_string()
         graph.node(node_id, node_name, _attributes={'shape': 'box'})
 
-    def draw_edges_from_current(self, current_neighbors, graph, edge_labels):
+    def draw_edges_from_current(self, current_neighbors, graph, node_labels):
         """
         Adds edges for all ASes in current_neighbors
         :param: self, array of ASes: list of ASes whose edges we draw,
                 graphviz graph: graph to which we add the edges,
                 boolean edge_labels: boolean indicating if we add labels to the edges
         """
+
         next_neighbors = []
         for AS in current_neighbors:
             self.ASes_done.append(AS)
             ia = ISD_AS.from_values(self.ISD, AS)
             id = ia.__str__()
-            for neighbor in self.AS_list[AS]["intra_n"]:
-                n_dict = self.AS_list[AS]["intra_n"][neighbor]
-                # check if neighbor exists
+            for interface in self.AS_list[AS]["intra_n"]:
+                neighbor = self.AS_list[AS]["intra_n"][interface]["n_as"]
+                # check if neighbor exists (referenced in interface but AS folder does not exist)
                 if neighbor not in self.AS_list:
                     continue
-                # check if we have not drawn edges for the neighbor
+                # check if interface connects to an AS we already handled
                 if neighbor not in self.ASes_done:
                     n_ia = ISD_AS.from_values(self.ISD, neighbor)
                     n_id = n_ia.__str__()
-                    if edge_labels:
-                        headlabel = str(self.AS_list[neighbor]["intra_n"][AS]["br-id"])
-                        taillabel = str(n_dict["br-id"])
-                        graph.edge(id, n_id,
+                    if node_labels:
+                        color = self.get_color()
+                        remote = self.get_remote_interface(neighbor, self.AS_list[AS]["intra_n"][interface]["br-ip"], \
+                            self.AS_list[AS]["intra_n"][interface]["br-port"])
+                        headlabel = '<<font color="' + color + '">' + str(remote[0]) + ": " + str(remote[1]) + '</font>>' 
+                        taillabel = '<<font color="' + color + '">' + str(interface) + ": " + \
+                            str(self.AS_list[AS]["intra_n"][interface]["br-port"]) + '</font>>'
+                        graph.edge(id, n_id, color=color,
                                    _attributes={'headlabel': headlabel, 'taillabel': taillabel})
                     else:
                         graph.edge(id, n_id)
-                    # add node to next rotation if not in current/next
                     if neighbor not in current_neighbors:
                         if neighbor not in next_neighbors:
                             next_neighbors.append(neighbor)
         return next_neighbors
+
+    def get_remote_interface(self, AS, ip, port):
+        """
+        Given an AS Border Router interface, the corresponding interface on the other side of the link is returned
+        """
+        for interface in self.AS_list[AS]["intra_n"]:
+            if self.AS_list[AS]["intra_n"][interface]["remote-ip"] == ip:
+                if self.AS_list[AS]["intra_n"][interface]["remote-port"] == port:
+                    return (interface, port)
+        return ('','')
+
+    def get_color(self):
+        """
+        Returns a random color from a selection
+        """
+        colors = ['green', 'gold', 'indigo', 'orangered', 'crimson', \
+            'magenta', 'darkslategray', 'greenyellow', 'hotpink', 'lightsalmon']
+        return random.choice(colors)
 
     class NodeAttributes(object):
         """
@@ -294,7 +332,7 @@ class IsdGraph(object):
             """
             for neighbor in self.AS["intra_n"]:
                 n_dict = self.AS["intra_n"][neighbor]
-                br_id = str(n_dict["br-id"])
+                br_id = str(neighbor)
                 self.info_dict["br" + self.IA.__str__() + "-" + br_id] = n_dict["br-ip"]
                 if n_dict["br-ip"] not in self.rev_info_dict:
                     self.rev_info_dict[n_dict["br-ip"]] = \
@@ -308,35 +346,38 @@ class IsdGraph(object):
             Gathers info for all inter isd border router elements
             and writes the info to the info and reverse info dict.
             """
-            for neighbor_ISD in self.AS["inter_n"]:
-                n_dict = self.AS["inter_n"][neighbor_ISD]
-                for neighbor in n_dict:
-                    n_isd = n_dict[neighbor]
-                    br_id = str(n_isd["br-id"])
-                    self.info_dict["br" + self.IA.__str__() + "-" + br_id] = n_isd["br-ip"]
-                    if n_isd["br-ip"] not in self.rev_info_dict:
-                        self.rev_info_dict[n_isd["br-ip"]] = \
-                            ["br" + self.IA.__str__() + "-" + br_id]
-                    else:
-                        self.rev_info_dict[n_isd["br-ip"]].append(
-                            "br" + self.IA.__str__() + "-" + br_id)
+
+            for interface in self.AS["inter_n"]:
+                interf_dict = self.AS["inter_n"][interface]
+                br_id = str(interface)
+                self.info_dict["br" + self.IA.__str__() + "-" + br_id] = interf_dict["br-ip"]
+                if interf_dict["br-ip"] not in self.rev_info_dict:
+                    self.rev_info_dict[interf_dict["br-ip"]] = \
+                        ["br" + self.IA.__str__() + "-" + br_id]
+                else:
+                    self.rev_info_dict[interf_dict["br-ip"]].append(
+                        "br" + self.IA.__str__() + "-" + br_id)
+
 
         def assemble_string(self):
             """
             Builds the string for the node label from
             the info in the info dict and reverse info dict
             """
-            info_string = ""
+            info_string = "{"
             printed = []
             printed_ip = []
             for key in self.info_dict:
                 ip_address = self.info_dict[key]
                 for node in self.rev_info_dict[ip_address]:
                     if node not in printed:
+                        if node[:2] == "br" and info_string[-1:] != "{":
+                            info_string  += "\n"
                         printed.append(node)
                         info_string = info_string + node + ","
                 if ip_address not in printed_ip:
                     printed_ip.append(ip_address)
                     info_string = info_string[:-1]
-                    info_string = info_string + ": " + ip_address + "\n"
+                    info_string = info_string + "}: " + ip_address + "\n{"
+            info_string = info_string[:-1]
             return info_string

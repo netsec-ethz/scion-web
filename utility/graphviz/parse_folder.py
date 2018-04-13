@@ -99,3 +99,22 @@ def parse_gen_folder(gen_folder):
     with open('output.cfg', 'w') as outfile:
         json.dump(gen_dict, outfile)
     return gen_dict
+
+def parse_desc_labels(labels_file):
+    try:
+        with open(labels_file, 'r') as f:
+            data = json.load(f)
+    except ValueError:
+        print ('Warning: Decoding label file failed. Creating graph without labels.')
+        return {"ISD": {}, "AS": {}}
+    except FileNotFoundError:
+        print ('Warning: Label file not found. Creating graph without labels.')
+        return {"ISD": {}, "AS": {}}
+    
+    if 'ISD' not in data:
+        print ('Warning: ISD labels missing. Adding AS labels only.')
+        data["ISD"] = {}
+    if 'AS' not in data:
+        print ('Warning: AS labels missing. Adding ISD labels only.')
+        data["AS"] = {}
+    return data
