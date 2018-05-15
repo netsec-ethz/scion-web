@@ -36,7 +36,7 @@ from ad_manager.models import AD
 
 
 ZOOKEEPER_SERVICE = "zk"  # TODO: make PR to add into lib.defines as it used to
-WEB_ROOT = os.path.join(PROJECT_ROOT, 'sub', 'web')
+WEB_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 SUPPORTED_CLOUD_ENGINES = ['switch_engines', 'amazon_ec2']
 

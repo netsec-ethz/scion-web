@@ -30,28 +30,30 @@ from lib.defines import (
 )
 from lib.packet.scion_addr import ISD_AS
 from lib.util import write_file
-from topology.generator import PrometheusGenerator
+from topology.generator import PrometheusGenerator, TopoID
 
 # SCION-WEB
 from ad_manager.models import AD
 from ad_manager.util.defines import PROM_PORT_OFFSET
 from ad_manager.util.simple_config.simple_config import check_simple_conf_mode
-from ad_manager.util.local_config_util import (
+
+# SCION-Utilities
+from sub.util.local_config_util import (
     generate_zk_config,
     generate_sciond_config,
     get_elem_dir,
     prep_supervisord_conf,
-    TYPES_TO_EXECUTABLES,
-    TYPES_TO_KEYS,
     write_as_conf_and_path_policy,
     write_certs_trc_keys,
     write_dispatcher_config,
     write_supervisord_config,
     write_topology_file,
     write_zlog_file,
+    TYPES_TO_EXECUTABLES,
+    TYPES_TO_KEYS,
 )
 
-WEB_ROOT = os.path.join(PROJECT_ROOT, 'sub', 'web')
+WEB_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 logger = logging.getLogger("scion-web")
 
 
@@ -82,7 +84,7 @@ def create_local_gen(isdas, tp):
             write_supervisord_config(config, instance_path)
             write_topology_file(tp, type_key, instance_path)
             write_zlog_file(service_type, instance_name, instance_path)
-    generate_sciond_config(ia, as_obj, tp)
+    generate_sciond_config(TopoID(isdas), as_obj, tp)
     generate_zk_config(tp, ia, local_gen_path, as_obj.simple_conf_mode)
     generate_prometheus_config(tp, local_gen_path, as_path)
 

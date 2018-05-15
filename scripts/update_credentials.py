@@ -45,35 +45,51 @@ import yaml
 from os.path import dirname as d
 
 WEB_SCION_DIR = d(d(os.path.abspath(__file__)))  # noqa
-SCION_ROOT_DIR = d(d(WEB_SCION_DIR))  # noqa
-SCION_PYTHON_ROOT_DIR = os.path.join(SCION_ROOT_DIR, 'python')  # noqa
 sys.path.insert(0, WEB_SCION_DIR)  # noqa
-sys.path.insert(0, SCION_ROOT_DIR)  # noqa
-sys.path.insert(0, SCION_PYTHON_ROOT_DIR)  # noqa
-
 # Set up the Django environment
 os.environ['DJANGO_SETTINGS_MODULE'] = 'web_scion.settings.private'  # noqa
+
 
 # External packages
 import django
 
 # SCION
-from lib.crypto.util import (
-    CERT_DIR,
-    KEYS_DIR,
+from lib.crypto.asymcrypto import (
+    get_core_sig_key_file_path,
+    get_core_sig_key_raw_file_path,
+    get_enc_key_file_path,
+    get_sig_key_file_path,
+    get_sig_key_raw_file_path,
 )
-from lib.defines import AS_CONF_FILE
+from lib.crypto.certificate_chain import get_cert_chain_file_path
+from lib.crypto.trc import get_trc_file_path
+from lib.crypto.util import (
+    get_ca_cert_file_path,
+    get_ca_private_key_file_path,
+    get_offline_key_file_path,
+    get_offline_key_raw_file_path,
+    get_online_key_file_path,
+    get_online_key_raw_file_path,
+)
+from lib.defines import (
+    AS_CONF_FILE,
+    GEN_PATH,
+    PROJECT_ROOT,
+    TOPO_FILE,
+)
+from lib.packet.scion_addr import ISD_AS
+from lib.topology import Topology
 from lib.util import read_file
+from topology.generator import INITIAL_CERT_VERSION, INITIAL_TRC_VERSION
 
 # SCION-WEB
 from ad_manager.models import AD
 
-django.setup()  # noqa
+# SCION-Utilities
+from sub.util.local_config_util import ASCredential
 
+django.setup()  # noqa
 AS_PREFIX = 'AS'
-SIG_PRIV_KEY = 'as-sig.seed'
-SIG_PRIV_KEY_OLD = 'as-sig.key'
-ENC_PRIV_KEY = 'as-decrypt.key'
 
 
 def _json_file_to_str(file_path):
@@ -106,7 +122,7 @@ def _yaml_file_to_dict(file_path):
             return None
 
 
-def _update_credentials(path, isd_id):
+def _update_credentials(path):
     """
     Main routine to update with relevant ISD with new credentials.
     :param path: Location of the ISD folder, containing new credentials.
@@ -117,11 +133,74 @@ def _update_credentials(path, isd_id):
     for (dirpath, dirnames, filenames) in os.walk(path):
         for dirname in dirnames:
             if dirname.startswith('AS'):
+                token = dirpath.split('/')
+                isd_id = token[len(token) - 1][3:]
                 as_id = re.search('AS(.*)', dirname).group(1)
-                _create_update_as(os.path.join(dirpath, dirname), isd_id, as_id)
+                isd_as = ISD_AS.from_values(isd_id, as_id)
+                cred_obj = _load_credentials(os.path.join(dirpath, dirname), isd_as)
+                _create_update_as(cred_obj, isd_as)
 
 
-def _create_update_as(as_path, isd_id, as_id):
+def _load_credentials(as_path, isd_as):
+    print("Updating AS%s" % isd_as)
+    # The element to get the credentials from.
+    # We assume that the beacon server exists in every AS configuration.
+    key_dict = {}
+    core_key_dict = {}
+    as_path = os.path.join(PROJECT_ROOT, GEN_PATH, 'ISD%s/AS%s' % (isd_as[0], isd_as[1]))
+    instance_id = "bs%s-%s-1" % (isd_as[0], isd_as[1])
+    instance_path = os.path.join(as_path, instance_id)
+    topo_path = os.path.join(instance_path, TOPO_FILE)
+
+    # Credential files for all ASes
+    as_key_path = {
+        'cert_path': get_cert_chain_file_path(instance_path, isd_as, INITIAL_CERT_VERSION),
+        'trc_path': get_trc_file_path(instance_path, isd_as[0], INITIAL_TRC_VERSION),
+        'enc_key_path': get_enc_key_file_path(instance_path),
+        'sig_key_path': get_sig_key_file_path(instance_path),
+        'sig_key_raw_path': get_sig_key_raw_file_path(instance_path),
+        'as_config_path': os.path.join(instance_path, AS_CONF_FILE),
+    }
+
+    # Credential files for core ASes
+    core_key_path = {
+        'core_sig_key_path': get_core_sig_key_file_path(instance_path),
+        'core_sig_key_raw_path': get_core_sig_key_raw_file_path(instance_path),
+        'online_key_path': get_online_key_file_path(instance_path),
+        'online_key_raw_path': get_online_key_raw_file_path(instance_path),
+        'offline_key_path': get_offline_key_file_path(instance_path),
+        'offline_key_raw_path': get_offline_key_raw_file_path(instance_path),
+    }
+
+    for key, path in as_key_path.items():
+        try:
+            if key.startswith('cert'):
+                cert = _json_file_to_str(path)
+            elif key.startswith('trc'):
+                trc = _json_file_to_str(path)
+            elif key.startswith('as'):
+                as_config_dict = _yaml_file_to_dict(path)
+                key_dict['master_as_key'] = as_config_dict['MasterASKey']
+            else:
+                key_name = key[:len(key)-5]
+                key_dict[key_name] = read_file(path)[:-1]
+        except IOError as err:
+            print("IOError({0}): {1}" % (err, path))
+            exit(1)
+    tp = Topology.from_file(topo_path)
+    if tp.is_core_as:
+        for key, path in core_key_path.items():
+            try:
+                key_name = key[:len(key)-5]
+                core_key_dict[key_name] = read_file(path)[:-1]
+            except IOError as err:
+                print("IOError({0}): {1}" % (err, path))
+                exit(1)
+
+    return ASCredential(cert, trc, key_dict, core_key_dict)
+
+
+def _create_update_as(credentials, isd_as):
     """
     Copy the new credentials and place into relevant DB tables of
     scion-web. If the AS is not already existing, it will create a new
@@ -133,43 +212,18 @@ def _create_update_as(as_path, isd_id, as_id):
     :param as_id: AS ID.
     :type as_id: string
     """
-    print("Updating AS %s, %s" % (isd_id, as_id))
-    # The element to get the credentials from.
-    # We assume that the beacon server exists in every AS configuration.
-    elem_id = "bs%s-%s-1" % (isd_id, as_id)
-    # TODO(ercanucan): use the built-in defines
-    cert_file = "ISD%s-AS%s-V0.crt" % (isd_id, as_id)
-    trc_file = "ISD%s-V0.trc" % isd_id
-
-    cert_path = os.path.join(as_path, elem_id, CERT_DIR, cert_file)
-    trc_path = os.path.join(as_path, elem_id, CERT_DIR, trc_file)
-    if os.path.exists(os.path.join(as_path, elem_id, KEYS_DIR, SIG_PRIV_KEY)):
-        sig_priv_key_path = os.path.join(as_path, elem_id, KEYS_DIR, SIG_PRIV_KEY)
-    else:
-        sig_priv_key_path = os.path.join(as_path, elem_id, KEYS_DIR, SIG_PRIV_KEY_OLD)
-    enc_priv_key_path = os.path.join(as_path, elem_id, KEYS_DIR, ENC_PRIV_KEY)
-    as_config_path = os.path.join(as_path, elem_id, AS_CONF_FILE)
-
-    cert = _json_file_to_str(cert_path)
-    trc = _json_file_to_str(trc_path)
-    sig_priv_key = read_file(sig_priv_key_path)
-    enc_priv_key = read_file(enc_priv_key_path)
-    as_config_dict = _yaml_file_to_dict(as_config_path)
-    master_as_key = as_config_dict['MasterASKey']
-
-    print("Calling update or create for AS %s, %s" % (isd_id, as_id))
+    print("Calling update or create for AS%s" % isd_as)
     try:
-        as_obj = AD.objects.get(as_id=as_id, isd_id=isd_id)
+        as_obj = AD.objects.get(as_id=isd_as[1], isd_id=isd_as[0])
     except AD.DoesNotExist:
-        print(as_id, " does not exist, creating it..")
-        as_obj = AD.objects.create(as_id=as_id, isd_id=isd_id, original_topology={})
+        print(isd_as, " does not exist, creating it..")
+        as_obj = AD.objects.create(as_id=isd_as[1], isd_id=isd_as[0], original_topology={})
 
-    print("Setting credentials for AS %s, %s" % (isd_id, as_id))
-    as_obj.certificate = cert
-    as_obj.trc = trc
-    as_obj.sig_priv_key = sig_priv_key
-    as_obj.enc_priv_key = enc_priv_key
-    as_obj.master_as_key = master_as_key
+    print("Setting credentials for AS%s" % isd_as)
+    as_obj.certificate = credentials.certificate
+    as_obj.trc = credentials.trc
+    as_obj.keys = credentials.keys
+    as_obj.core_keys = credentials.core_keys
     as_obj.save()
 
 
@@ -179,15 +233,19 @@ def main():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--dir",
-                        help='Credentials directory of the ISD')
+                        help='Credentials directory of the ISD',
+                        default=os.path.join(PROJECT_ROOT, GEN_PATH))
     parser.add_argument("--isd",
                         help='ISD ID')
     args = parser.parse_args()
-    dir_path = os.path.abspath(os.path.expanduser(args.dir))
+    if not args.isd:
+        dir_path = os.path.abspath(os.path.expanduser(args.dir))
+    else:
+        dir_path = os.path.abspath(os.path.expanduser(os.path.join(args.dir, 'ISD%s' % args.isd)))
     if not os.path.exists(dir_path):
         print("Directory does not exist. Exiting..")
         exit()
-    _update_credentials(dir_path, args.isd)
+    _update_credentials(dir_path)
 
 
 if __name__ == '__main__':

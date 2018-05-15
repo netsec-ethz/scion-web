@@ -95,6 +95,8 @@ class AD(models.Model):
     master_as_key = models.CharField(max_length=100, null=True, blank=True)
     certificate = models.TextField(null=True, blank=True)
     trc = models.TextField(null=True, blank=True)
+    keys = jsonfield.JSONField(default=empty_dict)
+    core_keys = jsonfield.JSONField(default=empty_dict)
 
     # Use custom model manager with select_related()
     objects = SelectRelatedModelManager()

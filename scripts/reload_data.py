@@ -24,11 +24,7 @@ import sys
 from os.path import dirname as d
 
 WEB_SCION_DIR = d(d(os.path.abspath(__file__)))  # noqa
-SCION_ROOT_DIR = d(d(WEB_SCION_DIR))  # noqa
-SCION_PYTHON_ROOT_DIR = os.path.join(SCION_ROOT_DIR, 'python')  # noqa
 sys.path.insert(0, WEB_SCION_DIR)  # noqa
-sys.path.insert(0, SCION_ROOT_DIR)  # noqa
-sys.path.insert(0, SCION_PYTHON_ROOT_DIR)  # noqa
 
 # Set up the Django environment
 os.environ['DJANGO_SETTINGS_MODULE'] = 'web_scion.settings.private'  # noqa
