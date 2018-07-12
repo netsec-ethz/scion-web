@@ -109,7 +109,7 @@ logger = logging.getLogger("scion-web")
 
 class ISDListView(ListView):
     model = ISD
-    paginate_by = 8
+    paginate_by = 9
 
 
 @require_POST
@@ -235,8 +235,7 @@ def save_all_topologies(request):
     isd_list = topology_params.getlist('ISD')
     for isd in isd_list:
         for ad_obj in AD.objects.filter(isd_id=isd):
-            isd_as_obj = ISD_AS.from_values(ad_obj.isd_id, ad_obj.as_id)
-            isd_as = str(isd_as_obj)
+            isd_as = ISD_AS.from_values(ad_obj.isd_id, ad_obj.as_id)
             topo_dict = ad_obj.original_topology
             # write the topology file
             create_local_gen(isd_as, topo_dict)
@@ -632,7 +631,7 @@ class ADDetailView(DetailView):
             hashlib.md5(flat_string.encode('utf-8')).hexdigest()
         context['as_id'] = ad.as_id
         context['isd_id'] = ad.isd_id
-        context['isdas'] = str(ISD_AS.from_values(ad.isd_id, ad.as_id))
+        context['as_id_str'] = ad.as_id_str
 
         # Sort by name numerically
         for list_name in ['services', 'border_routers']:
@@ -826,7 +825,7 @@ def _get_neighbor_as(intf):
 
 def _get_node_object(as_obj):
     node_object = {
-        'name': 'AS %s-%s' % (as_obj.isd_id, as_obj.as_id),
+        'name': 'AS %s-%s' % (as_obj.isd_id, as_obj.as_id_str),
         'group': as_obj.isd_id,
         'url': as_obj.get_absolute_url(),
         'networkUrl': reverse('network_view_as',
@@ -928,14 +927,15 @@ def name_entry_dict(name_l, address_l, port_l, addr_int_l, port_int_l):
     for i in range(len(name_l)):
         if address_l[i] == '':
             continue  # don't include empty entries
-        ret_dict[name_l[i]] = {
+        inst_name = name_l[i].replace(":", "_")
+        ret_dict[inst_name] = {
             'Public': [{
                 'Addr': address_l[i],
                 'L4Port': st_int(port_l[i], SCION_SUGGESTED_PORT),
             }]
         }
         if addr_int_l[i]:
-            ret_dict[name_l[i]]['Bind'] = [{
+            ret_dict[inst_name]['Bind'] = [{
                 'Addr': addr_int_l[i],
                 'L4Port': st_int(port_int_l[i], None),
             }]
@@ -947,7 +947,8 @@ def name_entry_dict_zk(name_l, address_l, port_l, addr_int_l, port_int_l):
     for i in range(len(name_l)):
         if address_l[i] == '':
             continue  # don't include empty entries
-        ret_dict[name_l[i]] = {
+        zk_name = name_l[i].replace(":", "_")
+        ret_dict[zk_name] = {
             'Addr': address_l[i],
             'L4Port': st_int(port_l[i], SCION_SUGGESTED_PORT)
         }
@@ -975,7 +976,8 @@ def name_entry_dict_router(tp):
     for i in range(len(name_list)):
         if address_list[i] == '':
             continue  # don't include empty entries
-        ret_dict[name_list[i]] = {
+        inst_name = name_list[i].replace(":", "_")
+        ret_dict[inst_name] = {
             'InternalAddrs': [{
                 'Public': [{
                     'Addr': address_list[i],
@@ -986,7 +988,7 @@ def name_entry_dict_router(tp):
                 st_int(if_id_list[i], None): {
                     'Bandwidth': st_int(bandwidth_list[i], None),
                     'ISD_AS': remote_name_list[i],
-                    'LinkType': interface_type_list[i],
+                    'LinkTo': interface_type_list[i],
                     # TODO(jonghoonkwon): Initial version of scion web assumes that
                     # we have only one internal address. Need to be fixed.
                     'InternalAddrIdx': 0,
@@ -1008,12 +1010,12 @@ def name_entry_dict_router(tp):
         if internal_address_list[i]:
             # TODO(jonghoonkwon): Initial version of scion web assumes that
             # we have only one bind address. Need to be fixed.
-            ret_dict[name_list[i]]['InternalAddrs'][0]['Bind'] = [{
+            ret_dict[inst_name]['InternalAddrs'][0]['Bind'] = [{
                 'Addr': internal_address_list[i],
                 'L4Port': st_int(internal_port_list[i], None),
             }]
         if interface_internal_addr_list[i]:
-            ret_dict[name_list[i]]['Interfaces'][st_int(if_id_list[i], None)]['Bind'] = {
+            ret_dict[inst_name]['Interfaces'][st_int(if_id_list[i], None)]['Bind'] = {
                 'Addr': interface_internal_addr_list[i],
                 'L4Port': st_int(own_port_list[i], None),
             }
@@ -1028,8 +1030,7 @@ def generate_topology(request):
                         None)  # remove csrf entry, as we don't need it here
     topo_dict = {}
     tp = topology_params
-    isd_as = tp['inputISD_AS']
-    isd_id, as_id = isd_as.split('-')
+    isd_as = ISD_AS(tp['inputISD_AS'])
     topo_dict['Core'] = True if (tp['inputIsCore'] == 'on') else False
 
     service_types = ['BeaconService', 'CertificateService', 'PathService']
@@ -1078,8 +1079,7 @@ def generate_topology(request):
                               topo_dict,
                               isd_as,
                               commit_hash)
-
-    curr_as = get_object_or_404(AD, as_id=as_id, isd=isd_id)
+    curr_as = get_object_or_404(AD, as_id=isd_as[1], isd=isd_as[0])
     # load as usual model (for persistance and display in overview)
     # TODO : hash displayed queryset and curr_as query set and compare
     # allow the user to write back the new configuration only if it hasn't

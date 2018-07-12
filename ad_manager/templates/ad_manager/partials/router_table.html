@@ -6,14 +6,14 @@
     <th class="col-md-2 text-center">Address</th>
     <th class="col-md-2 text-center">Interface in-address</th>
     <th class="col-md-2 text-center">Interface out-address</th>
-    <th class="col-md-1 text-center">Neighbor AS</th>
-    <th class="col-md-1">Neighbor type</th>
+    <th class="col-md-2 text-center">Neighbor AS</th>
+    <th class="col-md-2">Neighbor type</th>
   </tr>
   </thead>
   <tbody>
   {% for router in border_routers %}
     <tr id="{{ router.name }}">
-      <td>Router {{ router.name }}</td>
+      <td>{{ router.name }}</td>
       {% for addr in router_addrs %}
         {% if router.id == addr.router_id and addr.is_public %}
           <td class="text-center">{{ addr.addr }}</td>
@@ -21,7 +21,7 @@
             {% if addr.id == intf.router_addr_id %}
               <td class="text-center">{{ intf.addr }}</td>
               <td class="text-center">{{ intf.remote_addr }}</td>
-              <td class="text-center">{{ intf.neighbor_isd_id }}-{{ intf.neighbor_as_id }}</td>
+              <td class="text-center">{{ intf.neighbor_isd_id }}-{{ intf.neighbor_as_id_str }}</td>
               <td>{{ intf.neighbor_type }}</td>
             {% endif %}
           {% endfor %}
