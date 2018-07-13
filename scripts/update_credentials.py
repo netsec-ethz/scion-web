@@ -83,7 +83,7 @@ from lib.util import read_file
 from topology.generator import INITIAL_CERT_VERSION, INITIAL_TRC_VERSION
 
 # SCION-WEB
-from ad_manager.models import AD
+from ad_manager.models import AD, ISD
 
 # SCION-Utilities
 from sub.util.local_config_util import ASCredential
@@ -122,7 +122,7 @@ def _yaml_file_to_dict(file_path):
             return None
 
 
-def _update_credentials(path):
+def _update_credentials(path, max_as_number):
     """
     Main routine to update with relevant ISD with new credentials.
     :param path: Location of the ISD folder, containing new credentials.
@@ -136,7 +136,9 @@ def _update_credentials(path):
                 token = dirpath.split('/')
                 isd_id = token[len(token) - 1][3:]
                 as_id = re.search('AS(.*)', dirname).group(1)
-                isd_as = ISD_AS.from_values(isd_id, as_id)
+                if int(as_id[-2:].replace("_", ""), 16) > max_as_number:
+                    continue
+                isd_as = ISD_AS("%s-%s" % (isd_id, as_id))
                 cred_obj = _load_credentials(os.path.join(dirpath, dirname), isd_as)
                 _create_update_as(cred_obj, isd_as)
 
@@ -147,8 +149,8 @@ def _load_credentials(as_path, isd_as):
     # We assume that the beacon server exists in every AS configuration.
     key_dict = {}
     core_key_dict = {}
-    as_path = os.path.join(PROJECT_ROOT, GEN_PATH, 'ISD%s/AS%s' % (isd_as[0], isd_as[1]))
-    instance_id = "bs%s-%s-1" % (isd_as[0], isd_as[1])
+    as_path = os.path.join(PROJECT_ROOT, GEN_PATH, 'ISD%s/AS%s' % (isd_as.isd_str(), isd_as.as_file_fmt()))
+    instance_id = "bs%s-%s-1" % (isd_as.isd_str(), isd_as.as_file_fmt())
     instance_path = os.path.join(as_path, instance_id)
     topo_path = os.path.join(instance_path, TOPO_FILE)
 
@@ -217,7 +219,12 @@ def _create_update_as(credentials, isd_as):
         as_obj = AD.objects.get(as_id=isd_as[1], isd_id=isd_as[0])
     except AD.DoesNotExist:
         print(isd_as, " does not exist, creating it..")
-        as_obj = AD.objects.create(as_id=isd_as[1], isd_id=isd_as[0], original_topology={})
+        as_obj = AD.objects.create(as_id=isd_as[1], isd_id=isd_as[0],
+                                   as_id_str=isd_as.as_str(), original_topology={})
+    try:
+        ISD.objects.get(id=isd_as[0])
+    except ISD.DoesNotExist:
+        ISD.objects.create(id=isd_as[0])
 
     print("Setting credentials for AS%s" % isd_as)
     as_obj.certificate = credentials.certificate
@@ -237,6 +244,9 @@ def main():
                         default=os.path.join(PROJECT_ROOT, GEN_PATH))
     parser.add_argument("--isd",
                         help='ISD ID')
+    parser.add_argument("--l",
+                        help='Number of ASes for each ISD',
+                        default=255)
     args = parser.parse_args()
     if not args.isd:
         dir_path = os.path.abspath(os.path.expanduser(args.dir))
@@ -245,7 +255,7 @@ def main():
     if not os.path.exists(dir_path):
         print("Directory does not exist. Exiting..")
         exit()
-    _update_credentials(dir_path)
+    _update_credentials(dir_path, int(args.l))
 
 
 if __name__ == '__main__':
