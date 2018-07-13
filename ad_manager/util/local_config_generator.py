@@ -46,6 +46,7 @@ from sub.util.local_config_util import (
     write_as_conf_and_path_policy,
     write_certs_trc_keys,
     write_dispatcher_config,
+    write_overlay_config,
     write_supervisord_config,
     write_topology_file,
     write_zlog_file,
@@ -64,28 +65,29 @@ def create_local_gen(isdas, tp):
     :param str isdas: ISD-AS as a string
     :param dict tp: the topology parameter file as a dict of dicts
     """
-    ia = ISD_AS(isdas)
-    as_obj = _get_as_obj(ia)
-    check_simple_conf_mode(tp, ia[0], ia[1])
+    assert isinstance(isdas, ISD_AS), type(isdas)
+    as_obj = _get_as_obj(isdas)
+    check_simple_conf_mode(tp, isdas[0], isdas[1])
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
     write_dispatcher_config(local_gen_path)
-    as_path = 'ISD%s/AS%s/' % (ia[0], ia[1])
-    as_path = get_elem_dir(local_gen_path, ia, "")
+    write_overlay_config(local_gen_path)
+    as_path = 'ISD%s/AS%s/' % (isdas[0], isdas.as_file_fmt())
+    as_path = get_elem_dir(local_gen_path, isdas, "")
     rmtree(as_path, True)
     for service_type, type_key in TYPES_TO_KEYS.items():
         executable_name = TYPES_TO_EXECUTABLES[service_type]
         instances = tp[type_key].keys()
         for instance_name in instances:
             config = prep_supervisord_conf(tp[type_key][instance_name], executable_name,
-                                           service_type, instance_name, ia)
-            instance_path = get_elem_dir(local_gen_path, ia, instance_name)
-            write_certs_trc_keys(ia, as_obj, instance_path)
-            write_as_conf_and_path_policy(ia, as_obj, instance_path)
+                                           service_type, instance_name, isdas)
+            instance_path = get_elem_dir(local_gen_path, isdas, instance_name)
+            write_certs_trc_keys(isdas, as_obj, instance_path)
+            write_as_conf_and_path_policy(isdas, as_obj, instance_path)
             write_supervisord_config(config, instance_path)
             write_topology_file(tp, type_key, instance_path)
             write_zlog_file(service_type, instance_name, instance_path)
-    generate_sciond_config(TopoID(isdas), as_obj, tp)
-    generate_zk_config(tp, ia, local_gen_path, as_obj.simple_conf_mode)
+    generate_sciond_config(isdas, as_obj, tp)
+    generate_zk_config(tp, isdas, local_gen_path, as_obj.simple_conf_mode)
     generate_prometheus_config(tp, local_gen_path, as_path)
 
 
@@ -117,7 +119,7 @@ def _get_as_obj(isd_as):
     try:
         as_obj = AD.objects.get(isd_id=isd_as[0], as_id=isd_as[1])
     except AD.DoesNotExist:
-        logger.error("AS %s-%s was not found." % (isd_as[0], isd_as[1]))
+        logger.error("AS %s was not found." % isd_as)
         return
     return as_obj
 

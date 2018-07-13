@@ -126,6 +126,21 @@ def set_cloud_providers(config, topology_params):
         pass
 
 
+def get_zk_addr(topo_dict, input_addr):
+    for key in ['BeaconService', 'CertificateService', 'PathService']:
+        section = topo_dict[key]
+        for sec_id in section:
+            bind_addrs = section[sec_id].get('Bind')
+            if bind_addrs and bind_addrs[0]['Addr'] == input_addr:
+                return section[sec_id]['Public'][0]['Addr']
+    br_section = topo_dict['BorderRouters']
+    for br_id in br_section:
+        bind_addr = br_section[br_id]['InternalAddrs'][0].get('Bind')
+        if bind_addr and bind_addr[0]['Addr'] == input_addr:
+            return br_section[br_id]['InternalAddrs'][0]['Public'][0]['Addr']
+    return input_addr
+
+
 def get_section_addr(topo_dict, section_name):
     """
     Extract all the service types and their corresponding addresses.
@@ -137,7 +152,8 @@ def get_section_addr(topo_dict, section_name):
     ret_val = []
     if section_name == 'ZookeeperService':
         for sec_id in section:
-            ret_val.append((sec_id, section[sec_id]['Addr']))
+            zk_addr = get_zk_addr(topo_dict, section[sec_id]['Addr'])
+            ret_val.append((sec_id, zk_addr))
     elif section_name.endswith('Service'):
         for sec_id in section:
             for addr_idx in range(len(section[sec_id]['Public'])):
@@ -160,11 +176,10 @@ def generate_ansible_hostfile(topology_params, topo_dict, isd_as,
     # Write Ansible hostfile
     config = configparser.ConfigParser(allow_no_value=True, delimiters=' ',
                                        inline_comment_prefixes='#')
-    isd_id, as_id = ISD_AS(isd_as)
-    as_obj = get_object_or_404(AD, isd_id=isd_id, as_id=as_id)
-    host_file_path = os.path.join(WEB_ROOT, 'gen',
-                                  'ISD' + str(isd_id), 'AS' + str(as_id),
-                                  'host.{}-{}'.format(isd_id, as_id))
+    as_obj = get_object_or_404(AD, isd_id=isd_as[0], as_id=isd_as[1])
+    host_file_dir = os.path.join(WEB_ROOT, 'ansible_files')
+    host_file_path = os.path.join(host_file_dir,
+                                  'host.{}-{}'.format(isd_as.isd_str(), isd_as.as_file_fmt()))
     scion_nodes = []  # entries for the scion_node section
     for key, service_type in [('BeaconService', 'beacon_server'),
                               ('CertificateService', 'cert_server'),
@@ -179,17 +194,17 @@ def generate_ansible_hostfile(topology_params, topo_dict, isd_as,
         hostname_lookup = dict(zip(unique_addr, hostnames))
         if service_type.endswith('_server'):
             section_name = service_type + 's'
-            tags = 'isd=%s as=%s %s' % (isd_id, as_id,
+            tags = 'isd=%s as=%s %s' % (isd_as.isd_str(), isd_as.as_file_fmt(),
                                         TYPES_TO_SERVICES[service_type])
             fill_section(config, section_name, val, tags, hostname_lookup,
                          as_obj.simple_conf_mode)
         elif service_type == 'router':
             section_name = 'border_routers'
-            fill_router_section(config, section_name, val, isd_id, as_id,
+            fill_router_section(config, section_name, val, isd_as.isd_str(), isd_as.as_file_fmt(),
                                 as_obj.simple_conf_mode)
         elif service_type == 'zookeeper_service':
             section_name = 'zookeepers'
-            tags = 'isd=%s as=%s %s' % (isd_id, as_id,
+            tags = 'isd=%s as=%s %s' % (isd_as.isd_str(), isd_as.as_file_fmt(),
                                         TYPES_TO_SERVICES[service_type])
             fill_section(config, section_name, val, tags, hostname_lookup,
                          as_obj.simple_conf_mode)
@@ -209,5 +224,7 @@ def generate_ansible_hostfile(topology_params, topo_dict, isd_as,
     config.set('scion_nodes:vars', 'local_gen={}'.format(local_gen_path))
     config.set('scion_nodes:vars', 'scion_version={}'.format(commit_hash))
 
+    if not os.path.exists(host_file_dir):
+        os.makedirs(host_file_dir)
     with open(host_file_path, 'w') as configfile:
         config.write(configfile, space_around_delimiters=False)

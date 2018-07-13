@@ -274,7 +274,7 @@ function reloadRouterInterfaceSection(if_id, interface_obj, itemSelector) {
             case 'ISD_AS':
                 $(itemSelector + '#inputInterfaceRemoteName').attr('value', value);
                 break;
-            case 'LinkType':
+            case 'LinkTo':
                 var linkType = $(itemSelector + '#inputInterfaceType');
                 $(linkType).attr('value', value);
                 // we need to test if the AS is core, so that in case the link type is CORE, the option gets added
