@@ -82,6 +82,7 @@ class ISD(models.Model):
 class AD(models.Model):
     as_id = models.IntegerField(default=-1)
     isd = models.ForeignKey('ISD')
+    as_id_str = models.CharField(max_length=15, null=True)
     is_core_ad = models.BooleanField(default=False)
     simple_conf_mode = models.BooleanField(default=False)
     is_open = models.BooleanField(default=True)
@@ -104,7 +105,7 @@ class AD(models.Model):
     class Meta:
         unique_together = (("as_id", "isd"),)
         verbose_name = 'AD'
-        ordering = ['as_id']
+        ordering = ['as_id_str']
 
     def generate_topology_dict(self):
         """
@@ -170,7 +171,7 @@ class AD(models.Model):
                         )
                         br_addr_idx.append(br_addr_obj)
             for if_id, intf in router["Interfaces"].items():
-                isd_id, as_id = ISD_AS(intf["ISD_AS"])
+                isd_as = ISD_AS(intf["ISD_AS"])
                 br_addr_obj = br_addr_idx[intf['InternalAddrIdx']]
                 br_inft_obj, _ = BorderRouterInterface.objects.update_or_create(
                     addr=intf['Public']['Addr'],
@@ -181,9 +182,10 @@ class AD(models.Model):
                     interface_id=if_id,
                     bandwidth=intf['Bandwidth'],
                     mtu=intf['MTU'],
-                    neighbor_isd_id=isd_id,
-                    neighbor_as_id=as_id,
-                    neighbor_type=intf["LinkType"],
+                    neighbor_isd_id=isd_as[0],
+                    neighbor_as_id=isd_as[1],
+                    neighbor_as_id_str=isd_as.as_str(),
+                    neighbor_type=intf["LinkTo"],
                     router_addr=br_addr_obj,
                     ad=self,
                     bind_addr=intf['Bind']['Addr'] if 'Bind' in intf.keys() else None,
@@ -332,6 +334,7 @@ class BorderRouterInterface(models.Model):
     )
     neighbor_isd_id = models.IntegerField(null=True)
     neighbor_as_id = models.IntegerField(null=True)
+    neighbor_as_id_str = models.CharField(max_length=15, null=True)
     neighbor_type = models.CharField(max_length=10, choices=NEIGHBOR_TYPES)
     router_addr = models.ForeignKey(BorderRouterAddress)
     ad = models.ForeignKey(AD)

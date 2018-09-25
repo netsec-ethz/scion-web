@@ -23,7 +23,7 @@
       <div class="form-group">
         <label class="control-label col-sm-2" for="inputISD_AS">AS name: </label>
         <div class="controls">
-          <input type="text" id="inputISD_AS" name="inputISD_AS" placeholder="{{ isd_id|add:'-'|add:as_id }}" value="{{ isd_id }}-{{as_id }}" alt="readonly" readonly>
+          <input type="text" id="inputISD_AS" name="inputISD_AS" placeholder="{{ isd_id|add:'-'|add:as_id }}" value="{{ isd_id }}-{{ as_id_str }}" alt="readonly" readonly>
         </div>
       </div>
       <div class="control-group">
@@ -56,14 +56,14 @@
         <label class="control-label col-sm-2 server-name-label" for="input{{ type }}ServiceName">Service name: </label>
         <div class="form-group">
           <div class="controls">
-            <input class="server-name-input" type="text" id="input{{ type }}ServiceName" name="input{{ type }}ServiceName" value="{{ type|lower|slice:":1" }}s{{ isd_id }}-{{ as_id }}-1">
+            <input class="server-name-input" type="text" id="input{{ type }}ServiceName" name="input{{ type }}ServiceName" value="{{ type|lower|slice:":1" }}s{{ isd_id }}-{{ as_id_str }}-1">
           </div>
         </div>
 
         <label class="control-label col-sm-2 server-address-label" for="input{{ type }}ServiceAddress">Address & port: </label>
           <div class="controls">
             <input class="server-address-input" type="text" id="input{{ type }}ServiceAddress" name="input{{ type }}ServiceAddress" placeholder="127.0.0.{{ forloop.counter0|add:49 }}" value=""> :
-            <input class="server-port-input inputPort" id="input{{ type }}ServicePort" name="input{{ type }}ServicePort" placeholder="{{ forloop.counter0|add:1025 }}" type="text">
+            <input class="server-port-input inputPort" id="input{{ type }}ServicePort" name="input{{ type }}ServicePort" placeholder="{{ forloop.counter0|add:31041 }}" type="text">
             <label class="server-internal-address-label m-l-3" for="input{{ type }}ServiceInternalAddress">Internal address & port: </label>
             <input class="server-internal-address-input" id="input{{ type }}ServiceInternalAddress" name="input{{ type }}ServiceInternalAddress" type="text"> :
             <input class="server-internal-port-input inputPort" id="input{{ type }}ServiceInternalPort" name="input{{ type }}ServiceInternalPort" placeholder="" type="text">
@@ -87,14 +87,14 @@
           <div class="form-group">
             <label class="control-label col-sm-2 server-name-label" for="inputBorderRouterName">Server name: </label>
             <div class="controls">
-              <input class="server-name-input" type="text" id="inputBorderRouterName" name="inputBorderRouterName" value="br{{ isd_id }}-{{ as_id }}-1" placeholder="br{{ isd_id }}-{{ as_id }}-1">
+              <input class="server-name-input" type="text" id="inputBorderRouterName" name="inputBorderRouterName" value="br{{ isd_id }}-{{ as_id_str }}-1" placeholder="br{{ isd_id }}-{{ as_id_str }}-1">
             </div>
           </div>
           <div class="form-group">
             <label class="control-label col-sm-2 server-address-label" for="inputBorderRouterAddress">Address & port: </label>
             <div class="controls">
               <input class="server-address-input" type="text" id="inputBorderRouterAddress" name="inputBorderRouterAddress" placeholder="127.0.0.52/29"> :
-              <input class="server-port-input inputPort" id="inputBorderRouterPort" name="inputBorderRouterPort" placeholder="2048" type="text">
+              <input class="server-port-input inputPort" id="inputBorderRouterPort" name="inputBorderRouterPort" placeholder="31045" type="text">
               <label class="server-internal-address-label m-l-3" for="inputBorderRouterInternalAddress">Internal address & port: </label>
               <input class="server-internal-address-input" id="inputBorderRouterInternalAddress" name="inputBorderRouterInternalAddress" type="text"> :
               <input class="server-internal-port-input inputPort" id="inputBorderRouterInternalPort" name="inputBorderRouterInternalPort" placeholder="" type="text">
@@ -134,7 +134,7 @@
             <div class="form-group">
               <label class="control-label col-sm-2" for="inputInterfaceRemoteName">Name of the remote the link connects: </label>
               <div class="controls">
-                <input type="text" id="inputInterfaceRemoteName" name="inputInterfaceRemoteName" placeholder="1-19">
+                <input type="text" id="inputInterfaceRemoteName" name="inputInterfaceRemoteName" placeholder="17-ffaa:0:111a">
               </div>
             </div>
             <br/>
@@ -182,19 +182,19 @@
           <label class="control-label col-sm-2 server-name-label" for="inputZookeeperServerName">Server name: </label>
           <div class="form-group">
             <div class="controls">
-              <input class="server-name-input" type="text" id="inputZookeeperServerName" name="inputZookeeperServerName" value="zk{{ isd_id }}-{{ as_id }}-1">
+              <input class="server-name-input" type="text" id="inputZookeeperServerName" name="inputZookeeperServerName" value="zk{{ isd_id }}-{{ as_id_str }}-1">
             </div>
           </div>
           <label class="control-label col-sm-2 server-address-label" for="inputZookeeperServerAddress">Address: </label>
           <div class="controls">
             <input class="server-address-input" type="text" id="inputZookeeperServerAddress" name="inputZookeeperServerAddress" placeholder="127.0.0.1">
-            <button class="btn btn-success btn-add pull-right" type="button" onclick="toggleInput(this);">
-              <span class="glyphicon glyphicon-plus"></span>
-            </button>
           </div>
           <label class="control-label col-sm-2 server-port-label" for="inputZookeeperServerPort">Zookeeper port: </label>
           <div class="controls">
             <input class="server-port-input inputPort" type="text" id="inputZookeeperServerPort" name="inputZookeeperServerPort" placeholder="2181">
+            <button class="btn btn-success btn-add pull-right" type="button" onclick="toggleInput(this);">
+              <span class="glyphicon glyphicon-plus"></span>
+            </button>
           </div>
           <div class="hidden">
             <label class="server-internal-address-label m-l-3" for="inputZookeeperServerInternalAddress">Internal address & port: </label>
