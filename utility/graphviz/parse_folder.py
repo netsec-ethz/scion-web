@@ -17,8 +17,10 @@ import json
 import os
 
 # SCION
-from graphviz_lib import ASInformation
+from lib.util import write_file
 
+# GraphViz
+from graphviz_lib import ASInformation
 
 def get_topology_file(as_folder):
     """
@@ -79,7 +81,7 @@ def parse_isd_folder(isd_number, isd_folder):
     return isd_dict
 
 
-def parse_gen_folder(gen_folder):
+def parse_gen_folder(gen_folder, output_path):
     """
     Parses a gen folder to a nested dict
     example gen folder: ISD1/AS2/,AS1/;ISD2/AS1/,AS3/
@@ -96,8 +98,8 @@ def parse_gen_folder(gen_folder):
             isd_number = directory[3:]
             isd_dict = parse_isd_folder(isd_number, gen_folder + "/" + directory)
             gen_dict['ISD'][isd_number] = isd_dict
-    with open('output.cfg', 'w') as outfile:
-        json.dump(gen_dict, outfile)
+    write_file(os.path.join(output_path, 'output.json'),
+               json.dumps(gen_dict, sort_keys=True, indent=4))
     return gen_dict
 
 def parse_desc_labels(labels_file):
