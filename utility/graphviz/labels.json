@@ -8,7 +8,8 @@
 		"21": "Japan",
 		"22": "Taiwan",
 		"23": "Singapore",
-		"24": "Australia"
+		"24": "Australia",
+		"25": "China"
 	},
 	"AS": {
 		"16-ffaa:0:1001": "FR@AWS",
@@ -38,8 +39,8 @@
 		"18-ffaa:0:1205": "ISG Ottawa",
 		"19-ffaa:0:1301": "PUBC",
 		"19-ffaa:0:1302": "GEANT",
-		"19-ffaa:0:1303": "FR@Linode",
-		"19-ffaa:0:1304": "Magdeburg",
+		"19-ffaa:0:1303": "Magdeburg",
+		"19-ffaa:0:1304": "FR@Linode",
 		"19-ffaa:0:1305": "Darmstadt",
 		"20-ffaa:0:1401": "KISTI Daejeon",
 		"20-ffaa:0:1402": "KISTI Seoul",
@@ -49,6 +50,7 @@
 		"21-ffaa:0:1501": "KDDI",
 		"22-ffaa:0:1601": "NTU",
 		"23-ffaa:0:1701": "NUS",
-		"24-ffaa:0:1801": "OpenSystem"
+		"24-ffaa:0:1801": "OpenSystem",
+		"25-ffaa:0:1901": "THU"
 	}
 }

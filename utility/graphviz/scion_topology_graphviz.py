@@ -21,10 +21,11 @@ from graphviz import Graph
 from graphviz import Source
 
 # SCION
-from graphviz_lib import IsdGraph
-from parse_folder import parse_gen_folder, parse_desc_labels
 from lib.packet.scion_addr import ISD_AS
 
+# GraphViz
+from graphviz_lib import IsdGraph
+from parse_folder import parse_gen_folder, parse_desc_labels
 
 def draw_isd_graph(ISD, AS_list, ip_addresses, location_labels, labels):
     """
@@ -81,8 +82,7 @@ def draw_inter_ISD_edges(scion_graph, ISDs, node_labels):
 
 def draw_edges_for_as(ISDs, ISD, AS, ISDs_done, node_labels, scion_graph):
     AS_list = ISDs[ISD]["AS"]
-    ia = ISD_AS.from_values(ISD, AS)
-    id = ia.__str__()
+    ia = "%s-%s" % (ISD, AS)
     for interface in AS_list[AS]["inter_n"]:
         neighborISD = AS_list[AS]["inter_n"][interface]["n_isd"]
         neighborAS = AS_list[AS]["inter_n"][interface]["n_as"]
@@ -93,8 +93,7 @@ def draw_edges_for_as(ISDs, ISD, AS, ISDs_done, node_labels, scion_graph):
                 continue
             if neighborAS not in ISDs[neighborISD]["AS"]:
                 continue
-            n_ia = ISD_AS.from_values(neighborISD, neighborAS)
-            n_id = n_ia.__str__()
+            n_ia = "%s-%s" % (neighborISD, neighborAS)
             if node_labels:
                 color = get_color()
                 remote = get_remote_interface(ISDs[neighborISD]["AS"][neighborAS], AS_list[AS]["inter_n"][interface]["br-ip"], \
@@ -102,11 +101,11 @@ def draw_edges_for_as(ISDs, ISD, AS, ISDs_done, node_labels, scion_graph):
                 headlabel = '<<font color="' + color + '">' + str(remote[0]) + ": " + str(remote[1]) + '</font>>' 
                 taillabel = '<<font color="' + color + '">' + str(interface) + ': ' + \
                     str(AS_list[AS]["inter_n"][interface]["br-port"]) + '</font>>' 
-                scion_graph.edge(id, n_id, color=color,
+                scion_graph.edge(ia, n_ia, color=color,
                                      _attributes={'constraint': 'false', 'headlabel': headlabel,
                                                   'taillabel': taillabel})
             else:
-                scion_graph.edge(id, n_id, _attributes={'constraint': 'false'})
+                scion_graph.edge(ia, n_ia)
 
 def get_remote_interface(AS_dict, ip, port):
     """
@@ -149,7 +148,6 @@ def draw_SCION_topology(topology_dict, n_labels, l_labels, desc_labels):
     dot = draw_inter_ISD_edges(dot, ISDs, n_labels)
     return dot
 
-
 def main():
     """
     Draws the topology of the SCION network in a gen folder.
@@ -175,7 +173,7 @@ def main():
     args = parser.parse_args()
 
     if os.path.exists(args.gen_folder_path):
-        topo = parse_gen_folder(args.gen_folder_path)
+        topo = parse_gen_folder(args.gen_folder_path, args.output_path)
     else:
         print ('Error: No gen folder found at ' + args.gen_folder_path)
         return

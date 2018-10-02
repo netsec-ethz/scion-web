@@ -98,10 +98,10 @@ class ASInformation(object):
         inter_dict = {}
         border_routers = self.topology["BorderRouters"]
         for br in border_routers:
-            neighbor_IA = self.get_neighbor_IA_interface(br)['IA']
             if_id = self.get_neighbor_IA_interface(br)['interface']
-            n_isd = str(self.get_ISD_AS(neighbor_IA)._isd)
-            n_as = str(self.get_ISD_AS(neighbor_IA)._as)
+            n_IA = ISD_AS(self.get_neighbor_IA_interface(br)['IA'])
+            n_isd = n_IA.isd_str()
+            n_as = n_IA.as_file_fmt()
             if n_isd == self.ISD:
                 intra_isd_neighbor = \
                     {'n_as': n_as, 'br-ip': border_routers[br]["Interfaces"][if_id]["Public"]["Addr"], \
@@ -129,19 +129,10 @@ class ASInformation(object):
         # extract neighbor IA for this border router
         brs = self.topology["BorderRouters"]
         for item in brs[br]["Interfaces"]:
-            neighbor_IA = brs[br]["Interfaces"][item]["ISD_AS"]
+            neighbor_IA = ISD_AS(brs[br]["Interfaces"][item]["ISD_AS"]).file_fmt()
             interface = item
             break
         return {'IA': neighbor_IA, 'interface': interface}
-
-    def get_ISD_AS(self, IA):
-        """
-        :param: self, string IA ex: "1-4"
-        :return ISD_AS object
-        """
-        ia = ISD_AS(raw=IA)
-        ia._parse_str(IA)
-        return ia
 
 
 class IsdGraph(object):
@@ -209,8 +200,8 @@ class IsdGraph(object):
                 graphviz graph: graph to which we add the AS
                 dict labels: Dictionary containing labels for ISDs and ASes
         """
-        ia = ISD_AS.from_values(self.ISD, AS)
-        node_id = ia.__str__()
+        ia = ISD_AS("%s-%s" % (self.ISD, AS))
+        node_id = ia.file_fmt()
         node_name = self.AS_list[AS]["name"]
         node_name = ia.__str__() + node_name
         if core:
@@ -226,8 +217,8 @@ class IsdGraph(object):
                 graphviz graph: graph to which we add the AS
                 dict labels: Dictionary containing labels for ISDs and ASes
         """
-        ia = ISD_AS.from_values(self.ISD, AS)
-        node_id = ia.__str__()
+        ia = ISD_AS("%s-%s" % (self.ISD, AS))
+        node_id = ia.file_fmt()
         node_name = self.AS_list[AS]["name"]
         node_name = ia.__str__() + node_name
         if core:
@@ -235,7 +226,7 @@ class IsdGraph(object):
         if location_labels and ia.__str__() in labels['AS']:
             node_name += '\n' + labels['AS'][ia.__str__()]
         node_name += "\n"
-        node_attributes = self.NodeAttributes(self.AS_list[AS], AS, self.ISD)
+        node_attributes = self.NodeAttributes(self.AS_list[AS], ia)
         node_name = node_name + node_attributes.assemble_string()
         graph.node(node_id, node_name, _attributes={'shape': 'box'})
 
@@ -250,8 +241,7 @@ class IsdGraph(object):
         next_neighbors = []
         for AS in current_neighbors:
             self.ASes_done.append(AS)
-            ia = ISD_AS.from_values(self.ISD, AS)
-            id = ia.__str__()
+            ia = "%s-%s" % (self.ISD, AS)
             for interface in self.AS_list[AS]["intra_n"]:
                 neighbor = self.AS_list[AS]["intra_n"][interface]["n_as"]
                 # check if neighbor exists (referenced in interface but AS folder does not exist)
@@ -259,8 +249,7 @@ class IsdGraph(object):
                     continue
                 # check if interface connects to an AS we already handled
                 if neighbor not in self.ASes_done:
-                    n_ia = ISD_AS.from_values(self.ISD, neighbor)
-                    n_id = n_ia.__str__()
+                    n_ia = "%s-%s" % (self.ISD, neighbor)
                     if node_labels:
                         color = self.get_color()
                         remote = self.get_remote_interface(neighbor, self.AS_list[AS]["intra_n"][interface]["br-ip"], \
@@ -268,10 +257,10 @@ class IsdGraph(object):
                         headlabel = '<<font color="' + color + '">' + str(remote[0]) + ": " + str(remote[1]) + '</font>>' 
                         taillabel = '<<font color="' + color + '">' + str(interface) + ": " + \
                             str(self.AS_list[AS]["intra_n"][interface]["br-port"]) + '</font>>'
-                        graph.edge(id, n_id, color=color,
+                        graph.edge(id, n_ia, color=color,
                                    _attributes={'headlabel': headlabel, 'taillabel': taillabel})
                     else:
-                        graph.edge(id, n_id)
+                        graph.edge(ia, n_ia)
                     if neighbor not in current_neighbors:
                         if neighbor not in next_neighbors:
                             next_neighbors.append(neighbor)
@@ -299,15 +288,13 @@ class IsdGraph(object):
         """
         Class to collect all attributes of an AS (br,ps,bs ..)
         """
-        def __init__(self, AS, AS_number, ISD):
+        def __init__(self, AS, ia):
             # ex: info_dict[br] = ip address of br
             # ex: reverse_info_dict[1.3.3.3] = ['zk', 'bs']
             self.info_dict = {}
             self.rev_info_dict = {}
             self.AS = AS
-            self.AS_n = AS_number
-            self.ISD = ISD
-            self.IA = ISD_AS.from_values(self.ISD, self.AS_n)
+            self.IA = ia
             self.gather_non_br_info()
             self.gather_intra_br_info()
             self.gather_inter_br_info()
@@ -349,7 +336,7 @@ class IsdGraph(object):
 
             for interface in self.AS["inter_n"]:
                 interf_dict = self.AS["inter_n"][interface]
-                br_id = str(interface)
+                br_id = interface
                 self.info_dict["br" + self.IA.__str__() + "-" + br_id] = interf_dict["br-ip"]
                 if interf_dict["br-ip"] not in self.rev_info_dict:
                     self.rev_info_dict[interf_dict["br-ip"]] = \
