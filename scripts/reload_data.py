@@ -43,8 +43,6 @@ from lib.topology import Topology
 from ad_manager.models import AD, ISD
 from django.contrib.auth.models import User
 
-WEB_SCION_DIR = os.path.join(PROJECT_ROOT, 'web_scion')
-sys.path.insert(0, WEB_SCION_DIR)  # noqa
 django.setup()  # noqa
 
 GEN_PATH = os.path.join(PROJECT_ROOT, GEN_PATH)
