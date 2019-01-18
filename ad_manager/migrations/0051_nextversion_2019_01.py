@@ -30,13 +30,13 @@ def transform_topology(topo):
                         continue
                     addr = br['InternalAddrs'][0]['Public'][0]
                     InternalAddrs = {'IPv4':{'PublicOverlay':{'Addr': addr['Addr'], 'OverlayPort': addr['L4Port']}}}
-                    # TODO check that using InternalAddr + 1000 is not clashing with anything
-                    CtrlAddr = {'IPv4':{'Public':{'Addr': addr['Addr'], 'L4Port':addr['L4Port']+1000}}}
+                    # TODO check that using InternalAddr - 1000 is not clashing with anything
+                    CtrlAddr = {'IPv4':{'Public':{'Addr': addr['Addr'], 'L4Port':addr['L4Port']-1000}}}
                     # Bind addresses needed?
                     if 'Bind' in br['InternalAddrs'][0]:
                         addr = br['InternalAddrs'][0]['Bind'][0]
                         InternalAddrs['IPv4']['BindOverlay'] = {'Addr': addr['Addr'], 'OverlayPort': addr['L4Port']}
-                        CtrlAddr['IPv4']['Bind'] = {'Addr': addr['Addr'], 'L4Port': addr['L4Port']+1000}
+                        CtrlAddr['IPv4']['Bind'] = {'Addr': addr['Addr'], 'L4Port': addr['L4Port']-1000}
                     Interfaces = {}
                     for ifnum,iface in br['Interfaces'].items():
                         newiface = {'ISD_AS': iface['ISD_AS'],
