@@ -15,6 +15,7 @@
 # Stdlib
 import copy
 import logging
+import json
 
 # External packages
 import jsonfield
@@ -75,6 +76,27 @@ class ISD(models.Model):
         ordering = ['id']
 
 
+def transform_integer_ids_in_topology(topo):
+    """
+    Transform the topology so that keys that are string representations
+    of integers are replaced with their integers. E.g. "1" replaced with 1
+    These transformations are needed by the generating code of scionproto
+    because it expects some keys to be integers and not strings
+    """
+    assert isinstance(topo, dict), 'Topology should be a dictionary'
+    jsontopo = json.dumps(topo)
+    def jsonhook(d):
+        ret = {}
+        for k,v in d.items():
+            try:
+                k = int(k)
+            except:
+                pass
+            ret[k] = v
+        return ret
+    topo = json.loads(jsontopo, object_hook=jsonhook)
+    return topo
+
 class AD(models.Model):
     as_id = models.IntegerField(default=-1)
     isd = models.ForeignKey('ISD')
@@ -97,6 +119,13 @@ class AD(models.Model):
 
     # Use custom model manager with select_related()
     objects = SelectRelatedModelManager()
+
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        """Create an AD instance from the DB. Just transform the topology"""
+        ad = super().from_db(db, field_names, values)
+        ad.original_topology = transform_integer_ids_in_topology(ad.original_topology)
+        return ad
 
     class Meta:
         unique_together = (("as_id", "isd"),)
@@ -221,7 +250,6 @@ class AD(models.Model):
         from the topology dictionary.
         """
         assert isinstance(topology_dict, dict), 'Dictionary expected'
-
         if clear:
             self.borderrouter_set.all().delete()
             self.borderrouteraddress_set.all().delete()

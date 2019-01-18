@@ -78,7 +78,6 @@ from ad_manager.util.simple_config.simple_config import (
 )
 from ad_manager.util.hostfile_generator import generate_ansible_hostfile
 from ad_manager.util.local_config_generator import (
-    transform_topo_to_nextversion_2019_01,
     create_local_gen,
     WEB_ROOT,
 )
@@ -238,8 +237,10 @@ def save_all_topologies(request):
         for ad_obj in AD.objects.filter(isd_id=isd):
             isd_as = TopoID.from_values(ad_obj.isd_id, ad_obj.as_id)
             topo_dict = ad_obj.original_topology
+            # TODO: in the DB there is at least one entry (ffaa:0:1306) with {}
+            if len(topo_dict) == 0:
+                continue
             # write the topology file
-            topo_dict = transform_topo_to_nextversion_2019_01(topo_dict)
             create_local_gen(isd_as, topo_dict)
             addr_list = []
             cloud_engine_list = []

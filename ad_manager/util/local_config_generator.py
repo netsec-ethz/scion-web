@@ -22,9 +22,7 @@ import logging
 import os
 import yaml
 from shutil import rmtree
-import copy
-import json
-import base64
+
 
 # SCION
 from lib.defines import (
@@ -63,73 +61,6 @@ from sub.util.local_config_util import (
 WEB_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 logger = logging.getLogger("scion-web")
 
-def transform_topo_to_nextversion_2019_01(orig_topo):
-    topo = copy.deepcopy(orig_topo)
-    # transform the dictionary to support nextversion
-    for name, srv in topo.items():
-        if not isinstance(srv, dict):
-            continue
-        if isinstance(srv, dict) and len(srv) > 0:
-            if name == "PathService" or name == "BeaconService" or name == "CertificateService":
-                for k, v in list(srv.items()):
-                    if not isinstance(v, dict) or len(v) != 1 or next(iter(v)) != "Public" or \
-                    not isinstance(v["Public"], list) or len(v["Public"]) != 1 or not isinstance(v["Public"][0], dict) or \
-                    "L4Port" not in v["Public"][0].keys() or "Addr" not in v["Public"][0].keys():
-                        continue
-                    addr = v["Public"][0]
-                    srv[k] = {"Addrs": {"IPv4": {"Public": {"Addr": addr["Addr"], "L4Port": addr["L4Port"]}}}}
-            elif name == "BorderRouters":
-                for brname, br in list(srv.items()):
-                    if not isinstance(br, dict) or len(br) != 2 or "Interfaces" not in br.keys() or \
-                    "InternalAddrs" not in br.keys():
-                        continue
-                    addr = br["InternalAddrs"][0]["Public"][0]
-                    InternalAddrs = {"IPv4":{"PublicOverlay":{"Addr": addr["Addr"], "OverlayPort": addr["L4Port"]}}}
-                    # TODO check that using InternalAddr + 1000 is not clashing with anything
-                    CtrlAddr = {"IPv4":{"Public":{"Addr": addr["Addr"], "L4Port":addr["L4Port"]+1000}}}
-                    Interfaces = {}
-                    for ifnum,iface in br["Interfaces"].items():
-                        newiface = {"ISD_AS": iface["ISD_AS"],
-                            "LinkTo": iface["LinkTo"],
-                            "Overlay": iface["Overlay"],
-                            "Bandwidth": iface["Bandwidth"],
-                            "MTU": iface["MTU"],
-                            "PublicOverlay":{"Addr": iface["Public"]["Addr"], "OverlayPort": iface["Public"]["L4Port"]},
-                            "RemoteOverlay":{"Addr": iface["Remote"]["Addr"], "OverlayPort": iface["Remote"]["L4Port"]},
-                        }
-                        Interfaces[ifnum] = newiface
-                    srv[brname] = { "CtrlAddr": CtrlAddr,
-                        "InternalAddrs": InternalAddrs,
-                        "Interfaces": Interfaces,
-                    }
-    # lastly these transformations are needed by the generating code of scionproto
-    # because it expects some keys to be integers and not strings. We save and load
-    # again the dictionary with an object hook to convert all numeric keys to integers:
-    jsontopo = json.dumps(topo)
-    def jsonhook(d):
-        ret = {}
-        for k,v in d.items():
-            try:
-                k = int(k)
-            except:
-                pass
-            ret[k] = v
-        return ret
-    topo = json.loads(jsontopo, object_hook=jsonhook)
-    return topo
-
-def transform_as_obj_to_nextversion_2019_01(orig_as_obj):
-    # the stored object is not apt for the next version as it has one
-    # missing key, a renamed one, and also a superfluous one. Fix it:
-    as_obj = copy.deepcopy(orig_as_obj)
-    # keys
-    keys = as_obj.keys
-    keys["master0_as_key"] = keys["master_as_key"]
-    keys["master1_as_key"] = base64.b64encode(os.urandom(16)).decode('utf-8')
-    del keys["master_as_key"]
-    del keys["sig_key_raw"]
-    # core keys:
-    return as_obj
 
 def create_local_gen(isdas, tp):
     """
@@ -162,7 +93,8 @@ def create_local_gen(isdas, tp):
     generate_sciond_config(isdas, as_obj, tp)
     generate_zk_docker_config(tp, isdas, local_gen_path, as_obj.simple_conf_mode)
     write_overlay_config(local_gen_path)
-    generate_prom_config(isdas, tp, local_gen_path)
+    # TODO : confirm that the gen/prometheus.yml and gen/ISDXX/ASffaa_0_XXXX/prometheus.yml are not necessary
+    # generate_prom_config(isdas, tp, local_gen_path)
 
 
 def remove_incomplete_router_info(topo):
@@ -195,7 +127,6 @@ def _get_as_obj(isd_as):
     except AD.DoesNotExist:
         logger.error("AS %s was not found." % isd_as)
         return
-    as_obj = transform_as_obj_to_nextversion_2019_01(as_obj)
     return as_obj
 
 
