@@ -23,12 +23,8 @@ from django.core.urlresolvers import reverse
 from django.db import models, IntegrityError
 
 # SCION
-from lib.defines import (
-    BEACON_SERVICE,
-    CERTIFICATE_SERVICE,
-    DEFAULT_MTU,
-    PATH_SERVICE,
-)
+from lib.types import ServiceType
+from lib.defines import DEFAULT_MTU
 from lib.packet.scion_addr import ISD_AS
 
 # SCION-WEB
@@ -372,7 +368,7 @@ class SCIONWebElement(models.Model):
 
 
 class BeaconServerWeb(SCIONWebElement):
-    prefix = BEACON_SERVICE
+    prefix = ServiceType.BS
 
     class Meta:
         verbose_name = 'Beacon server'
@@ -380,7 +376,7 @@ class BeaconServerWeb(SCIONWebElement):
 
 
 class CertificateServerWeb(SCIONWebElement):
-    prefix = CERTIFICATE_SERVICE
+    prefix = ServiceType.CS
 
     class Meta:
         verbose_name = 'Certificate server'
@@ -388,7 +384,7 @@ class CertificateServerWeb(SCIONWebElement):
 
 
 class PathServerWeb(SCIONWebElement):
-    prefix = PATH_SERVICE
+    prefix = ServiceType.PS
 
     class Meta:
         verbose_name = 'Path server'

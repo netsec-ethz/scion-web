@@ -22,6 +22,9 @@ import logging
 import os
 import yaml
 from shutil import rmtree
+import copy
+import json
+import base64
 
 # SCION
 from lib.defines import (
@@ -30,7 +33,8 @@ from lib.defines import (
 )
 from lib.packet.scion_addr import ISD_AS
 from lib.util import write_file
-from topology.generator import PrometheusGenerator, TopoID
+from topology.common import TopoID
+from topology.prometheus import PrometheusGenerator
 
 # SCION-WEB
 from ad_manager.models import AD
@@ -39,7 +43,7 @@ from ad_manager.util.simple_config.simple_config import check_simple_conf_mode
 
 # SCION-Utilities
 from sub.util.local_config_util import (
-    generate_zk_config,
+    generate_zk_docker_config,
     generate_sciond_config,
     get_elem_dir,
     prep_supervisord_conf,
@@ -47,9 +51,11 @@ from sub.util.local_config_util import (
     write_certs_trc_keys,
     write_dispatcher_config,
     write_overlay_config,
+    write_toml_files,
     write_supervisord_config,
     write_topology_file,
     write_zlog_file,
+    generate_prom_config,
     TYPES_TO_EXECUTABLES,
     TYPES_TO_KEYS,
 )
@@ -57,6 +63,73 @@ from sub.util.local_config_util import (
 WEB_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 logger = logging.getLogger("scion-web")
 
+def transform_topo_to_nextversion_2019_01(orig_topo):
+    topo = copy.deepcopy(orig_topo)
+    # transform the dictionary to support nextversion
+    for name, srv in topo.items():
+        if not isinstance(srv, dict):
+            continue
+        if isinstance(srv, dict) and len(srv) > 0:
+            if name == "PathService" or name == "BeaconService" or name == "CertificateService":
+                for k, v in list(srv.items()):
+                    if not isinstance(v, dict) or len(v) != 1 or next(iter(v)) != "Public" or \
+                    not isinstance(v["Public"], list) or len(v["Public"]) != 1 or not isinstance(v["Public"][0], dict) or \
+                    "L4Port" not in v["Public"][0].keys() or "Addr" not in v["Public"][0].keys():
+                        continue
+                    addr = v["Public"][0]
+                    srv[k] = {"Addrs": {"IPv4": {"Public": {"Addr": addr["Addr"], "L4Port": addr["L4Port"]}}}}
+            elif name == "BorderRouters":
+                for brname, br in list(srv.items()):
+                    if not isinstance(br, dict) or len(br) != 2 or "Interfaces" not in br.keys() or \
+                    "InternalAddrs" not in br.keys():
+                        continue
+                    addr = br["InternalAddrs"][0]["Public"][0]
+                    InternalAddrs = {"IPv4":{"PublicOverlay":{"Addr": addr["Addr"], "OverlayPort": addr["L4Port"]}}}
+                    # TODO check that using InternalAddr + 1000 is not clashing with anything
+                    CtrlAddr = {"IPv4":{"Public":{"Addr": addr["Addr"], "L4Port":addr["L4Port"]+1000}}}
+                    Interfaces = {}
+                    for ifnum,iface in br["Interfaces"].items():
+                        newiface = {"ISD_AS": iface["ISD_AS"],
+                            "LinkTo": iface["LinkTo"],
+                            "Overlay": iface["Overlay"],
+                            "Bandwidth": iface["Bandwidth"],
+                            "MTU": iface["MTU"],
+                            "PublicOverlay":{"Addr": iface["Public"]["Addr"], "OverlayPort": iface["Public"]["L4Port"]},
+                            "RemoteOverlay":{"Addr": iface["Remote"]["Addr"], "OverlayPort": iface["Remote"]["L4Port"]},
+                        }
+                        Interfaces[ifnum] = newiface
+                    srv[brname] = { "CtrlAddr": CtrlAddr,
+                        "InternalAddrs": InternalAddrs,
+                        "Interfaces": Interfaces,
+                    }
+    # lastly these transformations are needed by the generating code of scionproto
+    # because it expects some keys to be integers and not strings. We save and load
+    # again the dictionary with an object hook to convert all numeric keys to integers:
+    jsontopo = json.dumps(topo)
+    def jsonhook(d):
+        ret = {}
+        for k,v in d.items():
+            try:
+                k = int(k)
+            except:
+                pass
+            ret[k] = v
+        return ret
+    topo = json.loads(jsontopo, object_hook=jsonhook)
+    return topo
+
+def transform_as_obj_to_nextversion_2019_01(orig_as_obj):
+    # the stored object is not apt for the next version as it has one
+    # missing key, a renamed one, and also a superfluous one. Fix it:
+    as_obj = copy.deepcopy(orig_as_obj)
+    # keys
+    keys = as_obj.keys
+    keys["master0_as_key"] = keys["master_as_key"]
+    keys["master1_as_key"] = base64.b64encode(os.urandom(16)).decode('utf-8')
+    del keys["master_as_key"]
+    del keys["sig_key_raw"]
+    # core keys:
+    return as_obj
 
 def create_local_gen(isdas, tp):
     """
@@ -65,15 +138,15 @@ def create_local_gen(isdas, tp):
     :param str isdas: ISD-AS as a string
     :param dict tp: the topology parameter file as a dict of dicts
     """
-    assert isinstance(isdas, ISD_AS), type(isdas)
+    assert isinstance(isdas, TopoID), type(isdas)
     as_obj = _get_as_obj(isdas)
     check_simple_conf_mode(tp, isdas[0], isdas[1])
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
     write_dispatcher_config(local_gen_path)
-    write_overlay_config(local_gen_path)
     as_path = 'ISD%s/AS%s/' % (isdas[0], isdas.as_file_fmt())
     as_path = get_elem_dir(local_gen_path, isdas, "")
     rmtree(as_path, True)
+    write_toml_files(tp, isdas)
     for service_type, type_key in TYPES_TO_KEYS.items():
         executable_name = TYPES_TO_EXECUTABLES[service_type]
         instances = tp[type_key].keys()
@@ -87,8 +160,9 @@ def create_local_gen(isdas, tp):
             write_topology_file(tp, type_key, instance_path)
             write_zlog_file(service_type, instance_name, instance_path)
     generate_sciond_config(isdas, as_obj, tp)
-    generate_zk_config(tp, isdas, local_gen_path, as_obj.simple_conf_mode)
-    generate_prometheus_config(tp, local_gen_path, as_path)
+    generate_zk_docker_config(tp, isdas, local_gen_path, as_obj.simple_conf_mode)
+    write_overlay_config(local_gen_path)
+    generate_prom_config(isdas, tp, local_gen_path)
 
 
 def remove_incomplete_router_info(topo):
@@ -121,30 +195,8 @@ def _get_as_obj(isd_as):
     except AD.DoesNotExist:
         logger.error("AS %s was not found." % isd_as)
         return
+    as_obj = transform_as_obj_to_nextversion_2019_01(as_obj)
     return as_obj
-
-
-def generate_prometheus_config(tp, local_gen_path, as_path):
-    """
-    Writes Prometheus configuration files for the given AS.
-    :param dict tp: the topology of the AS provided as a dict of dicts.
-    :param str local_gen_path: The gen path of scion-web.
-    :param str as_path: The path of the given AS.
-    """
-    elem_dict = defaultdict(list)
-    for br_id, br_elem in tp['BorderRouters'].items():
-        for int_addrs in br_elem['InternalAddrs']:
-            addr_type = 'Bind' if 'Bind' in int_addrs.keys() else 'Public'
-            for addr_info in int_addrs[addr_type]:
-                prom_addr = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'] + PROM_PORT_OFFSET)
-                elem_dict['BorderRouters'].append(prom_addr)
-    for svc_type in ['BeaconService', 'PathService', 'CertificateService']:
-        for elem_id, elem in tp[svc_type].items():
-            addr_type = 'Bind' if 'Bind' in elem.keys() else 'Public'
-            for addr_info in elem[addr_type]:
-                prom_addr = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'] + PROM_PORT_OFFSET)
-                elem_dict[svc_type].append(prom_addr)
-    _write_prometheus_config_files(local_gen_path, as_path, elem_dict)
 
 
 def _write_prometheus_config_files(local_gen_path, as_path, elem_dict):

@@ -51,10 +51,10 @@ from lib.crypto.certificate import Certificate
 from lib.crypto.certificate_chain import CertificateChain
 from lib.crypto.trc import TRC
 from lib.defines import DEFAULT_MTU
-from lib.packet.scion_addr import ISD_AS
+from topology.common import TopoID
 from lib.types import LinkType
 from lib.util import iso_timestamp
-from topology.generator import INITIAL_CERT_VERSION, INITIAL_TRC_VERSION
+from topology.cert import INITIAL_TRC_VERSION, INITIAL_CERT_VERSION
 
 # SCION-WEB
 from ad_manager.forms import (
@@ -78,6 +78,7 @@ from ad_manager.util.simple_config.simple_config import (
 )
 from ad_manager.util.hostfile_generator import generate_ansible_hostfile
 from ad_manager.util.local_config_generator import (
+    transform_topo_to_nextversion_2019_01,
     create_local_gen,
     WEB_ROOT,
 )
@@ -198,7 +199,7 @@ def handle_join_reply(request, reply, jr_id):
         # get the join request object which belong to this request
         # so that we can save the keys into the AS table.
         jr = JoinRequest.objects.get(id=jr_id)
-        new_as = ISD_AS(join_reply['JoiningIA'])
+        new_as = TopoID(join_reply['JoiningIA'])
         master_as_key = base64.b64encode(Random.new().read(16))
         isd, _ = ISD.objects.get_or_create(id=int(new_as[0]))
         AD.objects.update_or_create(
@@ -235,9 +236,10 @@ def save_all_topologies(request):
     isd_list = topology_params.getlist('ISD')
     for isd in isd_list:
         for ad_obj in AD.objects.filter(isd_id=isd):
-            isd_as = ISD_AS.from_values(ad_obj.isd_id, ad_obj.as_id)
+            isd_as = TopoID.from_values(ad_obj.isd_id, ad_obj.as_id)
             topo_dict = ad_obj.original_topology
             # write the topology file
+            topo_dict = transform_topo_to_nextversion_2019_01(topo_dict)
             create_local_gen(isd_as, topo_dict)
             addr_list = []
             cloud_engine_list = []
@@ -286,7 +288,7 @@ def send_join_reply(request, status, isd_as, request_id):
     """
     current_page = request.META.get('HTTP_REFERER')
     coord = get_object_or_404(OrganisationAdmin, user_id=request.user.id)
-    own_isdas = ISD_AS(isd_as)
+    own_isdas = TopoID(isd_as)
     own_as_obj = AD.objects.get(as_id=own_isdas[1], isd=own_isdas[0])
     if not own_as_obj.is_core_ad:
         logging.error("%s has to be a core AS to send join reply" % own_as_obj)
@@ -321,7 +323,7 @@ def prep_approved_join_reply(request, join_rep_dict, own_isdas, own_as_obj):
     sig_pub_key = from_b64(request.POST['sig_pub_key'])
     enc_pub_key = from_b64(request.POST['enc_pub_key'])
     signing_as_sig_priv_key = from_b64(own_as_obj.sig_priv_key)
-    joining_ia = ISD_AS.from_values(own_isdas[0], joining_as)
+    joining_ia = TopoID.from_values(own_isdas[0], joining_as)
     if is_core.lower() == "true":
         validity = Certificate.CORE_AS_VALIDITY_PERIOD
         comment = "Core AS Certificate"
@@ -476,7 +478,7 @@ def prep_con_req_dict(con_req, isd_id, as_id):
     :returns: Connection request as a dictionary.
     :rtype: dict
     """
-    isd_as = ISD_AS.from_values(isd_id, as_id)
+    isd_as = TopoID.from_values(isd_id, as_id)
     as_obj = get_object_or_404(AD, isd_id=isd_id, as_id=as_id)
     cert_chain = CertificateChain.from_raw(as_obj.certificate)
     con_req_dict = {
@@ -546,7 +548,7 @@ def connection_request_action(request, con_req_id):
     :rtype: HttpResponse
     """
     posted_data = request.POST
-    respond_ia = ISD_AS(posted_data['RespondIA'])
+    respond_ia = TopoID(posted_data['RespondIA'])
     respond_as = get_object_or_404(AD, isd=respond_ia[0],
                                    as_id=respond_ia[1])
     _check_user_permissions(request, respond_as)
@@ -728,7 +730,7 @@ def add_to_topology(request):
                      con_reply['RequestId'])
         return HttpResponseNotFound("Router for connection reply with ID %s "
                                     "not found." % con_reply['RequestId'])
-    isd_id, as_id = ISD_AS(con_reply['RequestIA'])
+    isd_id, as_id = TopoID(con_reply['RequestIA'])
     try:
         req_ia = AD.objects.get(isd_id=isd_id, as_id=as_id)
     except AD.DoesNotExist:
@@ -1030,7 +1032,7 @@ def generate_topology(request):
                         None)  # remove csrf entry, as we don't need it here
     topo_dict = {}
     tp = topology_params
-    isd_as = ISD_AS(tp['inputISD_AS'])
+    isd_as = TopoID(tp['inputISD_AS'])
     topo_dict['Core'] = True if (tp['inputIsCore'] == 'on') else False
 
     service_types = ['BeaconService', 'CertificateService', 'PathService']
