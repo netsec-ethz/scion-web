@@ -6,12 +6,14 @@ SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 BASEDIR=$(realpath "${SCRIPT_DIR}/..")
 ONLYBUILD=0
 DEVEL=0
-usage="$(basename $0) [-h] [-d]
+usage="$(basename $0) [-h] [-b] [-d]
 
 where:
-    -h    This help
-    -b    Only build the image, don't run it
-    -d    Development mode: don't build and also mount directory directly"
+    -h    This help.
+    -b    Build the image and exit. You need to build the image before running it.
+    -d    Run in development mode: mount directory directly.
+
+With no flags, it runs the default mode."
 
 build_image() {
   cd $SCRIPT_DIR/..
@@ -49,14 +51,16 @@ if ! ( [ $(id -u) -eq 0 ] || groups | grep -q "\<docker\>"; ); then
     exit 1
 fi
 
-if [ $DEVEL -eq 1 ]; then
-  run_image_devel
+if [ $ONLYBUILD -eq 1 ]; then
+  echo "Building docker image"
+  build_image
   exit 0
 fi
 
-build_image
-if [ $ONLYBUILD -eq 1]; then
-  exit 0
+if [ $DEVEL -eq 1 ]; then
+  echo "Running in development mode"
+  run_image_devel
 else
+  echo "Running in normal mode"
   run_image
 fi
