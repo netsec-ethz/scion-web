@@ -41,7 +41,6 @@ from ad_manager.util.simple_config.simple_config import check_simple_conf_mode
 
 # SCION-Utilities
 from sub.util.local_config_util import (
-    generate_zk_docker_config,
     generate_sciond_config,
     get_elem_dir,
     prep_supervisord_conf,
@@ -91,7 +90,6 @@ def create_local_gen(isdas, tp):
             write_topology_file(tp, type_key, instance_path)
             write_zlog_file(service_type, instance_name, instance_path)
     generate_sciond_config(isdas, as_obj, tp)
-    generate_zk_docker_config(tp, isdas, local_gen_path, as_obj.simple_conf_mode)
     write_overlay_config(local_gen_path)
     # TODO : confirm that the gen/prometheus.yml and gen/ISDXX/ASffaa_0_XXXX/prometheus.yml are not necessary
     # generate_prom_config(isdas, tp, local_gen_path)
