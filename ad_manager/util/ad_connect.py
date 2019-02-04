@@ -117,6 +117,7 @@ def create_next_router(topo_dict, ip_gen):
     Creates a test router dictionary with generated IP addresses
     and test values.
     """
+    raise NotImplementedError('Unused method')
     router_item = find_last_router(topo_dict)
     if router_item:
         _, last_router = router_item

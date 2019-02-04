@@ -23,6 +23,7 @@ import os
 import yaml
 from shutil import rmtree
 
+
 # SCION
 from lib.defines import (
     PROJECT_ROOT,
@@ -30,7 +31,8 @@ from lib.defines import (
 )
 from lib.packet.scion_addr import ISD_AS
 from lib.util import write_file
-from topology.generator import PrometheusGenerator, TopoID
+from topology.common import TopoID
+from topology.prometheus import PrometheusGenerator
 
 # SCION-WEB
 from ad_manager.models import AD
@@ -39,7 +41,6 @@ from ad_manager.util.simple_config.simple_config import check_simple_conf_mode
 
 # SCION-Utilities
 from sub.util.local_config_util import (
-    generate_zk_config,
     generate_sciond_config,
     get_elem_dir,
     prep_supervisord_conf,
@@ -47,9 +48,11 @@ from sub.util.local_config_util import (
     write_certs_trc_keys,
     write_dispatcher_config,
     write_overlay_config,
+    write_toml_files,
     write_supervisord_config,
     write_topology_file,
     write_zlog_file,
+    generate_prom_config,
     TYPES_TO_EXECUTABLES,
     TYPES_TO_KEYS,
 )
@@ -65,15 +68,15 @@ def create_local_gen(isdas, tp):
     :param str isdas: ISD-AS as a string
     :param dict tp: the topology parameter file as a dict of dicts
     """
-    assert isinstance(isdas, ISD_AS), type(isdas)
+    assert isinstance(isdas, TopoID), type(isdas)
     as_obj = _get_as_obj(isdas)
     check_simple_conf_mode(tp, isdas[0], isdas[1])
     local_gen_path = os.path.join(WEB_ROOT, 'gen')
     write_dispatcher_config(local_gen_path)
-    write_overlay_config(local_gen_path)
     as_path = 'ISD%s/AS%s/' % (isdas[0], isdas.as_file_fmt())
     as_path = get_elem_dir(local_gen_path, isdas, "")
     rmtree(as_path, True)
+    write_toml_files(tp, isdas)
     for service_type, type_key in TYPES_TO_KEYS.items():
         executable_name = TYPES_TO_EXECUTABLES[service_type]
         instances = tp[type_key].keys()
@@ -87,8 +90,9 @@ def create_local_gen(isdas, tp):
             write_topology_file(tp, type_key, instance_path)
             write_zlog_file(service_type, instance_name, instance_path)
     generate_sciond_config(isdas, as_obj, tp)
-    generate_zk_config(tp, isdas, local_gen_path, as_obj.simple_conf_mode)
-    generate_prometheus_config(tp, local_gen_path, as_path)
+    write_overlay_config(local_gen_path)
+    # TODO : confirm that the gen/prometheus.yml and gen/ISDXX/ASffaa_0_XXXX/prometheus.yml are not necessary
+    # generate_prom_config(isdas, tp, local_gen_path)
 
 
 def remove_incomplete_router_info(topo):
@@ -122,29 +126,6 @@ def _get_as_obj(isd_as):
         logger.error("AS %s was not found." % isd_as)
         return
     return as_obj
-
-
-def generate_prometheus_config(tp, local_gen_path, as_path):
-    """
-    Writes Prometheus configuration files for the given AS.
-    :param dict tp: the topology of the AS provided as a dict of dicts.
-    :param str local_gen_path: The gen path of scion-web.
-    :param str as_path: The path of the given AS.
-    """
-    elem_dict = defaultdict(list)
-    for br_id, br_elem in tp['BorderRouters'].items():
-        for int_addrs in br_elem['InternalAddrs']:
-            addr_type = 'Bind' if 'Bind' in int_addrs.keys() else 'Public'
-            for addr_info in int_addrs[addr_type]:
-                prom_addr = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'] + PROM_PORT_OFFSET)
-                elem_dict['BorderRouters'].append(prom_addr)
-    for svc_type in ['BeaconService', 'PathService', 'CertificateService']:
-        for elem_id, elem in tp[svc_type].items():
-            addr_type = 'Bind' if 'Bind' in elem.keys() else 'Public'
-            for addr_info in elem[addr_type]:
-                prom_addr = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'] + PROM_PORT_OFFSET)
-                elem_dict[svc_type].append(prom_addr)
-    _write_prometheus_config_files(local_gen_path, as_path, elem_dict)
 
 
 def _write_prometheus_config_files(local_gen_path, as_path, elem_dict):

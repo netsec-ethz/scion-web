@@ -51,10 +51,10 @@ from lib.crypto.certificate import Certificate
 from lib.crypto.certificate_chain import CertificateChain
 from lib.crypto.trc import TRC
 from lib.defines import DEFAULT_MTU
-from lib.packet.scion_addr import ISD_AS
+from topology.common import TopoID
 from lib.types import LinkType
 from lib.util import iso_timestamp
-from topology.generator import INITIAL_CERT_VERSION, INITIAL_TRC_VERSION
+from topology.cert import INITIAL_TRC_VERSION, INITIAL_CERT_VERSION
 
 # SCION-WEB
 from ad_manager.forms import (
@@ -198,7 +198,7 @@ def handle_join_reply(request, reply, jr_id):
         # get the join request object which belong to this request
         # so that we can save the keys into the AS table.
         jr = JoinRequest.objects.get(id=jr_id)
-        new_as = ISD_AS(join_reply['JoiningIA'])
+        new_as = TopoID(join_reply['JoiningIA'])
         master_as_key = base64.b64encode(Random.new().read(16))
         isd, _ = ISD.objects.get_or_create(id=int(new_as[0]))
         AD.objects.update_or_create(
@@ -235,8 +235,11 @@ def save_all_topologies(request):
     isd_list = topology_params.getlist('ISD')
     for isd in isd_list:
         for ad_obj in AD.objects.filter(isd_id=isd):
-            isd_as = ISD_AS.from_values(ad_obj.isd_id, ad_obj.as_id)
+            isd_as = TopoID.from_values(ad_obj.isd_id, ad_obj.as_id)
             topo_dict = ad_obj.original_topology
+            # TODO: in the DB there is at least one entry (ffaa:0:1306) with {}
+            if len(topo_dict) == 0:
+                continue
             # write the topology file
             create_local_gen(isd_as, topo_dict)
             addr_list = []
@@ -286,7 +289,7 @@ def send_join_reply(request, status, isd_as, request_id):
     """
     current_page = request.META.get('HTTP_REFERER')
     coord = get_object_or_404(OrganisationAdmin, user_id=request.user.id)
-    own_isdas = ISD_AS(isd_as)
+    own_isdas = TopoID(isd_as)
     own_as_obj = AD.objects.get(as_id=own_isdas[1], isd=own_isdas[0])
     if not own_as_obj.is_core_ad:
         logging.error("%s has to be a core AS to send join reply" % own_as_obj)
@@ -321,7 +324,7 @@ def prep_approved_join_reply(request, join_rep_dict, own_isdas, own_as_obj):
     sig_pub_key = from_b64(request.POST['sig_pub_key'])
     enc_pub_key = from_b64(request.POST['enc_pub_key'])
     signing_as_sig_priv_key = from_b64(own_as_obj.sig_priv_key)
-    joining_ia = ISD_AS.from_values(own_isdas[0], joining_as)
+    joining_ia = TopoID.from_values(own_isdas[0], joining_as)
     if is_core.lower() == "true":
         validity = Certificate.CORE_AS_VALIDITY_PERIOD
         comment = "Core AS Certificate"
@@ -476,7 +479,7 @@ def prep_con_req_dict(con_req, isd_id, as_id):
     :returns: Connection request as a dictionary.
     :rtype: dict
     """
-    isd_as = ISD_AS.from_values(isd_id, as_id)
+    isd_as = TopoID.from_values(isd_id, as_id)
     as_obj = get_object_or_404(AD, isd_id=isd_id, as_id=as_id)
     cert_chain = CertificateChain.from_raw(as_obj.certificate)
     con_req_dict = {
@@ -546,7 +549,7 @@ def connection_request_action(request, con_req_id):
     :rtype: HttpResponse
     """
     posted_data = request.POST
-    respond_ia = ISD_AS(posted_data['RespondIA'])
+    respond_ia = TopoID(posted_data['RespondIA'])
     respond_as = get_object_or_404(AD, isd=respond_ia[0],
                                    as_id=respond_ia[1])
     _check_user_permissions(request, respond_as)
@@ -624,8 +627,8 @@ class ADDetailView(DetailView):
         context['interface_addrs'] = ad.borderrouterinterface_set.select_related()
 
         context['management_interface_ip'] = get_own_local_ip()
-        context['reloaded_topology'] = ad.original_topology
         flat_string = json.dumps(ad.original_topology, sort_keys=True)
+        context['reloaded_topology'] = json.loads(flat_string)
         # hash for non cryptographic purpose (state comparison for user warning)
         context['reloaded_topology_hash'] = \
             hashlib.md5(flat_string.encode('utf-8')).hexdigest()
@@ -728,7 +731,7 @@ def add_to_topology(request):
                      con_reply['RequestId'])
         return HttpResponseNotFound("Router for connection reply with ID %s "
                                     "not found." % con_reply['RequestId'])
-    isd_id, as_id = ISD_AS(con_reply['RequestIA'])
+    isd_id, as_id = TopoID(con_reply['RequestIA'])
     try:
         req_ia = AD.objects.get(isd_id=isd_id, as_id=as_id)
     except AD.DoesNotExist:
@@ -929,16 +932,20 @@ def name_entry_dict(name_l, address_l, port_l, addr_int_l, port_int_l):
             continue  # don't include empty entries
         inst_name = name_l[i].replace(":", "_")
         ret_dict[inst_name] = {
-            'Public': [{
-                'Addr': address_l[i],
-                'L4Port': st_int(port_l[i], SCION_SUGGESTED_PORT),
-            }]
+            'Addrs': {
+                'IPv4':{
+                    'Public': {
+                        'Addr': address_l[i],
+                        'L4Port': st_int(port_l[i], SCION_SUGGESTED_PORT),
+                    }
+                }
+            }
         }
         if addr_int_l[i]:
-            ret_dict[inst_name]['Bind'] = [{
+            ret_dict[inst_name]['Addrs']['IPv4']['Bind'] = {
                 'Addr': addr_int_l[i],
                 'L4Port': st_int(port_int_l[i], None),
-            }]
+            }
     return ret_dict
 
 
@@ -963,6 +970,8 @@ def name_entry_dict_router(tp):
     port_list = tp.getlist('inputBorderRouterPort')
     internal_address_list = tp.getlist('inputBorderRouterInternalAddress')
     internal_port_list = tp.getlist('inputBorderRouterInternalPort')
+    control_address_list = tp.getlist('inputBorderRouterControlAddress')
+    control_port_list = tp.getlist('inputBorderRouterControlPort')
     interface_list = tp.getlist('inputInterfaceAddr')
     bandwidth_list = tp.getlist('inputInterfaceBandwidth')
     if_id_list = tp.getlist('inputInterfaceIFID')
@@ -978,46 +987,57 @@ def name_entry_dict_router(tp):
             continue  # don't include empty entries
         inst_name = name_list[i].replace(":", "_")
         ret_dict[inst_name] = {
-            'InternalAddrs': [{
-                'Public': [{
-                    'Addr': address_list[i],
-                    'L4Port': st_int(port_list[i], None),
-                }],
-            }],
+            'CtrlAddr': {
+                'IPv4': {
+                    'Public': {
+                        'Addr:': address_list[i],
+                        'L4Port': st_int(control_port_list[i], None),
+                    }
+                }
+            },
+            'InternalAddrs': {
+                'IPv4':{
+                    'PublicOverlay': {
+                        'Addr': address_list[i],
+                        'OverlayPort': st_int(port_list[i], None),
+                    }
+                }
+            },
             'Interfaces': {
                 st_int(if_id_list[i], None): {
                     'Bandwidth': st_int(bandwidth_list[i], None),
                     'ISD_AS': remote_name_list[i],
                     'LinkTo': interface_type_list[i],
-                    # TODO(jonghoonkwon): Initial version of scion web assumes that
-                    # we have only one internal address. Need to be fixed.
-                    'InternalAddrIdx': 0,
                     'MTU': st_int(link_mtu_list[i], None),
                     'Overlay': 'UDP/IPv4',
-                    'Public': {
+                    'PublicOverlay': {
                         'Addr': interface_list[i],
-                        'L4Port': st_int(own_port_list[i], None),
+                        'OverlayPort': st_int(own_port_list[i], None),
                     },
                     # TODO(jonghoonkwon): Put the 'Bind' field after web UI
                     # provides internal address & port information
-                    'Remote': {
+                    'RemoteOverlay': {
                         'Addr': remote_address_list[i],
-                        'L4Port': st_int(remote_port_list[i], None),
+                        'OverlayPort': st_int(remote_port_list[i], None),
                     }
                 }
             }
         }
-        if internal_address_list[i]:
-            # TODO(jonghoonkwon): Initial version of scion web assumes that
-            # we have only one bind address. Need to be fixed.
-            ret_dict[inst_name]['InternalAddrs'][0]['Bind'] = [{
+        if internal_address_list[i] != address_list[i]:
+            # we need a different Bind address iff different from "Public"
+            ret_dict[inst_name]['InternalAddrs']['IPv4']['BindOverlay'] = {
                 'Addr': internal_address_list[i],
-                'L4Port': st_int(internal_port_list[i], None),
-            }]
+                'OverlayPort': st_int(internal_port_list[i], None),
+            }
+        if control_address_list[i] != address_list[i]:
+            ret_dict[inst_name]['CtrlAddr']['IPv4']['Bind'] = {
+                'Addr': control_address_list[i],
+                'L4Port': st_int(control_port_list[i], None),
+            }
         if interface_internal_addr_list[i]:
-            ret_dict[inst_name]['Interfaces'][st_int(if_id_list[i], None)]['Bind'] = {
+            ret_dict[inst_name]['Interfaces'][st_int(if_id_list[i], None)]['BindOverlay'] = {
                 'Addr': interface_internal_addr_list[i],
-                'L4Port': st_int(own_port_list[i], None),
+                'OverlayPort': st_int(own_port_list[i], None),
             }
     return ret_dict
 
@@ -1030,7 +1050,7 @@ def generate_topology(request):
                         None)  # remove csrf entry, as we don't need it here
     topo_dict = {}
     tp = topology_params
-    isd_as = ISD_AS(tp['inputISD_AS'])
+    isd_as = TopoID(tp['inputISD_AS'])
     topo_dict['Core'] = True if (tp['inputIsCore'] == 'on') else False
 
     service_types = ['BeaconService', 'CertificateService', 'PathService']
@@ -1043,7 +1063,6 @@ def generate_topology(request):
                             tp.getlist('input{}InternalAddress'.format(s_type)),
                             tp.getlist('input{}InternalPort'.format(s_type)),
                             )
-
     topo_dict['BorderRouters'] = name_entry_dict_router(tp)
     topo_dict['ISD_AS'] = tp['inputISD_AS']
     topo_dict['MTU'] = st_int(tp['inputMTU'], DEFAULT_MTU)
@@ -1105,9 +1124,9 @@ def get_all_ip_port_pairs(topo_dict, service_types):
     all_ip_port_pairs = []
     for service_type in service_types:
         for entry in topo_dict[service_type].values():
-            for addr_info in entry['Public']:
-                curr_pair = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'])
-                all_ip_port_pairs.append(curr_pair)
+            addr_info = entry['Addrs']['IPv4']['Public']
+            curr_pair = "%s:%s" % (addr_info['Addr'], addr_info['L4Port'])
+            all_ip_port_pairs.append(curr_pair)
     for zk_addr_info in topo_dict['ZookeeperService'].values():
         curr_pair = "%s:%s" % (zk_addr_info['Addr'], zk_addr_info['L4Port'])
         all_ip_port_pairs.append(curr_pair)

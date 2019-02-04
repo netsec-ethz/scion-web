@@ -22,13 +22,7 @@ from collections import defaultdict
 from django.shortcuts import get_object_or_404
 
 # SCION
-from lib.defines import (
-    BEACON_SERVICE,
-    CERTIFICATE_SERVICE,
-    PATH_SERVICE,
-    ROUTER_SERVICE,
-    PROJECT_ROOT
-)
+from lib.types import ServiceType
 from lib.packet.scion_addr import ISD_AS
 
 # SCION-WEB
@@ -41,10 +35,10 @@ WEB_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 SUPPORTED_CLOUD_ENGINES = ['switch_engines', 'amazon_ec2']
 
 TYPES_TO_SERVICES = {
-    'router': ROUTER_SERVICE,
-    'beacon_server': BEACON_SERVICE,
-    'path_server': PATH_SERVICE,
-    'cert_server': CERTIFICATE_SERVICE,
+    'router': ServiceType.BR,
+    'beacon_server': ServiceType.BS,
+    'path_server': ServiceType.PS,
+    'cert_server': ServiceType.CS,
     'zookeeper_service': ZOOKEEPER_SERVICE
 }
 
@@ -130,14 +124,14 @@ def get_zk_addr(topo_dict, input_addr):
     for key in ['BeaconService', 'CertificateService', 'PathService']:
         section = topo_dict[key]
         for sec_id in section:
-            bind_addrs = section[sec_id].get('Bind')
-            if bind_addrs and bind_addrs[0]['Addr'] == input_addr:
-                return section[sec_id]['Public'][0]['Addr']
+            bind_addr = section[sec_id]['Addrs']['IPv4'].get('Bind')
+            if bind_addr and bind_addr['Addr'] == input_addr:
+                return section[sec_id]['Addrs']['IPv4']['Public']['Addr']
     br_section = topo_dict['BorderRouters']
     for br_id in br_section:
-        bind_addr = br_section[br_id]['InternalAddrs'][0].get('Bind')
-        if bind_addr and bind_addr[0]['Addr'] == input_addr:
-            return br_section[br_id]['InternalAddrs'][0]['Public'][0]['Addr']
+        bind_addr = br_section[br_id]['InternalAddrs']['IPv4'].get('BindOverlay')
+        if bind_addr and bind_addr['Addr'] == input_addr:
+            return br_section[br_id]['InternalAddrs']['IPv4']['Public']['Addr']
     return input_addr
 
 
@@ -156,14 +150,10 @@ def get_section_addr(topo_dict, section_name):
             ret_val.append((sec_id, zk_addr))
     elif section_name.endswith('Service'):
         for sec_id in section:
-            for addr_idx in range(len(section[sec_id]['Public'])):
-                ret_val.append((sec_id, section[sec_id]['Public'][addr_idx]['Addr']))
+            ret_val.append( (sec_id, section[sec_id]['Addrs']['IPv4']['Public']['Addr']) )
     elif section_name.endswith("Routers"):
         for sec_id in section:
-            int_addrs = section[sec_id]['InternalAddrs']
-            for int_addr_idx in range(len(int_addrs)):
-                for addr_idx in range(len(int_addrs[int_addr_idx]['Public'])):
-                    ret_val.append((sec_id, int_addrs[int_addr_idx]['Public'][addr_idx]['Addr']))
+            ret_val.append( (sec_id, section[sec_id]['InternalAddrs']['IPv4']['PublicOverlay']['Addr']) )
     return ret_val
 
 

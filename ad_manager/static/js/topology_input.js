@@ -195,15 +195,15 @@ function reloadServiceSection(reloadedTopology, entryKey) {
         // fill form values
         var itemSelector = '#' + type + 'Item-' + (parseInt(i) + 1).toString(); // get a 1 based selector
         $(itemSelector + ' #input' + type + 'ServiceName').val(name);
-        server = entry[name];
-        address = server['Public'][0]['Addr'];
+        serverAddrs = entry[name]['Addrs']['IPv4'];
+        address = serverAddrs['Public']['Addr'];
         $(itemSelector + ' #input' + type + 'ServiceAddress').val(address);
-        port = server['Public'][0]['L4Port'];
+        port = serverAddrs['Public']['L4Port'];
         $(itemSelector + ' #input' + type + 'ServicePort').val(port);
-        if ('Bind' in server) {
-            addressInternal = server['Bind'][0]['Addr'];
+        if ('Bind' in serverAddrs) {
+            addressInternal = serverAddrs['Bind']['Addr'];
             $(itemSelector + ' #input' + type + 'ServiceInternalAddress').val(addressInternal);
-            portInternal = server['Bind'][0]['L4Port'];
+            portInternal = serverAddrs['Bind']['L4Port'];
             $(itemSelector + ' #input' + type + 'ServiceInternalPort').val(portInternal);
         }
     }
@@ -216,7 +216,6 @@ function reloadZookeeperSection(zookeepers) {
 
     for (var zkKey in zookeepers) {
         server = zookeepers[zkKey]; //inputZookeeperServerType
-        //$('#inputZookeeperServerType').attr('value', 'zookeeper_server'); // already set
         address = server['Addr'];
         $('#inputZookeeperServerAddress').attr('value', address);
         port = server['L4Port'];
@@ -248,18 +247,27 @@ function reloadRouterSection(reloadedTopology) {
         }
         itemSelector = '#' + type + 'Item-' + (parseInt(i) + 1).toString() + ' ';
         $(itemSelector + '#inputBorderRouterName').attr('value', name);
-        address = borderRouter['InternalAddrs'][0]['Public'][0]['Addr'];
+        borderRouterAddrs = borderRouter['InternalAddrs']["IPv4"]
+        address = borderRouterAddrs['PublicOverlay']['Addr'];
         $(itemSelector + '#inputBorderRouterAddress').attr('value', address);
         $(itemSelector + '#inputBorderRouterAddress').val(address);
-        port = borderRouter['InternalAddrs'][0]['Public'][0]['L4Port'];
+        port = borderRouterAddrs['PublicOverlay']['OverlayPort'];
         $(itemSelector + '#inputBorderRouterPort').attr('value', port);
-        if ('Bind' in borderRouter['InternalAddrs'][0]) {
-            addressInternal = borderRouter['InternalAddrs'][0]['Bind'][0]['Addr'];
-            $(itemSelector + '#inputBorderRouterInternalAddress').val(addressInternal);
-            portInternal = borderRouter['InternalAddrs'][0]['Bind'][0]['L4Port'];
-            $(itemSelector + '#inputBorderRouterInternalPort').val(portInternal);
+        if ('BindOverlay' in borderRouterAddrs) {
+            addressInternal = borderRouterAddrs['BindOverlay'];
+        } else {
+            addressInternal = borderRouterAddrs['PublicOverlay'];
         }
-
+        $(itemSelector + '#inputBorderRouterInternalAddress').val(addressInternal['Addr']);
+        $(itemSelector + '#inputBorderRouterInternalPort').val(addressInternal['OverlayPort']);
+        borderRouterAddrs = borderRouter['CtrlAddr']["IPv4"];
+        if ('Bind' in borderRouterAddrs) {
+            addressCtrl = borderRouterAddrs['Bind']
+        } else {
+            addressCtrl = borderRouterAddrs['Public']
+        }
+        $(itemSelector + '#inputBorderRouterControlAddress').val(addressCtrl['Addr']);
+        $(itemSelector + '#inputBorderRouterControlPort').val(addressCtrl['L4Port']);
         var interfaces_obj = borderRouter['Interfaces'];
         var keys = Object.keys(interfaces_obj)
         reloadRouterInterfaceSection(keys[0], interfaces_obj[keys[0]], itemSelector);
@@ -288,18 +296,18 @@ function reloadRouterInterfaceSection(if_id, interface_obj, itemSelector) {
             case 'MTU':
                 $(itemSelector + '#inputLinkMTU').attr('value', value);
                 break;
-            case 'Public':
+            case 'PublicOverlay':
                 $(itemSelector + '#inputInterfaceAddr').attr('value', value['Addr']);
-                $(itemSelector + '#inputInterfaceOwnPort').attr('value', value['L4Port']);
+                $(itemSelector + '#inputInterfaceOwnPort').attr('value', value['OverlayPort']);
                 break;
-            case 'Remote':
+            case 'RemoteOverlay':
                 $(itemSelector + '#inputInterfaceRemoteAddress').attr('value', value['Addr']);
-                $(itemSelector + '#inputInterfaceRemotePort').attr('value', value['L4Port']);
+                $(itemSelector + '#inputInterfaceRemotePort').attr('value', value['OverlayPort']);
                 break;
             case 'Bandwidth':
                 $(itemSelector + '#inputInterfaceBandwidth').attr('value', value);
                 break;
-            case 'Bind':
+            case 'BindOverlay':
                 $(itemSelector + '#inputInterfaceInternalAddress').attr('value', value['Addr']);
                 break;
             // TODO(ercanucan): Futher items to be shown once the front-end is updated
