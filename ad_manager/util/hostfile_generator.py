@@ -124,14 +124,14 @@ def get_zk_addr(topo_dict, input_addr):
     for key in ['BeaconService', 'CertificateService', 'PathService']:
         section = topo_dict[key]
         for sec_id in section:
-            bind_addrs = section[sec_id].get('Bind')
-            if bind_addrs and bind_addrs['Addr'] == input_addr:
-                return section[sec_id]['Public']['Addr']
+            bind_addr = section[sec_id]['Addrs']['IPv4'].get('Bind')
+            if bind_addr and bind_addr['Addr'] == input_addr:
+                return section[sec_id]['Addrs']['IPv4']['Public']['Addr']
     br_section = topo_dict['BorderRouters']
     for br_id in br_section:
-        bind_addr = br_section[br_id]['InternalAddrs'].get('Bind')
+        bind_addr = br_section[br_id]['InternalAddrs']['IPv4'].get('BindOverlay')
         if bind_addr and bind_addr['Addr'] == input_addr:
-            return br_section[br_id]['InternalAddrs']['Public']['Addr']
+            return br_section[br_id]['InternalAddrs']['IPv4']['Public']['Addr']
     return input_addr
 
 

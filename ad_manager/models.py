@@ -31,7 +31,6 @@ from lib.packet.scion_addr import ISD_AS
 # SCION-WEB
 from ad_manager.util.common import empty_dict
 from ad_manager.util.defines import (
-    ADDR_ATTRIBUTES,
     DEFAULT_BANDWIDTH,
     SCION_SUGGESTED_PORT,
 )
@@ -174,36 +173,41 @@ class AD(models.Model):
         """
         for name, router in router_dict.items():
             br_obj, _ = BorderRouter.objects.update_or_create(name=name, ad=self)
-            br_addr_idx = []
-            for router_addr in router['InternalAddrs']:
-                for addr_attr in ADDR_ATTRIBUTES:
-                    if addr_attr not in router_addr.keys():
-                        continue
-                    for addr_idx, addr_info in enumerate(router_addr[addr_attr]):
-                        addr = addr_info['Addr']
-                        port = addr_info['L4Port']
-                        if not port:
-                            port = router_addr['Public'][addr_idx]['L4Port']
-                        # TODO (ercanucan): currently we assume IPv4
-                        addr_type = 'IPv4'
-                        br_addr_obj, _ = BorderRouterAddress.objects.update_or_create(
-                            addr=addr,
-                            l4port=port,
-                            addr_type=addr_type,
-                            is_public=(addr_attr == 'Public'),
-                            router=br_obj,
-                            ad=self
-                        )
-                        br_addr_idx.append(br_addr_obj)
+            router_addr = router['InternalAddrs']['IPv4']
+            addr_info = router_addr['PublicOverlay']
+            internal_public_obj, _ = BorderRouterAddress.objects.update_or_create(
+                addr=addr_info['Addr'],
+                l4port=addr_info['OverlayPort'],
+                addr_type='IPv4',
+                is_public=True,
+                router=br_obj,
+                ad=self
+            )
+            addr_info = router_addr.get('BindOverlay', None)
+            if addr_info:
+                internal_bound_obj, _ = BorderRouterAddress.objects.update_or_create(
+                addr=addr_info['Addr'],
+                l4port=addr_info['OverlayPort'],
+                addr_type='IPv4',
+                is_public=False,
+                router=br_obj,
+                ad=self
+            )
+            else:
+                internal_bound_obj = None
+            # TODO: we need to update the model: BorderRouterAddress should have also CtrlAddr, both should
+            # have public + bind address. BorderRouterInterface should not have an index
+            # But I don't find where we read this data for anything !
+
             for if_id, intf in router["Interfaces"].items():
                 isd_as = ISD_AS(intf["ISD_AS"])
-                br_addr_obj = br_addr_idx[intf['InternalAddrIdx']]
+                br_addr_obj = internal_public_obj
                 br_inft_obj, _ = BorderRouterInterface.objects.update_or_create(
-                    addr=intf['Public']['Addr'],
-                    l4port=intf['Public']['L4Port'],
-                    remote_addr=intf['Remote']['Addr'],
-                    remote_l4port=intf['Remote']['L4Port'],
-                    internal_addr_idx=intf['InternalAddrIdx'],
+                    addr=intf['PublicOverlay']['Addr'],
+                    l4port=intf['PublicOverlay']['OverlayPort'],
+                    remote_addr=intf['RemoteOverlay']['Addr'],
+                    remote_l4port=intf['RemoteOverlay']['OverlayPort'],
+                    internal_addr_idx=0,
                     interface_id=if_id,
                     bandwidth=intf['Bandwidth'],
                     mtu=intf['MTU'],
@@ -213,8 +217,8 @@ class AD(models.Model):
                     neighbor_type=intf["LinkTo"],
                     router_addr=br_addr_obj,
                     ad=self,
-                    bind_addr=intf['Bind']['Addr'] if 'Bind' in intf.keys() else None,
-                    bind_l4port=intf['Bind']['L4Port'] if 'Bind' in intf.keys() else None,
+                    bind_addr=intf['BindOverlay']['Addr'] if 'BindOverlay' in intf.keys() else None,
+                    bind_l4port=intf['BindOverlay']['OverlayPort'] if 'BindOverlay' in intf.keys() else None,
                 )
 
     def fill_service_info(self, service_dict):
@@ -225,24 +229,27 @@ class AD(models.Model):
         """
         for name, service in service_dict.items():
             srv_obj, _ = Service.objects.update_or_create(name=name, ad=self)
-            for addr_attr in ADDR_ATTRIBUTES:
-                if addr_attr not in service.keys():
-                    continue
-                for addr_idx, addr_info in enumerate(service[addr_attr]):
-                    addr = addr_info["Addr"]
-                    port = addr_info["L4Port"]
-                    if not port and addr_attr is 'Bind':
-                        port = service['Public'][addr_idx]['L4Port']
-                    # TODO (ercanucan): currently we assume IPv4
-                    addr_type = 'IPv4'
-                    srv_addr_obj, _ = ServiceAddress.objects.update_or_create(
-                        addr=addr,
-                        l4port=port,
-                        addr_type=addr_type,
-                        is_public=(addr_attr == 'Public'),
-                        service=srv_obj,
-                        ad=self
-                    )
+            service_addrs = service['Addrs']['IPv4']
+            addr_info = service_addrs['Public']
+            srv_public_obj, _ = ServiceAddress.objects.update_or_create(
+                addr=addr_info['Addr'],
+                l4port=addr_info['L4Port'],
+                addr_type='IPv4',
+                is_public=True,
+                service=srv_obj,
+                ad=self
+            )
+            addr_info = service_addrs.get('Bind', None)
+            if addr_info:
+                srv_bind_obj, _ = ServiceAddress.objects.update_or_create(
+                    addr=addr_info['Addr'],
+                    l4port=addr_info['L4Port'],
+                    addr_type='IPv4',
+                    is_public=False,
+                    service=srv_obj,
+                    ad=self
+                )
+
 
     def fill_from_topology(self, topology_dict, clear=False, auto_refs=False):
         """
