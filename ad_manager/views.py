@@ -990,7 +990,7 @@ def name_entry_dict_router(tp):
             'CtrlAddr': {
                 'IPv4': {
                     'Public': {
-                        'Addr:': address_list[i],
+                        'Addr': address_list[i],
                         'L4Port': st_int(control_port_list[i], None),
                     }
                 }
@@ -1023,13 +1023,13 @@ def name_entry_dict_router(tp):
                 }
             }
         }
-        if internal_address_list[i] != address_list[i]:
+        if internal_address_list[i] != "" and internal_address_list[i] != address_list[i]:
             # we need a different Bind address iff different from "Public"
             ret_dict[inst_name]['InternalAddrs']['IPv4']['BindOverlay'] = {
                 'Addr': internal_address_list[i],
                 'OverlayPort': st_int(internal_port_list[i], None),
             }
-        if control_address_list[i] != address_list[i]:
+        if control_address_list[i] != "" and control_address_list[i] != address_list[i]:
             ret_dict[inst_name]['CtrlAddr']['IPv4']['Bind'] = {
                 'Addr': control_address_list[i],
                 'L4Port': st_int(control_port_list[i], None),
