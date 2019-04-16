@@ -30,7 +30,6 @@ class ASInformation(object):
         self.AS = AS
         self.ISD = ISD
         self.topology = topology
-        self.name = self.get_AS_name()
         self.bs_addr = self.get_bs_addr()
         self.ps_addr = self.get_ps_addr()
         self.cs_addr = self.get_cs_addr()
@@ -39,15 +38,9 @@ class ASInformation(object):
         self.intra_isd_neighbors = self.get_neighbors()['intra']
         self.inter_isd_neighbors = self.get_neighbors()['inter']
 
-    def get_AS_name(self):
-        """
-        :return: String: Name of the AS
-        """
-        return self.AS
-
     def get_bs_addr(self):
         """
-        :return: String: Address of the bs
+        : return: String: Address of the bs
         """
         # TODO(@philippmao: add support for multiple bs)
         bs_id = list(self.topology["BeaconService"].keys())[0]
@@ -56,7 +49,7 @@ class ASInformation(object):
 
     def get_cs_addr(self):
         """
-        :return: String: Address of the cs
+        : return: String: Address of the cs
         """
         # TODO(@philippmao: add support for multiple cs)
         cs_id = list(self.topology["CertificateService"].keys())[0]
@@ -65,7 +58,7 @@ class ASInformation(object):
 
     def get_ps_addr(self):
         """
-        :return: String: Address of the ps
+        : return: String: Address of the ps
         """
         # TODO(@philippmao: add support for multiple ps)
         ps_id = list(self.topology["PathService"].keys())[0]
@@ -74,7 +67,7 @@ class ASInformation(object):
 
     def get_zk_addr(self):
         """
-        :return: String: Address of the zk
+        : return: String: Address of the zk
         """
         # TODO(@philippmao: add support for multiple zk)
         zk_id = list(self.topology["ZookeeperService"].keys())[0]
@@ -83,13 +76,13 @@ class ASInformation(object):
 
     def get_core_bool(self):
         """
-        :return: Boolean: True if AS is core, False if not
+        : return: Boolean: True if AS is core, False if not
         """
         return self.topology["Core"]
 
     def get_neighbors(self):
         """
-        :return: Nested dictionary with intra and inter isd neighbor dictionaries
+        : return: Nested dictionary with intra and inter isd neighbor dictionaries
         """
         intra_dict = {}
         inter_dict = {}
@@ -117,8 +110,8 @@ class ASInformation(object):
 
     def get_neighbor_IA_interface(self, br):
         """
-        :param:  br: Border router string
-        :return: A dictionary with the neighbor IA and interface
+        : param:  br: Border router string
+        : return: A dictionary with the neighbor IA and interface
                  of the border router connected to that IA
         """
         interface = ""
@@ -145,8 +138,8 @@ class IsdGraph(object):
 
     def get_graph(self, location_labels, labels):
         """
-        :param: dict labels: Dictionary containing labels for ISDs and ASes
-        :return: Isd graphviz graph with correct formatting
+        : param: dict labels: Dictionary containing labels for ISDs and ASes
+        : return: Isd graphviz graph with correct formatting
         """
         graph_name = 'cluster_' + "ISD " + self.ISD
         label = "ISD " + self.ISD
@@ -158,7 +151,7 @@ class IsdGraph(object):
 
     def get_core_graph(self):
         """
-        :return: Isd graphviz core graph with correct formatting
+        : return: Isd graphviz core graph with correct formatting
         """
         return Graph(name='cluster_core',
                      graph_attr={'color': 'red', 'label': '', 'style': 'rounded'})
@@ -166,7 +159,7 @@ class IsdGraph(object):
     def add_nodes(self, to_draw_list, graph, core, ip_addresses, location_labels, labels):
         """
         Adds nodes of ASes to a graph
-        :param: self, array to_draw_list: an array of ASes,
+        : param: self, array to_draw_list: an array of ASes,
                 graphviz graph: Graph to which we add the nodes,
                 bool core: indicates if we add core nodes
                 bool ip_addresses: indicates if we have edge labels
@@ -183,7 +176,7 @@ class IsdGraph(object):
     def sort_ASes(self):
         """
         Sorts core and non-core ASes.
-        :return: Dict with core and non core Ases.
+        : return: Dict with core and non core Ases.
         """
         core_AS_list = []
         non_core_AS_list = []
@@ -197,14 +190,13 @@ class IsdGraph(object):
     def draw_node_without_attributes(self, AS, core, graph, location_labels, labels):
         """
         Adds a node without any attributes to the graph.
-        :param: self, string AS: AS ID, boolean core: inidicates if the AS is core
+        : param: self, string AS: AS ID, boolean core: inidicates if the AS is core
                 graphviz graph: graph to which we add the AS
                 dict labels: Dictionary containing labels for ISDs and ASes
         """
         ia = ISD_AS("%s-%s" % (self.ISD, AS))
         node_id = ia.file_fmt()
-        node_name = self.AS_list[AS]["name"]
-        node_name = ia.__str__() + node_name
+        node_name = ia.__str__()
         if core:
             node_name += " (core)"
         if location_labels and ia.__str__() in labels['AS']:
@@ -214,7 +206,7 @@ class IsdGraph(object):
     def draw_node_with_attributes(self, AS, core, graph, location_labels, labels):
         """
         Adds a node with attributes to the graph.
-        :param: self, string AS: AS ID, boolean core: inidicates if the AS is core
+        : param: self, string AS: AS ID, boolean core: inidicates if the AS is core
                 graphviz graph: graph to which we add the AS
                 dict labels: Dictionary containing labels for ISDs and ASes
         """
@@ -234,7 +226,7 @@ class IsdGraph(object):
     def draw_edges_from_current(self, current_neighbors, graph, node_labels):
         """
         Adds edges for all ASes in current_neighbors
-        :param: self, array of ASes: list of ASes whose edges we draw,
+        : param: self, array of ASes: list of ASes whose edges we draw,
                 graphviz graph: graph to which we add the edges,
                 boolean edge_labels: boolean indicating if we add labels to the edges
         """
@@ -289,7 +281,7 @@ class IsdGraph(object):
 
     class NodeAttributes(object):
         """
-        Class to collect all attributes of an AS (br,ps,bs ..)
+        Class to collect all attributes of an AS(br, ps, bs ..)
         """
 
         def __init__(self, AS, ia):

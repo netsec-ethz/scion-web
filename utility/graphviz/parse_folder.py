@@ -52,7 +52,6 @@ def parse_as_folder(isd_number, as_number, as_folder):
     as_dict = {}
     as_topo = get_topology_file(as_folder)
     as_info = ASInformation(as_topo, isd_number, as_number)
-    as_dict['name'] = as_info.name
     as_dict['core'] = as_info.core
     info_dict = {}
     info_dict["bs"] = as_info.bs_addr
