@@ -27,6 +27,7 @@ from lib.packet.scion_addr import ISD_AS
 from graphviz_lib import IsdGraph
 from parse_folder import parse_gen_folder, parse_desc_labels
 
+
 def draw_isd_graph(ISD, AS_list, ip_addresses, location_labels, labels):
     """
     Draws an ISD graph.
@@ -43,20 +44,24 @@ def draw_isd_graph(ISD, AS_list, ip_addresses, location_labels, labels):
     non_core_AS_list = graph_lib.sort_ASes()['non-core']
     # add all core nodes in a core graph
     core_graph = graph_lib.get_core_graph()
-    graph_lib.add_nodes(core_AS_list, core_graph, True, ip_addresses, location_labels, labels)
+    graph_lib.add_nodes(core_AS_list, core_graph, True,
+                        ip_addresses, location_labels, labels)
     isd_graph.subgraph(core_graph)
     # add all non core nodes
-    graph_lib.add_nodes(non_core_AS_list, isd_graph, False, ip_addresses, location_labels, labels)
+    graph_lib.add_nodes(non_core_AS_list, isd_graph, False,
+                        ip_addresses, location_labels, labels)
     # add all edges to the graph from core to leaf,
     # order is important such that core ASes end up on top
     c_neighbors = core_AS_list
-    n_neighbors = graph_lib.draw_edges_from_current(c_neighbors, isd_graph, ip_addresses)
+    n_neighbors = graph_lib.draw_edges_from_current(
+        c_neighbors, isd_graph, ip_addresses)
     # loop while some nodes dont have all their edges, add edges of nodes in current neighbors,
     # add nodes to next neighbors if they are not in ASes done,
     # not in next neighbors yet and not in current neighbors
     while len(n_neighbors) > 0:
         c_neighbors = n_neighbors
-        n_neighbors = graph_lib.draw_edges_from_current(c_neighbors, isd_graph, ip_addresses)
+        n_neighbors = graph_lib.draw_edges_from_current(
+            c_neighbors, isd_graph, ip_addresses)
     return isd_graph
 
 
@@ -76,7 +81,8 @@ def draw_inter_ISD_edges(scion_graph, ISDs, node_labels):
         # for each AS draw its inter-ISD edges
         for AS in AS_list:
             if len(AS_list[AS]["inter_n"]) > 0:
-                draw_edges_for_as(ISDs, ISD, AS, ISDs_done, node_labels, scion_graph)
+                draw_edges_for_as(ISDs, ISD, AS, ISDs_done,
+                                  node_labels, scion_graph)
     return scion_graph
 
 
@@ -96,16 +102,19 @@ def draw_edges_for_as(ISDs, ISD, AS, ISDs_done, node_labels, scion_graph):
             n_ia = "%s-%s" % (neighborISD, neighborAS)
             if node_labels:
                 color = get_color()
-                remote = get_remote_interface(ISDs[neighborISD]["AS"][neighborAS], AS_list[AS]["inter_n"][interface]["br-ip"], \
-                    AS_list[AS]["inter_n"][interface]["br-port"])
-                headlabel = '<<font color="' + color + '">' + str(remote[0]) + ": " + str(remote[1]) + '</font>>' 
+                remote = get_remote_interface(ISDs[neighborISD]["AS"][neighborAS], AS_list[AS]["inter_n"][interface]["br-ip"],
+                                              AS_list[AS]["inter_n"][interface]["br-port"])
+                headlabel = '<<font color="' + color + '">' + \
+                    str(remote[0]) + ": " + str(remote[1]) + '</font>>'
                 taillabel = '<<font color="' + color + '">' + str(interface) + ': ' + \
-                    str(AS_list[AS]["inter_n"][interface]["br-port"]) + '</font>>' 
+                    str(AS_list[AS]["inter_n"][interface]
+                        ["br-port"]) + '</font>>'
                 scion_graph.edge(ia, n_ia, color=color,
-                                     _attributes={'constraint': 'false', 'headlabel': headlabel,
-                                                  'taillabel': taillabel})
+                                 _attributes={'constraint': 'false', 'headlabel': headlabel,
+                                              'taillabel': taillabel})
             else:
                 scion_graph.edge(ia, n_ia)
+
 
 def get_remote_interface(AS_dict, ip, port):
     """
@@ -115,15 +124,17 @@ def get_remote_interface(AS_dict, ip, port):
         if AS_dict["inter_n"][interface]["remote-ip"] == ip:
             if AS_dict["inter_n"][interface]["remote-port"] == port:
                 return (interface, port)
-    return ('','')
+    return ('', '')
+
 
 def get_color():
     """
     Returns a random color from a selection to be used for an edge
     """
-    colors = ['green', 'gold', 'indigo', 'orangered', 'crimson', \
-        'magenta', 'darkslategray', 'greenyellow', 'hotpink', 'lightsalmon']
+    colors = ['green', 'gold', 'indigo', 'orangered', 'crimson',
+              'magenta', 'darkslategray', 'greenyellow', 'hotpink', 'lightsalmon']
     return random.choice(colors)
+
 
 def draw_SCION_topology(topology_dict, n_labels, l_labels, desc_labels):
     """
@@ -136,17 +147,19 @@ def draw_SCION_topology(topology_dict, n_labels, l_labels, desc_labels):
     :return Dot graph: graph of the SCION topology
     """
     isd_graphs = {}
-    dot = Graph(name='topology',filename='topology.gv',comment='SCION-net')
+    dot = Graph(name='topology', filename='topology.gv', comment='SCION-net')
     ISDs = topology_dict["ISD"]
     # draw each ISD graph
     for ISD in ISDs:
-        isd_graphs[ISD] = draw_isd_graph(ISD, ISDs[ISD]["AS"], n_labels, l_labels, desc_labels)
+        isd_graphs[ISD] = draw_isd_graph(
+            ISD, ISDs[ISD]["AS"], n_labels, l_labels, desc_labels)
     # put all isd graphs into the same graph
     for ISD in isd_graphs:
         dot.subgraph(isd_graphs[ISD])
     # add edges between ISDs
     dot = draw_inter_ISD_edges(dot, ISDs, n_labels)
     return dot
+
 
 def main():
     """
@@ -175,16 +188,18 @@ def main():
     if os.path.exists(args.gen_folder_path):
         topo = parse_gen_folder(args.gen_folder_path, args.output_path)
     else:
-        print ('Error: No gen folder found at ' + args.gen_folder_path)
+        print('Error: No gen folder found at ' + args.gen_folder_path)
         return
 
     if args.location_labels:
         labels = parse_desc_labels(args.label_file_path)
     else:
         labels = {}
-    dot = draw_SCION_topology(topo, args.node_labels, args.location_labels, labels)
+    dot = draw_SCION_topology(topo, args.node_labels,
+                              args.location_labels, labels)
     s = Source(dot, filename=dot.filename, format="pdf")
     s.render(directory=args.output_path)
+
 
 if __name__ == '__main__':
     main()

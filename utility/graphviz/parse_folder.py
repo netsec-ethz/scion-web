@@ -22,6 +22,7 @@ from lib.util import write_file
 # GraphViz
 from graphviz_lib import ASInformation
 
+
 def get_topology_file(as_folder):
     """
     Looks for a topology file inside an AS folder, opens it
@@ -51,7 +52,6 @@ def parse_as_folder(isd_number, as_number, as_folder):
     as_dict = {}
     as_topo = get_topology_file(as_folder)
     as_info = ASInformation(as_topo, isd_number, as_number)
-    as_dict['name'] = as_info.name
     as_dict['core'] = as_info.core
     info_dict = {}
     info_dict["bs"] = as_info.bs_addr
@@ -70,13 +70,15 @@ def parse_isd_folder(isd_number, isd_folder):
     :param: String ISD number, string ISD_folder: filepath to ISD folder
     :return: Nested Dictionary with info from an ISD folder
     """
+
     isd_dict = {}
     isd_dict['AS'] = {}
     inside_isd_folder = os.listdir(isd_folder)
     for directory in inside_isd_folder:
         if directory[:2] == 'AS':
             as_number = directory[2:]
-            as_dict = parse_as_folder(isd_number, as_number, isd_folder + "/" + directory)
+            as_dict = parse_as_folder(
+                isd_number, as_number, isd_folder + "/" + directory)
             isd_dict['AS'][as_number] = as_dict
     return isd_dict
 
@@ -96,27 +98,29 @@ def parse_gen_folder(gen_folder, output_path):
     for directory in inside_gen_folder:
         if directory[:3] == 'ISD':
             isd_number = directory[3:]
-            isd_dict = parse_isd_folder(isd_number, gen_folder + "/" + directory)
+            isd_dict = parse_isd_folder(
+                isd_number, gen_folder + "/" + directory)
             gen_dict['ISD'][isd_number] = isd_dict
     write_file(os.path.join(output_path, 'output.json'),
                json.dumps(gen_dict, sort_keys=True, indent=4))
     return gen_dict
+
 
 def parse_desc_labels(labels_file):
     try:
         with open(labels_file, 'r') as f:
             data = json.load(f)
     except ValueError:
-        print ('Warning: Decoding label file failed. Creating graph without labels.')
+        print('Warning: Decoding label file failed. Creating graph without labels.')
         return {"ISD": {}, "AS": {}}
     except FileNotFoundError:
-        print ('Warning: Label file not found. Creating graph without labels.')
+        print('Warning: Label file not found. Creating graph without labels.')
         return {"ISD": {}, "AS": {}}
-    
+
     if 'ISD' not in data:
-        print ('Warning: ISD labels missing. Adding AS labels only.')
+        print('Warning: ISD labels missing. Adding AS labels only.')
         data["ISD"] = {}
     if 'AS' not in data:
-        print ('Warning: AS labels missing. Adding ISD labels only.')
+        print('Warning: AS labels missing. Adding ISD labels only.')
         data["AS"] = {}
     return data
