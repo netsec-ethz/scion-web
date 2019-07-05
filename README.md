@@ -1,3 +1,7 @@
+## :warning: Discontinued  ##
+The functionality of scion-web and scion-coord has been combined into a new web application in the [netsec-ethz/scionlab](https://github.com/netsec-ethz/scionlab) repository.
+As a consequence, this repository will be archived.
+
 ## Installation
 
 #### One click install
